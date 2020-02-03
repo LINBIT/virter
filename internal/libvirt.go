@@ -9,5 +9,6 @@ type HttpClient interface {
 }
 
 func ImagePull(client HttpClient, url string) error {
+	client.Get(url)
 	return nil
 }

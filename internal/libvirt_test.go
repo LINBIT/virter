@@ -1,26 +1,19 @@
 package internal
 
 import (
-	"net/http"
 	"testing"
+
+	"github.com/LINBIT/virter/internal/mocks"
 )
 
+//go:generate mockery -name=HttpClient
+
 func TestPull(t *testing.T) {
-	mock := &ClientMock{}
+	mock := new(mocks.HttpClient)
+	mock.On("Get", "http://foo.bar").Return(nil, nil)
 	err := ImagePull(mock, "http://foo.bar")
 	if err != nil {
 		t.Errorf("Error returned %s", err)
 	}
-	if !mock.getCalled {
-		t.Errorf("Get not called")
-	}
-}
-
-type ClientMock struct {
-	getCalled bool
-}
-
-func (c *ClientMock) Get(url string) (resp *http.Response, err error) {
-	c.getCalled = true
-	return &http.Response{}, nil
+	mock.AssertExpectations(t)
 }
