@@ -8,10 +8,10 @@ import (
 	"github.com/LINBIT/virter/internal/mocks"
 )
 
-//go:generate mockery -name=HttpClient
+//go:generate mockery -name=HTTPClient
 
 func TestPull(t *testing.T) {
-	mock := new(mocks.HttpClient)
+	mock := new(mocks.HTTPClient)
 	mock.On("Get", "http://foo.bar").Return(nil, nil)
 	err := ImagePull(mock, "http://foo.bar")
 	assert.Nil(t, err)
