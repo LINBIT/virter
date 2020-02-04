@@ -8,18 +8,17 @@ import (
 	"github.com/libvirt/libvirt-go"
 
 	"github.com/LINBIT/virter/internal"
-	"github.com/LINBIT/virter/internal/libvirtinterfaces"
 )
 
 type LibvirtConnect struct {
 	libvirt.Connect
 }
 
-func (c *LibvirtConnect) LookupStoragePoolByName(name string) (libvirtinterfaces.LibvirtStoragePool, error) {
+func (c *LibvirtConnect) LookupStoragePoolByName(name string) (internal.LibvirtStoragePool, error) {
 	return c.Connect.LookupStoragePoolByName(name)
 }
 
-func (c *LibvirtConnect) NewStream(flags libvirt.StreamFlags) (libvirtinterfaces.LibvirtStream, error) {
+func (c *LibvirtConnect) NewStream(flags libvirt.StreamFlags) (internal.LibvirtStream, error) {
 	return c.Connect.NewStream(flags)
 }
 
