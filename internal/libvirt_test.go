@@ -3,6 +3,7 @@ package internal_test
 import (
 	"testing"
 
+	"github.com/digitalocean/go-libvirt"
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/LINBIT/virter/internal"
@@ -10,19 +11,20 @@ import (
 )
 
 //go:generate mockery -name=HTTPClient
-//go:generate mockery -name=LibvirtConnect
-//go:generate mockery -name=LibvirtStoragePool
-//go:generate mockery -name=LibvirtStream
+//go:generate mockery -name=LibvirtConn
 
 func TestPull(t *testing.T) {
 	mock := new(mocks.HTTPClient)
 	mock.On("Get", "http://foo.bar").Return(nil, nil)
 
-	sp := new(mocks.LibvirtStoragePool)
-	sp.On("GetUUIDString").Return("some-uuid", nil)
+	var dummyUUID [libvirt.VirUUIDBuflen]byte
+	sp := libvirt.StoragePool{
+		Name: "images",
+		UUID: dummyUUID,
+	}
 
-	conn := new(mocks.LibvirtConnect)
-	conn.On("LookupStoragePoolByName", "images").Return(sp, nil)
+	conn := new(mocks.LibvirtConn)
+	conn.On("StoragePoolLookupByName", "images").Return(sp, nil)
 
 	err := ImagePull(conn, mock, "http://foo.bar")
 	assert.Nil(t, err)

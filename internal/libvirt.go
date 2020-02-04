@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/libvirt/libvirt-go"
+	"github.com/digitalocean/go-libvirt"
+	"github.com/google/uuid"
 )
 
 // HTTPClient contains required HTTP methods.
@@ -12,35 +13,25 @@ type HTTPClient interface {
 	Get(url string) (resp *http.Response, err error)
 }
 
-// LibvirtConnect contains required libvirt connection methods.
-type LibvirtConnect interface {
-	LookupStoragePoolByName(name string) (LibvirtStoragePool, error)
-	NewStream(flags libvirt.StreamFlags) (LibvirtStream, error)
-}
-
-// LibvirtStoragePool contains required libvirt storage pool methods.
-type LibvirtStoragePool interface {
-	GetUUIDString() (string, error)
-}
-
-// LibvirtStream contains required libvirt stream methods.
-type LibvirtStream interface {
+// LibvirtConn contains required libvirt connection methods.
+type LibvirtConn interface {
+	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
 }
 
 // ImagePull pulls an image from a URL into libvirt.
-func ImagePull(conn LibvirtConnect, client HTTPClient, url string) error {
+func ImagePull(conn LibvirtConn, client HTTPClient, url string) error {
 	client.Get(url)
 
-	sp, err := conn.LookupStoragePoolByName("images")
+	sp, err := conn.StoragePoolLookupByName("images")
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	uuid, err := sp.GetUUIDString()
+	spUUID, err := uuid.FromBytes(sp.UUID[:])
 	if err != nil {
-		return fmt.Errorf("could not get UUID: %w", err)
+		panic("failed to convert UUID from libvirt")
 	}
 
-	fmt.Printf("%v\n", uuid)
+	fmt.Printf("%v\n", spUUID)
 	return nil
 }

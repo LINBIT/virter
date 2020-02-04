@@ -3,24 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"time"
 
-	"github.com/libvirt/libvirt-go"
+	"github.com/digitalocean/go-libvirt"
 
 	"github.com/LINBIT/virter/internal"
 )
-
-type LibvirtConnect struct {
-	libvirt.Connect
-}
-
-func (c *LibvirtConnect) LookupStoragePoolByName(name string) (internal.LibvirtStoragePool, error) {
-	return c.Connect.LookupStoragePoolByName(name)
-}
-
-func (c *LibvirtConnect) NewStream(flags libvirt.StreamFlags) (internal.LibvirtStream, error) {
-	return c.Connect.NewStream(flags)
-}
 
 func main() {
 	err := imagePull()
@@ -30,15 +20,18 @@ func main() {
 }
 
 func imagePull() error {
-	connect, err := libvirt.NewConnect("qemu:///system")
+	c, err := net.DialTimeout("unix", "/var/run/libvirt/libvirt-sock", 2*time.Second)
 	if err != nil {
-		return fmt.Errorf("could not connect to hypervisor: %w", err)
+		return fmt.Errorf("failed to dial libvirt: %w", err)
 	}
 
-	connect2 := &LibvirtConnect{*connect}
+	l := libvirt.New(c)
+	if err := l.Connect(); err != nil {
+		return fmt.Errorf("failed to connect: %w", err)
+	}
 
 	client := &http.Client{}
 
-	internal.ImagePull(connect2, client, "http://example.com")
+	internal.ImagePull(l, client, "http://example.com")
 	return nil
 }
