@@ -30,8 +30,10 @@ func imagePull() error {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 
+	v := internal.New(l, "")
+
 	client := &http.Client{}
 
-	internal.ImagePull(l, client, "http://example.com")
+	v.ImagePull(client, "http://example.com")
 	return nil
 }
