@@ -42,7 +42,7 @@ func TestPull(t *testing.T) {
 	}
 	l.On("StorageVolCreateXML", sp, "t0 some-name t1", mock.Anything).Return(sv, nil)
 
-	v := New(l, directory)
+	v := New(l, poolName, directory)
 
 	err := v.ImagePull(client, "http://foo.bar")
 	assert.NoError(t, err)
@@ -61,5 +61,5 @@ func (d MemoryDirectory) ReadFile(subpath string) ([]byte, error) {
 	return v, nil
 }
 
-const poolName = "images"
+const poolName = "some-pool"
 const volName = "vol"

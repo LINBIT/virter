@@ -27,15 +27,20 @@ type LibvirtConnection interface {
 
 // Virter manipulates libvirt for virter.
 type Virter struct {
-	libvirt   LibvirtConnection
-	templates FileReader
+	libvirt         LibvirtConnection
+	storagePoolName string
+	templates       FileReader
 }
 
 // New configures a new Virter.
-func New(libvirtConnection LibvirtConnection, fileReader FileReader) *Virter {
+func New(
+	libvirtConnection LibvirtConnection,
+	storagePoolName string,
+	fileReader FileReader) *Virter {
 	return &Virter{
-		libvirt:   libvirtConnection,
-		templates: fileReader,
+		libvirt:         libvirtConnection,
+		storagePoolName: storagePoolName,
+		templates:       fileReader,
 	}
 }
 
@@ -52,7 +57,7 @@ func (v *Virter) ImagePull(client HTTPClient, url string) error {
 	}
 	defer response.Body.Close()
 
-	sp, err := v.libvirt.StoragePoolLookupByName("images")
+	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}

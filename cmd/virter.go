@@ -35,7 +35,7 @@ func imagePull() error {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 
-	v := virter.New(l, templates)
+	v := virter.New(l, "images", templates)
 
 	client := &http.Client{}
 
