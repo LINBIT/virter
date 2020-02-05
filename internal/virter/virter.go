@@ -1,8 +1,10 @@
 package virter
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
+	"text/template"
 
 	"github.com/digitalocean/go-libvirt"
 )
@@ -39,9 +41,23 @@ func New(libvirtConnection LibvirtConnection, fileReader FileReader) *Virter {
 
 // ImagePull pulls an image from a URL into libvirt.
 func (v *Virter) ImagePull(client HTTPClient, url string) error {
-	xml, err := v.templates.ReadFile("volume-image.xml")
+	templateText, err := v.templates.ReadFile(templateVolumeImage)
 	if err != nil {
 		return fmt.Errorf("could not read template: %w", err)
+	}
+
+	t, err := template.New(templateVolumeImage).Parse(string(templateText))
+	if err != nil {
+		return fmt.Errorf("invalid template %v: %w", templateVolumeImage, err)
+	}
+
+	templateData := map[string]interface{}{
+		"ImageName": "some-name",
+	}
+	xml := bytes.NewBuffer([]byte{})
+	err = t.Execute(xml, templateData)
+	if err != nil {
+		return fmt.Errorf("could not execute template %v: %w", templateVolumeImage, err)
 	}
 
 	response, err := client.Get(url)
@@ -55,7 +71,7 @@ func (v *Virter) ImagePull(client HTTPClient, url string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	sv, err := v.libvirt.StorageVolCreateXML(sp, string(xml), 0)
+	sv, err := v.libvirt.StorageVolCreateXML(sp, xml.String(), 0)
 	if err != nil {
 		return fmt.Errorf("could not create storage volume: %w", err)
 	}
@@ -63,3 +79,5 @@ func (v *Virter) ImagePull(client HTTPClient, url string) error {
 	fmt.Printf("%v\n", sv.Name)
 	return nil
 }
+
+const templateVolumeImage = "volume-image.xml"

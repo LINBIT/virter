@@ -20,7 +20,7 @@ import (
 
 func TestPull(t *testing.T) {
 	directory := MemoryDirectory{}
-	directory["volume-image.xml"] = []byte("some-xml")
+	directory["volume-image.xml"] = []byte("t0 {{.ImageName}} t1")
 
 	client := new(mocks.HTTPClient)
 
@@ -40,7 +40,7 @@ func TestPull(t *testing.T) {
 		Pool: poolName,
 		Name: volName,
 	}
-	l.On("StorageVolCreateXML", sp, mock.Anything, mock.Anything).Return(sv, nil)
+	l.On("StorageVolCreateXML", sp, "t0 some-name t1", mock.Anything).Return(sv, nil)
 
 	v := New(l, directory)
 
