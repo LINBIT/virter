@@ -7,8 +7,8 @@ import (
 	"github.com/digitalocean/go-libvirt"
 )
 
-// Directory contains required file reading methods.
-type Directory interface {
+// FileReader is the interface for reading whole files.
+type FileReader interface {
 	ReadFile(subpath string) ([]byte, error)
 }
 
@@ -17,45 +17,45 @@ type HTTPClient interface {
 	Get(url string) (resp *http.Response, err error)
 }
 
-// LibvirtConn contains required libvirt connection methods.
-type LibvirtConn interface {
+// LibvirtConnection contains required libvirt connection methods.
+type LibvirtConnection interface {
 	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
 	StorageVolCreateXML(Pool libvirt.StoragePool, XML string, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
 }
 
-// VirterConn manipulates libvirt for virter.
-type VirterConn struct {
-	conn      LibvirtConn
-	templates Directory
+// Virter manipulates libvirt for virter.
+type Virter struct {
+	libvirt   LibvirtConnection
+	templates FileReader
 }
 
-// New configures a new VirterConn.
-func New(conn LibvirtConn, directory Directory) *VirterConn {
-	return &VirterConn{
-		conn:      conn,
-		templates: directory,
+// New configures a new Virter.
+func New(libvirtConnection LibvirtConnection, fileReader FileReader) *Virter {
+	return &Virter{
+		libvirt:   libvirtConnection,
+		templates: fileReader,
 	}
 }
 
 // ImagePull pulls an image from a URL into libvirt.
-func (v *VirterConn) ImagePull(client HTTPClient, url string) error {
+func (v *Virter) ImagePull(client HTTPClient, url string) error {
 	xml, err := v.templates.ReadFile("volume-image.xml")
 	if err != nil {
 		return fmt.Errorf("could not read template: %w", err)
 	}
 
-	resp, err := client.Get(url)
+	response, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed to get from %v: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	sp, err := v.conn.StoragePoolLookupByName("images")
+	sp, err := v.libvirt.StoragePoolLookupByName("images")
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	sv, err := v.conn.StorageVolCreateXML(sp, string(xml), 0)
+	sv, err := v.libvirt.StorageVolCreateXML(sp, string(xml), 0)
 	if err != nil {
 		return fmt.Errorf("could not create storage volume: %w", err)
 	}

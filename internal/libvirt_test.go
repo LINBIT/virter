@@ -16,7 +16,7 @@ import (
 )
 
 //go:generate mockery -name=HTTPClient
-//go:generate mockery -name=LibvirtConn
+//go:generate mockery -name=LibvirtConnection
 
 func TestPull(t *testing.T) {
 	directory := MemoryDirectory{}
@@ -24,31 +24,31 @@ func TestPull(t *testing.T) {
 
 	client := new(mocks.HTTPClient)
 
-	resp := &http.Response{
+	response := &http.Response{
 		Body: ioutil.NopCloser(bytes.NewReader([]byte("some-content"))),
 	}
-	client.On("Get", "http://foo.bar").Return(resp, nil)
+	client.On("Get", "http://foo.bar").Return(response, nil)
 
-	conn := new(mocks.LibvirtConn)
+	l := new(mocks.LibvirtConnection)
 
 	sp := libvirt.StoragePool{
 		Name: poolName,
 	}
-	conn.On("StoragePoolLookupByName", poolName).Return(sp, nil)
+	l.On("StoragePoolLookupByName", poolName).Return(sp, nil)
 
 	sv := libvirt.StorageVol{
 		Pool: poolName,
 		Name: volName,
 	}
-	conn.On("StorageVolCreateXML", sp, mock.Anything, mock.Anything).Return(sv, nil)
+	l.On("StorageVolCreateXML", sp, mock.Anything, mock.Anything).Return(sv, nil)
 
-	v := New(conn, directory)
+	v := New(l, directory)
 
 	err := v.ImagePull(client, "http://foo.bar")
 	assert.NoError(t, err)
 
 	client.AssertExpectations(t)
-	conn.AssertExpectations(t)
+	l.AssertExpectations(t)
 }
 
 type MemoryDirectory map[string][]byte
