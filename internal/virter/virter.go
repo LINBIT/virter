@@ -41,23 +41,9 @@ func New(libvirtConnection LibvirtConnection, fileReader FileReader) *Virter {
 
 // ImagePull pulls an image from a URL into libvirt.
 func (v *Virter) ImagePull(client HTTPClient, url string) error {
-	templateText, err := v.templates.ReadFile(templateVolumeImage)
+	xml, err := v.volumeImageXML()
 	if err != nil {
-		return fmt.Errorf("could not read template: %w", err)
-	}
-
-	t, err := template.New(templateVolumeImage).Parse(string(templateText))
-	if err != nil {
-		return fmt.Errorf("invalid template %v: %w", templateVolumeImage, err)
-	}
-
-	templateData := map[string]interface{}{
-		"ImageName": "some-name",
-	}
-	xml := bytes.NewBuffer([]byte{})
-	err = t.Execute(xml, templateData)
-	if err != nil {
-		return fmt.Errorf("could not execute template %v: %w", templateVolumeImage, err)
+		return err
 	}
 
 	response, err := client.Get(url)
@@ -71,13 +57,36 @@ func (v *Virter) ImagePull(client HTTPClient, url string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	sv, err := v.libvirt.StorageVolCreateXML(sp, xml.String(), 0)
+	sv, err := v.libvirt.StorageVolCreateXML(sp, xml, 0)
 	if err != nil {
 		return fmt.Errorf("could not create storage volume: %w", err)
 	}
 
 	fmt.Printf("%v\n", sv.Name)
 	return nil
+}
+
+func (v *Virter) volumeImageXML() (string, error) {
+	templateText, err := v.templates.ReadFile(templateVolumeImage)
+	if err != nil {
+		return "", fmt.Errorf("could not read template: %w", err)
+	}
+
+	t, err := template.New(templateVolumeImage).Parse(string(templateText))
+	if err != nil {
+		return "", fmt.Errorf("invalid template %v: %w", templateVolumeImage, err)
+	}
+
+	templateData := map[string]interface{}{
+		"ImageName": "some-name",
+	}
+	xml := bytes.NewBuffer([]byte{})
+	err = t.Execute(xml, templateData)
+	if err != nil {
+		return "", fmt.Errorf("could not execute template %v: %w", templateVolumeImage, err)
+	}
+
+	return xml.String(), nil
 }
 
 const templateVolumeImage = "volume-image.xml"
