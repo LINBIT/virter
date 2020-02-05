@@ -58,6 +58,10 @@ func (v *Virter) ImagePull(client HTTPClient, url string, name string) error {
 	}
 	defer response.Body.Close()
 
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("error %v from %v", response.Status, url)
+	}
+
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
