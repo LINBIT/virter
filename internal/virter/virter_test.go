@@ -40,11 +40,12 @@ func TestPull(t *testing.T) {
 		Pool: poolName,
 		Name: volName,
 	}
-	l.On("StorageVolCreateXML", sp, "t0 some-name t1", mock.Anything).Return(sv, nil)
+	xml := fmt.Sprintf("t0 %v t1", volName)
+	l.On("StorageVolCreateXML", sp, xml, mock.Anything).Return(sv, nil)
 
 	v := New(l, poolName, directory)
 
-	err := v.ImagePull(client, "http://foo.bar")
+	err := v.ImagePull(client, "http://foo.bar", volName)
 	assert.NoError(t, err)
 
 	client.AssertExpectations(t)

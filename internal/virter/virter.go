@@ -33,8 +33,7 @@ type Virter struct {
 }
 
 // New configures a new Virter.
-func New(
-	libvirtConnection LibvirtConnection,
+func New(libvirtConnection LibvirtConnection,
 	storagePoolName string,
 	fileReader FileReader) *Virter {
 	return &Virter{
@@ -45,8 +44,8 @@ func New(
 }
 
 // ImagePull pulls an image from a URL into libvirt.
-func (v *Virter) ImagePull(client HTTPClient, url string) error {
-	xml, err := v.volumeImageXML()
+func (v *Virter) ImagePull(client HTTPClient, url string, name string) error {
+	xml, err := v.volumeImageXML(name)
 	if err != nil {
 		return err
 	}
@@ -71,7 +70,7 @@ func (v *Virter) ImagePull(client HTTPClient, url string) error {
 	return nil
 }
 
-func (v *Virter) volumeImageXML() (string, error) {
+func (v *Virter) volumeImageXML(name string) (string, error) {
 	templateText, err := v.templates.ReadFile(templateVolumeImage)
 	if err != nil {
 		return "", fmt.Errorf("could not read template: %w", err)
@@ -83,7 +82,7 @@ func (v *Virter) volumeImageXML() (string, error) {
 	}
 
 	templateData := map[string]interface{}{
-		"ImageName": "some-name",
+		"ImageName": name,
 	}
 	xml := bytes.NewBuffer([]byte{})
 	err = t.Execute(xml, templateData)

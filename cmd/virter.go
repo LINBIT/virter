@@ -39,5 +39,5 @@ func imagePull() error {
 
 	client := &http.Client{}
 
-	return v.ImagePull(client, "http://example.com")
+	return v.ImagePull(client, "http://example.com", "some-name")
 }
