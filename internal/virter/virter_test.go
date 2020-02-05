@@ -3,6 +3,7 @@ package virter_test
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -25,7 +26,7 @@ func TestPull(t *testing.T) {
 	client := new(mocks.HTTPClient)
 
 	response := &http.Response{
-		Body: ioutil.NopCloser(bytes.NewReader([]byte("some-content"))),
+		Body: ioutil.NopCloser(bytes.NewReader([]byte(imageContent))),
 	}
 	client.On("Get", "http://foo.bar").Return(response, nil)
 
@@ -43,6 +44,13 @@ func TestPull(t *testing.T) {
 	xml := fmt.Sprintf("t0 %v t1", volName)
 	l.On("StorageVolCreateXML", sp, xml, mock.Anything).Return(sv, nil)
 
+	l.On("StorageVolUpload",
+		sv,
+		readerMatcher([]byte(imageContent)),
+		uint64(0),
+		uint64(0),
+		mock.Anything).Return(nil)
+
 	v := New(l, poolName, directory)
 
 	err := v.ImagePull(client, "http://foo.bar", volName)
@@ -50,6 +58,16 @@ func TestPull(t *testing.T) {
 
 	client.AssertExpectations(t)
 	l.AssertExpectations(t)
+}
+
+func readerMatcher(expected []byte) interface{} {
+	return mock.MatchedBy(func(r io.Reader) bool {
+		data, err := ioutil.ReadAll(r)
+		if err != nil {
+			panic("error reading data to test match")
+		}
+		return bytes.Equal(data, expected)
+	})
 }
 
 type MemoryDirectory map[string][]byte
@@ -64,3 +82,4 @@ func (d MemoryDirectory) ReadFile(subpath string) ([]byte, error) {
 
 const poolName = "some-pool"
 const volName = "vol"
+const imageContent = "some-data"

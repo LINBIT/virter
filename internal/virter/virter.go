@@ -3,6 +3,7 @@ package virter
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"text/template"
 
@@ -23,6 +24,7 @@ type HTTPClient interface {
 type LibvirtConnection interface {
 	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
 	StorageVolCreateXML(Pool libvirt.StoragePool, XML string, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
+	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
 }
 
 // Virter manipulates libvirt for virter.
@@ -64,6 +66,11 @@ func (v *Virter) ImagePull(client HTTPClient, url string, name string) error {
 	sv, err := v.libvirt.StorageVolCreateXML(sp, xml, 0)
 	if err != nil {
 		return fmt.Errorf("could not create storage volume: %w", err)
+	}
+
+	err = v.libvirt.StorageVolUpload(sv, response.Body, 0, 0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to transfer data from URL to libvirt: %w", err)
 	}
 
 	fmt.Printf("%v\n", sv.Name)
