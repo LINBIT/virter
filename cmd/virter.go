@@ -10,7 +10,7 @@ import (
 
 	"github.com/digitalocean/go-libvirt"
 
-	"github.com/LINBIT/virter/internal"
+	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/directory"
 )
 
@@ -35,7 +35,7 @@ func imagePull() error {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 
-	v := internal.New(l, templates)
+	v := virter.New(l, templates)
 
 	client := &http.Client{}
 

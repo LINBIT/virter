@@ -1,4 +1,4 @@
-package internal_test
+package virter_test
 
 import (
 	"bytes"
@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	. "github.com/LINBIT/virter/internal"
-	"github.com/LINBIT/virter/internal/mocks"
+	. "github.com/LINBIT/virter/internal/virter"
+	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
 //go:generate mockery -name=HTTPClient

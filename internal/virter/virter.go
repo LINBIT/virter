@@ -1,4 +1,4 @@
-package internal
+package virter
 
 import (
 	"fmt"
