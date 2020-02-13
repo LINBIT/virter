@@ -19,7 +19,7 @@ type ReaderProxy interface {
 
 // ImagePull pulls an image from a URL into libvirt.
 func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url string, name string) error {
-	xml, err := v.volumeImageXML(name)
+	xml, err := v.imageVolumeXML(name)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url strin
 	return nil
 }
 
-func (v *Virter) volumeImageXML(name string) (string, error) {
+func (v *Virter) imageVolumeXML(name string) (string, error) {
 	templateData := map[string]interface{}{
 		"ImageName": name,
 	}

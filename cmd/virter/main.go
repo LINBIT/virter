@@ -46,7 +46,7 @@ func imagePull() error {
 		client,
 		BarReaderProxy{bar},
 		"https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img",
-		"some-name")
+		"some-image")
 }
 
 // BarReaderProxy adds the ReaderProxy methods to Bar
@@ -72,6 +72,7 @@ func vmRun() error {
 
 	return v.VMRun(
 		isogenerator.ExternalISOGenerator{},
+		"some-image",
 		"some-vm")
 }
 
