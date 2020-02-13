@@ -1,7 +1,10 @@
 package virter_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	"github.com/digitalocean/go-libvirt"
 	"github.com/stretchr/testify/mock"
@@ -11,12 +14,6 @@ import (
 
 //go:generate mockery -name=LibvirtConnection
 
-func prepareDirectory() MemoryDirectory {
-	directory := MemoryDirectory{}
-	directory["volume-image.xml"] = []byte("t0 {{.ImageName}} t1")
-	return directory
-}
-
 func mockStoragePool(l *mocks.LibvirtConnection) libvirt.StoragePool {
 	sp := libvirt.StoragePool{
 		Name: poolName,
@@ -25,14 +22,32 @@ func mockStoragePool(l *mocks.LibvirtConnection) libvirt.StoragePool {
 	return sp
 }
 
-func mockStorageVolCreate(l *mocks.LibvirtConnection, sp libvirt.StoragePool) libvirt.StorageVol {
+func mockStorageVolCreate(l *mocks.LibvirtConnection, sp libvirt.StoragePool, name string, expectedXML string) libvirt.StorageVol {
 	sv := libvirt.StorageVol{
 		Pool: poolName,
-		Name: volName,
+		Name: name,
 	}
-	xml := fmt.Sprintf("t0 %v t1", volName)
-	l.On("StorageVolCreateXML", sp, xml, mock.Anything).Return(sv, nil)
+	l.On("StorageVolCreateXML", sp, expectedXML, mock.Anything).Return(sv, nil)
 	return sv
+}
+
+func mockStorageVolUpload(l *mocks.LibvirtConnection, sv libvirt.StorageVol, content []byte) {
+	l.On("StorageVolUpload",
+		sv,
+		readerMatcher(content),
+		uint64(0),
+		uint64(0),
+		mock.Anything).Return(nil)
+}
+
+func readerMatcher(expected []byte) interface{} {
+	return mock.MatchedBy(func(r io.Reader) bool {
+		data, err := ioutil.ReadAll(r)
+		if err != nil {
+			panic("error reading data to test match")
+		}
+		return bytes.Equal(data, expected)
+	})
 }
 
 type MemoryDirectory map[string][]byte
@@ -46,4 +61,4 @@ func (d MemoryDirectory) ReadFile(subpath string) ([]byte, error) {
 }
 
 const poolName = "some-pool"
-const volName = "vol"
+const imageName = "some-image"

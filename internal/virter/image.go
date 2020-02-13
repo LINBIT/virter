@@ -1,11 +1,9 @@
 package virter
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
-	"text/template"
 )
 
 // HTTPClient contains required HTTP methods.
@@ -57,26 +55,11 @@ func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url strin
 }
 
 func (v *Virter) volumeImageXML(name string) (string, error) {
-	templateText, err := v.templates.ReadFile(templateVolumeImage)
-	if err != nil {
-		return "", fmt.Errorf("could not read template: %w", err)
-	}
-
-	t, err := template.New(templateVolumeImage).Parse(string(templateText))
-	if err != nil {
-		return "", fmt.Errorf("invalid template %v: %w", templateVolumeImage, err)
-	}
-
 	templateData := map[string]interface{}{
 		"ImageName": name,
 	}
-	xml := bytes.NewBuffer([]byte{})
-	err = t.Execute(xml, templateData)
-	if err != nil {
-		return "", fmt.Errorf("could not execute template %v: %w", templateVolumeImage, err)
-	}
 
-	return xml.String(), nil
+	return v.renderTemplate(templateVolumeImage, templateData)
 }
 
 const templateVolumeImage = "volume-image.xml"

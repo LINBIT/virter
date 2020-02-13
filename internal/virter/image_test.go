@@ -10,7 +10,6 @@ import (
 
 	"github.com/digitalocean/go-libvirt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/internal/virter/mocks"
@@ -18,43 +17,50 @@ import (
 
 //go:generate mockery -name=HTTPClient
 
-func TestPull(t *testing.T) {
-	directory := prepareDirectory()
+func TestImagePull(t *testing.T) {
+	directory := prepareImageDirectory()
 
 	client := new(mocks.HTTPClient)
 	mockGet(client, http.StatusOK)
 
 	l := new(mocks.LibvirtConnection)
 	sp := mockStoragePool(l)
-	sv := mockStorageVolCreate(l, sp)
-	mockStorageVolUpload(l, sv)
+	sv := mockImageVolCreate(l, sp)
+	mockStorageVolUpload(l, sv, []byte(imageContent))
 
 	v := virter.New(l, poolName, directory)
 
-	err := v.ImagePull(client, nopReaderProxy{}, imageURL, volName)
+	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
 	assert.NoError(t, err)
 
 	client.AssertExpectations(t)
 	l.AssertExpectations(t)
 }
 
-func TestPullBadStatus(t *testing.T) {
-	directory := prepareDirectory()
+func TestImagePullBadStatus(t *testing.T) {
+	directory := prepareImageDirectory()
 
 	client := new(mocks.HTTPClient)
 	mockGet(client, http.StatusNotFound)
 
 	l := new(mocks.LibvirtConnection)
+	// mock libvirt interactions because ImagePull is free to create the
+	// volume before performing the HTTP GET
 	sp := mockStoragePool(l)
-	sv := mockStorageVolCreate(l, sp)
-	mockStorageVolUpload(l, sv)
+	_ = mockImageVolCreate(l, sp)
 
 	v := virter.New(l, poolName, directory)
 
-	err := v.ImagePull(client, nopReaderProxy{}, imageURL, volName)
+	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
 	assert.Error(t, err)
 
 	client.AssertExpectations(t)
+}
+
+func prepareImageDirectory() MemoryDirectory {
+	directory := MemoryDirectory{}
+	directory["volume-image.xml"] = []byte("t0 {{.ImageName}} t1")
+	return directory
 }
 
 func mockGet(client *mocks.HTTPClient, statusCode int) {
@@ -66,13 +72,8 @@ func mockGet(client *mocks.HTTPClient, statusCode int) {
 	client.On("Get", imageURL).Return(response, nil)
 }
 
-func mockStorageVolUpload(l *mocks.LibvirtConnection, sv libvirt.StorageVol) {
-	l.On("StorageVolUpload",
-		sv,
-		readerMatcher([]byte(imageContent)),
-		uint64(0),
-		uint64(0),
-		mock.Anything).Return(nil)
+func mockImageVolCreate(l *mocks.LibvirtConnection, sp libvirt.StoragePool) libvirt.StorageVol {
+	return mockStorageVolCreate(l, sp, imageName, fmt.Sprintf("t0 %v t1", imageName))
 }
 
 type nopReaderProxy struct {
@@ -83,16 +84,6 @@ func (b nopReaderProxy) SetTotal(total int64) {
 
 func (b nopReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
 	return r
-}
-
-func readerMatcher(expected []byte) interface{} {
-	return mock.MatchedBy(func(r io.Reader) bool {
-		data, err := ioutil.ReadAll(r)
-		if err != nil {
-			panic("error reading data to test match")
-		}
-		return bytes.Equal(data, expected)
-	})
 }
 
 const imageURL = "http://foo.bar"

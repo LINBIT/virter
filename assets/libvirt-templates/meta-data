@@ -1,0 +1,2 @@
+instance-id: {{ .VMName }}
+local-hostname: {{ .VMName }}

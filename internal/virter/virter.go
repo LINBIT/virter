@@ -1,7 +1,10 @@
 package virter
 
 import (
+	"bytes"
+	"fmt"
 	"io"
+	"text/template"
 
 	"github.com/digitalocean/go-libvirt"
 )
@@ -34,4 +37,24 @@ func New(libvirtConnection LibvirtConnection,
 		storagePoolName: storagePoolName,
 		templates:       fileReader,
 	}
+}
+
+func (v *Virter) renderTemplate(name string, data interface{}) (string, error) {
+	templateText, err := v.templates.ReadFile(name)
+	if err != nil {
+		return "", fmt.Errorf("could not read template: %w", err)
+	}
+
+	t, err := template.New(name).Parse(string(templateText))
+	if err != nil {
+		return "", fmt.Errorf("invalid template %v: %w", name, err)
+	}
+
+	xml := bytes.NewBuffer([]byte{})
+	err = t.Execute(xml, data)
+	if err != nil {
+		return "", fmt.Errorf("could not execute template %v: %w", name, err)
+	}
+
+	return xml.String(), nil
 }

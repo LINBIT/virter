@@ -15,10 +15,11 @@ import (
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/directory"
+	"github.com/LINBIT/virter/pkg/isogenerator"
 )
 
 func main() {
-	err := imagePull()
+	err := vmRun()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
@@ -26,19 +27,10 @@ func main() {
 }
 
 func imagePull() error {
-	var templates directory.Directory = "assets/libvirt-templates"
-
-	c, err := net.DialTimeout("unix", "/var/run/libvirt/libvirt-sock", 2*time.Second)
+	v, err := virterConnect()
 	if err != nil {
-		return fmt.Errorf("failed to dial libvirt: %w", err)
+		return err
 	}
-
-	l := libvirt.New(c)
-	if err := l.Connect(); err != nil {
-		return fmt.Errorf("failed to connect: %w", err)
-	}
-
-	v := virter.New(l, "images", templates)
 
 	client := &http.Client{}
 
@@ -70,4 +62,31 @@ func (b BarReaderProxy) SetTotal(total int64) {
 // ProxyReader wraps r so that the bar is updated as the data is read
 func (b BarReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
 	return b.Bar.ProxyReader(r)
+}
+
+func vmRun() error {
+	v, err := virterConnect()
+	if err != nil {
+		return err
+	}
+
+	return v.VMRun(
+		isogenerator.ExternalISOGenerator{},
+		"some-vm")
+}
+
+func virterConnect() (*virter.Virter, error) {
+	var templates directory.Directory = "assets/libvirt-templates"
+
+	c, err := net.DialTimeout("unix", "/var/run/libvirt/libvirt-sock", 2*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial libvirt: %w", err)
+	}
+
+	l := libvirt.New(c)
+	if err := l.Connect(); err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	return virter.New(l, "images", templates), nil
 }

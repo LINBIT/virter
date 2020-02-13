@@ -1,0 +1,9 @@
+#cloud-config
+disable_root: False
+ssh_authorized_keys:
+  - {{ .SSHPublicKey }}
+preserve_hostname: false
+hostname: {{ .VMName }}
+fqdn: {{ .VMName }}.local
+runcmd:
+  - echo {{ .IPAddress }} {{ .VMName }} {{ .VMName }}.local >> /etc/hosts
