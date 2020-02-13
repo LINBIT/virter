@@ -32,7 +32,7 @@ func TestPull(t *testing.T) {
 
 	v := New(l, poolName, directory)
 
-	err := v.ImagePull(client, imageURL, volName)
+	err := v.ImagePull(client, nopReaderProxy{}, imageURL, volName)
 	assert.NoError(t, err)
 
 	client.AssertExpectations(t)
@@ -52,7 +52,7 @@ func TestPullBadStatus(t *testing.T) {
 
 	v := New(l, poolName, directory)
 
-	err := v.ImagePull(client, imageURL, volName)
+	err := v.ImagePull(client, nopReaderProxy{}, imageURL, volName)
 	assert.Error(t, err)
 
 	client.AssertExpectations(t)
@@ -98,6 +98,16 @@ func mockStorageVolUpload(l *mocks.LibvirtConnection, sv libvirt.StorageVol) {
 		uint64(0),
 		uint64(0),
 		mock.Anything).Return(nil)
+}
+
+type nopReaderProxy struct {
+}
+
+func (b nopReaderProxy) SetTotal(total int64) {
+}
+
+func (b nopReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
+	return r
 }
 
 func readerMatcher(expected []byte) interface{} {
