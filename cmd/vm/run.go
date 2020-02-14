@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/LINBIT/virter/internal/connect"
+	connect "github.com/LINBIT/virter/cmd"
 	"github.com/LINBIT/virter/pkg/isogenerator"
 )
 

@@ -1,4 +1,4 @@
-package connect
+package cmd
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
+	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/directory"
@@ -25,5 +26,7 @@ func VirterConnect() (*virter.Virter, error) {
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 
-	return virter.New(l, "images", templates), nil
+	pool := viper.GetString("libvirt.pool")
+
+	return virter.New(l, pool, templates), nil
 }

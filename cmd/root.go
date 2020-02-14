@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -40,6 +41,9 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetDefault("libvirt.pool", "default")
+
+	viper.SetConfigType("toml")
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -50,6 +54,7 @@ func initConfig() {
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

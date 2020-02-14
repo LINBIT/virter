@@ -9,7 +9,7 @@ import (
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
 
-	"github.com/LINBIT/virter/internal/connect"
+	connect "github.com/LINBIT/virter/cmd"
 )
 
 // pullCmd represents the pull command
