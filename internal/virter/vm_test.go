@@ -34,6 +34,13 @@ func TestVMRun(t *testing.T) {
 	// scratch volume
 	mockStorageVolCreate(l, sp, scratchVolumeName, fmt.Sprintf("s0 %v s1", scratchVolumeName))
 
+	// VM
+	d := libvirt.Domain{
+		Name: vmName,
+	}
+	l.On("DomainDefineXML", fmt.Sprintf("d0 %v d1 %v d2", poolName, vmName)).Return(d, nil)
+	l.On("DomainCreate", d).Return(nil)
+
 	v := virter.New(l, poolName, directory)
 
 	err := v.VMRun(g, imageName, vmName)
@@ -49,6 +56,7 @@ func prepareVMDirectory() MemoryDirectory {
 	directory["user-data"] = []byte("user-data-template")
 	directory["volume-vm.xml"] = []byte("v0 {{.VolumeName}} v1 {{.BackingPath}} v2")
 	directory["volume-scratch.xml"] = []byte("s0 {{.VolumeName}} s1")
+	directory["vm.xml"] = []byte("d0 {{.PoolName}} d1 {{.VMName}} d2")
 	return directory
 }
 

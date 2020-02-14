@@ -34,6 +34,11 @@ func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string) error {
 		return err
 	}
 
+	err = v.createVM(sp, vmName)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -164,8 +169,37 @@ func (v *Virter) scratchVolumeXML(name string) (string, error) {
 	return v.renderTemplate(templateScratchVolume, templateData)
 }
 
+func (v *Virter) createVM(sp libvirt.StoragePool, vmName string) error {
+	xml, err := v.vmXML(sp.Name, vmName)
+	if err != nil {
+		return err
+	}
+
+	d, err := v.libvirt.DomainDefineXML(xml)
+	if err != nil {
+		return fmt.Errorf("could not define domain: %w", err)
+	}
+
+	err = v.libvirt.DomainCreate(d)
+	if err != nil {
+		return fmt.Errorf("could create create (start) domain: %w", err)
+	}
+
+	return nil
+}
+
+func (v *Virter) vmXML(poolName string, vmName string) (string, error) {
+	templateData := map[string]interface{}{
+		"PoolName": poolName,
+		"VMName":   vmName,
+	}
+
+	return v.renderTemplate(templateVM, templateData)
+}
+
 const templateMetaData = "meta-data"
 const templateUserData = "user-data"
 const templateCIData = "volume-cidata.xml"
 const templateVMVolume = "volume-vm.xml"
 const templateScratchVolume = "volume-scratch.xml"
+const templateVM = "vm.xml"
