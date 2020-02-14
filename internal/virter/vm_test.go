@@ -47,6 +47,7 @@ func TestVMRun(t *testing.T) {
 	assert.NoError(t, err)
 
 	l.AssertExpectations(t)
+	g.AssertExpectations(t)
 }
 
 func prepareVMDirectory() MemoryDirectory {
