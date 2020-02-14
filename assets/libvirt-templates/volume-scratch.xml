@@ -1,0 +1,7 @@
+<volume>
+  <name>{{ .VolumeName }}</name>
+  <capacity unit='GiB'>1</capacity>
+  <target>
+    <format type='qcow2'/>
+  </target>
+</volume>

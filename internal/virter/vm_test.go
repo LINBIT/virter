@@ -31,6 +31,9 @@ func TestVMRun(t *testing.T) {
 	mockBackingVolLookup(l, sp)
 	mockStorageVolCreate(l, sp, vmName, fmt.Sprintf("v0 %v v1 %v v2", vmName, backingPath))
 
+	// scratch volume
+	mockStorageVolCreate(l, sp, scratchVolumeName, fmt.Sprintf("s0 %v s1", scratchVolumeName))
+
 	v := virter.New(l, poolName, directory)
 
 	err := v.VMRun(g, imageName, vmName)
@@ -45,6 +48,7 @@ func prepareVMDirectory() MemoryDirectory {
 	directory["meta-data"] = []byte("meta-data-template")
 	directory["user-data"] = []byte("user-data-template")
 	directory["volume-vm.xml"] = []byte("v0 {{.VolumeName}} v1 {{.BackingPath}} v2")
+	directory["volume-scratch.xml"] = []byte("s0 {{.VolumeName}} s1")
 	return directory
 }
 
@@ -63,5 +67,6 @@ func mockBackingVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool) {
 
 const vmName = "some-vm"
 const ciDataVolName = vmName + "-cidata"
+const scratchVolumeName = vmName + "-scratch"
 const ciDataContent = "some-ci-data"
 const backingPath = "/some/path"

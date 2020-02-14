@@ -29,6 +29,11 @@ func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string) error {
 		return err
 	}
 
+	err = v.createScratchVolume(sp, vmName)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -133,7 +138,34 @@ func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
 	return v.renderTemplate(templateVMVolume, templateData)
 }
 
+func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmName string) error {
+	xml, err := v.scratchVolumeXML(scratchVolumeName(vmName))
+	if err != nil {
+		return err
+	}
+
+	_, err = v.libvirt.StorageVolCreateXML(sp, xml, 0)
+	if err != nil {
+		return fmt.Errorf("could not create scratch volume: %w", err)
+	}
+
+	return nil
+}
+
+func scratchVolumeName(vmName string) string {
+	return vmName + "-scratch"
+}
+
+func (v *Virter) scratchVolumeXML(name string) (string, error) {
+	templateData := map[string]interface{}{
+		"VolumeName": name,
+	}
+
+	return v.renderTemplate(templateScratchVolume, templateData)
+}
+
 const templateMetaData = "meta-data"
 const templateUserData = "user-data"
 const templateCIData = "volume-cidata.xml"
 const templateVMVolume = "volume-vm.xml"
+const templateScratchVolume = "volume-scratch.xml"
