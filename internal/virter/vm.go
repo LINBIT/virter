@@ -13,13 +13,13 @@ type ISOGenerator interface {
 }
 
 // VMRun starts a VM.
-func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string) error {
+func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string, sshPublicKey string) error {
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	err = v.createCIData(sp, g, vmName)
+	err = v.createCIData(sp, g, vmName, sshPublicKey)
 	if err != nil {
 		return err
 	}
@@ -42,13 +42,13 @@ func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string) error {
 	return nil
 }
 
-func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName string) error {
+func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName string, sshPublicKey string) error {
 	metaData, err := v.metaData(vmName)
 	if err != nil {
 		return err
 	}
 
-	userData, err := v.userData(vmName)
+	userData, err := v.userData(vmName, sshPublicKey)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (v *Virter) metaData(vmName string) (string, error) {
 	return v.renderTemplate(templateMetaData, templateData)
 }
 
-func (v *Virter) userData(vmName string) (string, error) {
+func (v *Virter) userData(vmName string, sshPublicKey string) (string, error) {
 	templateData := map[string]interface{}{
 		"VMName":       vmName,
 		"SSHPublicKey": sshPublicKey,

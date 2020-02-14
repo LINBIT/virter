@@ -43,7 +43,7 @@ func TestVMRun(t *testing.T) {
 
 	v := virter.New(l, poolName, directory)
 
-	err := v.VMRun(g, imageName, vmName)
+	err := v.VMRun(g, imageName, vmName, someSSHKey)
 	assert.NoError(t, err)
 
 	l.AssertExpectations(t)
@@ -79,3 +79,4 @@ const ciDataVolumeName = vmName + "-cidata"
 const scratchVolumeName = vmName + "-scratch"
 const ciDataContent = "some-ci-data"
 const backingPath = "/some/path"
+const someSSHKey = "some-key"
