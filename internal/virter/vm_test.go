@@ -24,7 +24,7 @@ func TestVMRun(t *testing.T) {
 	sp := mockStoragePool(l)
 
 	// ciData
-	sv := mockStorageVolCreate(l, sp, ciDataVolName, fmt.Sprintf("c0 %v c1", ciDataVolName))
+	sv := mockStorageVolCreate(l, sp, ciDataVolumeName, fmt.Sprintf("c0 %v c1", ciDataVolumeName))
 	mockStorageVolUpload(l, sv, []byte(ciDataContent))
 
 	// boot volume
@@ -65,16 +65,16 @@ func mockISOGenerate(g *mocks.ISOGenerator) {
 }
 
 func mockBackingVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool) {
-	imageVol := libvirt.StorageVol{
+	sv := libvirt.StorageVol{
 		Pool: poolName,
 		Name: imageName,
 	}
-	l.On("StorageVolLookupByName", sp, imageName).Return(imageVol, nil)
-	l.On("StorageVolGetPath", imageVol).Return(backingPath, nil)
+	l.On("StorageVolLookupByName", sp, imageName).Return(sv, nil)
+	l.On("StorageVolGetPath", sv).Return(backingPath, nil)
 }
 
 const vmName = "some-vm"
-const ciDataVolName = vmName + "-cidata"
+const ciDataVolumeName = vmName + "-cidata"
 const scratchVolumeName = vmName + "-scratch"
 const ciDataContent = "some-ci-data"
 const backingPath = "/some/path"

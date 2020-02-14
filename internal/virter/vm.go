@@ -63,7 +63,7 @@ func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName str
 		return fmt.Errorf("failed to generate ISO: %w", err)
 	}
 
-	xml, err := v.ciDataVolumeXML(ciDataVolName(vmName))
+	xml, err := v.ciDataVolumeXML(ciDataVolumeName(vmName))
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName str
 	return nil
 }
 
-func ciDataVolName(vmName string) string {
+func ciDataVolumeName(vmName string) string {
 	return vmName + "-cidata"
 }
 
@@ -111,12 +111,12 @@ func (v *Virter) ciDataVolumeXML(name string) (string, error) {
 }
 
 func (v *Virter) createVMVolume(sp libvirt.StoragePool, imageName string, vmName string) error {
-	backingVol, err := v.libvirt.StorageVolLookupByName(sp, imageName)
+	backingVolume, err := v.libvirt.StorageVolLookupByName(sp, imageName)
 	if err != nil {
 		return fmt.Errorf("could not get backing image volume: %w", err)
 	}
 
-	backingPath, err := v.libvirt.StorageVolGetPath(backingVol)
+	backingPath, err := v.libvirt.StorageVolGetPath(backingVolume)
 	if err != nil {
 		return fmt.Errorf("could not get backing image path: %w", err)
 	}
