@@ -79,6 +79,7 @@ const (
 )
 
 var vmRmTests = []map[string]bool{
+	{},
 	{
 		ciDataVolume: true,
 	},
@@ -94,6 +95,8 @@ func TestVMRm(t *testing.T) {
 		if r[ciDataVolume] {
 			sv := mockStorageVolLookup(l, sp, ciDataVolumeName)
 			mockStorageVolDelete(l, sv)
+		} else {
+			mockStorageVolNotFound(l, sp, ciDataVolumeName)
 		}
 
 		v := virter.New(l, poolName, directory)
@@ -118,9 +121,33 @@ func mockStorageVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool, na
 	return sv
 }
 
-const vmName = "some-vm"
-const ciDataVolumeName = vmName + "-cidata"
-const scratchVolumeName = vmName + "-scratch"
-const ciDataContent = "some-ci-data"
-const backingPath = "/some/path"
-const someSSHKey = "some-key"
+func mockStorageVolNotFound(l *mocks.LibvirtConnection, sp libvirt.StoragePool, name string) {
+	l.On("StorageVolLookupByName", sp, name).Return(libvirt.StorageVol{}, mockLibvirtError(errNoStorageVol))
+}
+
+func mockLibvirtError(code errorNumber) error {
+	return libvirtError{uint32(code)}
+}
+
+type libvirtError struct {
+	Code uint32
+}
+
+func (e libvirtError) Error() string {
+	return fmt.Sprintf("libvirt error code %v", e.Code)
+}
+
+type errorNumber int32
+
+const (
+	errNoStorageVol errorNumber = 50
+)
+
+const (
+	vmName            = "some-vm"
+	ciDataVolumeName  = vmName + "-cidata"
+	scratchVolumeName = vmName + "-scratch"
+	ciDataContent     = "some-ci-data"
+	backingPath       = "/some/path"
+	someSSHKey        = "some-key"
+)
