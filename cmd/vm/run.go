@@ -18,9 +18,6 @@ var runCmd = &cobra.Command{
 	Run:   vmRun,
 }
 
-var imageName string
-var vmName string
-
 func init() {
 	vmCmd.AddCommand(runCmd)
 

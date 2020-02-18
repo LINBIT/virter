@@ -197,6 +197,28 @@ func (v *Virter) vmXML(poolName string, vmName string) (string, error) {
 	return v.renderTemplate(templateVM, templateData)
 }
 
+// VMRm removes a VM.
+func (v *Virter) VMRm(vmName string) error {
+	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
+	if err != nil {
+		return fmt.Errorf("could not get storage pool: %w", err)
+	}
+
+	ciDataVolume, err := v.libvirt.StorageVolLookupByName(sp, ciDataVolumeName(vmName))
+	if !hasErrorCode(err, errNoStorageVol) {
+		if err != nil {
+			return fmt.Errorf("could not get CI data volume: %w", err)
+		}
+
+		err = v.libvirt.StorageVolDelete(ciDataVolume, 0)
+		if err != nil {
+			return fmt.Errorf("could not delete CI data volume: %w", err)
+		}
+	}
+
+	return nil
+}
+
 const templateMetaData = "meta-data"
 const templateUserData = "user-data"
 const templateCIData = "volume-cidata.xml"

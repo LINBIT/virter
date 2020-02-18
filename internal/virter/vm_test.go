@@ -66,12 +66,56 @@ func mockISOGenerate(g *mocks.ISOGenerator) {
 }
 
 func mockBackingVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool) {
+	sv := mockStorageVolLookup(l, sp, imageName)
+	l.On("StorageVolGetPath", sv).Return(backingPath, nil)
+}
+
+const (
+	ciDataVolume  = "ciDataVolume"
+	bootVolume    = "bootVolume"
+	scratchVolume = "scratchVolume"
+	domainDefined = "domainDefined"
+	domainCreated = "domainCreated"
+)
+
+var vmRmTests = []map[string]bool{
+	{
+		ciDataVolume: true,
+	},
+}
+
+func TestVMRm(t *testing.T) {
+	for _, r := range vmRmTests {
+		directory := MemoryDirectory{}
+
+		l := new(mocks.LibvirtConnection)
+		sp := mockStoragePool(l)
+
+		if r[ciDataVolume] {
+			sv := mockStorageVolLookup(l, sp, ciDataVolumeName)
+			mockStorageVolDelete(l, sv)
+		}
+
+		v := virter.New(l, poolName, directory)
+
+		err := v.VMRm(vmName)
+		assert.NoError(t, err)
+
+		l.AssertExpectations(t)
+	}
+}
+
+func mockStorageVolDelete(l *mocks.LibvirtConnection, sv libvirt.StorageVol) {
+	l.On("StorageVolDelete", sv, mock.Anything).Return(nil)
+}
+
+func mockStorageVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool, name string) libvirt.StorageVol {
 	sv := libvirt.StorageVol{
 		Pool: poolName,
-		Name: imageName,
+		Name: name,
 	}
-	l.On("StorageVolLookupByName", sp, imageName).Return(sv, nil)
-	l.On("StorageVolGetPath", sv).Return(backingPath, nil)
+	l.On("StorageVolLookupByName", sp, name).Return(sv, nil)
+	return sv
 }
 
 const vmName = "some-vm"

@@ -16,3 +16,6 @@ var vmCmd = &cobra.Command{
 func init() {
 	cmd.RootCmd.AddCommand(vmCmd)
 }
+
+var imageName string
+var vmName string

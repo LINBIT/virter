@@ -17,10 +17,11 @@ type FileReader interface {
 // LibvirtConnection contains required libvirt connection methods.
 type LibvirtConnection interface {
 	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
-	StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error)
 	StorageVolCreateXML(Pool libvirt.StoragePool, XML string, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
-	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
+	StorageVolDelete(Vol libvirt.StorageVol, Flags libvirt.StorageVolDeleteFlags) (err error)
 	StorageVolGetPath(Vol libvirt.StorageVol) (rName string, err error)
+	StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error)
+	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainCreate(Dom libvirt.Domain) (err error)
 }
