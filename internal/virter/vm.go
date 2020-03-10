@@ -204,6 +204,11 @@ func (v *Virter) VMRm(vmName string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
+	err = v.rmVolume(sp, scratchVolumeName(vmName))
+	if err != nil {
+		return err
+	}
+
 	err = v.rmVolume(sp, vmName)
 	if err != nil {
 		return err
