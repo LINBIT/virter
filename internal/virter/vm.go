@@ -204,15 +204,29 @@ func (v *Virter) VMRm(vmName string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	ciDataVolume, err := v.libvirt.StorageVolLookupByName(sp, ciDataVolumeName(vmName))
+	err = v.rmVolume(sp, vmName)
+	if err != nil {
+		return err
+	}
+
+	err = v.rmVolume(sp, ciDataVolumeName(vmName))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string) error {
+	volume, err := v.libvirt.StorageVolLookupByName(sp, volumeName)
 	if !hasErrorCode(err, errNoStorageVol) {
 		if err != nil {
-			return fmt.Errorf("could not get CI data volume: %w", err)
+			return fmt.Errorf("could not get volume %v: %w", volumeName, err)
 		}
 
-		err = v.libvirt.StorageVolDelete(ciDataVolume, 0)
+		err = v.libvirt.StorageVolDelete(volume, 0)
 		if err != nil {
-			return fmt.Errorf("could not delete CI data volume: %w", err)
+			return fmt.Errorf("could not delete volume %v: %w", volumeName, err)
 		}
 	}
 

@@ -83,6 +83,10 @@ var vmRmTests = []map[string]bool{
 	{
 		ciDataVolume: true,
 	},
+	{
+		ciDataVolume: true,
+		bootVolume:   true,
+	},
 }
 
 func TestVMRm(t *testing.T) {
@@ -91,6 +95,13 @@ func TestVMRm(t *testing.T) {
 
 		l := new(mocks.LibvirtConnection)
 		sp := mockStoragePool(l)
+
+		if r[bootVolume] {
+			sv := mockStorageVolLookup(l, sp, vmName)
+			mockStorageVolDelete(l, sv)
+		} else {
+			mockStorageVolNotFound(l, sp, vmName)
+		}
 
 		if r[ciDataVolume] {
 			sv := mockStorageVolLookup(l, sp, ciDataVolumeName)
