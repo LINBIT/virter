@@ -43,6 +43,7 @@ func init() {
 func initConfig() {
 	viper.SetDefault("libvirt.pool", "default")
 	viper.SetDefault("libvirt.template_dir", "assets/libvirt-templates")
+	viper.SetDefault("image.registry", "assets/images.toml")
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {

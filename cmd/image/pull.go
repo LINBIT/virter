@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
 
@@ -15,9 +17,12 @@ import (
 // pullCmd represents the pull command
 var pullCmd = &cobra.Command{
 	Use:   "pull",
-	Short: "Pull an image from a URL",
-	Long:  `Pull an image from a URL into a libvirt storage pool.`,
-	Run:   imagePull,
+	Short: "Pull an image",
+	Long: `Pull an image into a libvirt storage pool. If a URL is
+explicitly given, the image will be fetched from there. Otherwise the
+URL for the specified name from the local image registry will be
+used.`,
+	Run: imagePull,
 }
 
 var url string
@@ -27,12 +32,15 @@ func init() {
 	imageCmd.AddCommand(pullCmd)
 
 	pullCmd.Flags().StringVarP(&url, "url", "u", "", "URL to fetch from")
-	pullCmd.MarkFlagRequired("url")
 	pullCmd.Flags().StringVarP(&imageName, "name", "n", "", "name of image to create")
-	pullCmd.MarkFlagRequired("image")
+	pullCmd.MarkFlagRequired("name")
 }
 
 func imagePull(cmd *cobra.Command, args []string) {
+	if url == "" {
+		fillURLFromRegistry()
+	}
+
 	v, err := connect.VirterConnect()
 	if err != nil {
 		log.Fatal(err)
@@ -57,6 +65,30 @@ func imagePull(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 }
+
+func fillURLFromRegistry() {
+	var registry imageRegistry
+
+	registryPath := viper.GetString("image.registry")
+
+	_, err := toml.DecodeFile(registryPath, &registry)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	entry, ok := registry[imageName]
+	if !ok {
+		log.Fatalf("Image %v not found in registry and no URL given", imageName)
+	}
+
+	url = entry.URL
+}
+
+type imageEntry struct {
+	URL string `toml:"url"`
+}
+
+type imageRegistry map[string]imageEntry
 
 // BarReaderProxy adds the ReaderProxy methods to Bar
 type BarReaderProxy struct {
