@@ -3,6 +3,7 @@ package virter
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/digitalocean/go-libvirt"
 )
@@ -19,16 +20,19 @@ func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string, sshPubli
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
+	log.Print("Create cloud-init volume")
 	err = v.createCIData(sp, g, vmName, sshPublicKey)
 	if err != nil {
 		return err
 	}
 
+	log.Print("Create boot volume")
 	err = v.createVMVolume(sp, imageName, vmName)
 	if err != nil {
 		return err
 	}
 
+	log.Print("Create scratch volume")
 	err = v.createScratchVolume(sp, vmName)
 	if err != nil {
 		return err
@@ -175,11 +179,14 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmName string) error {
 		return err
 	}
 
+	log.Print("Define VM")
+	err = v.createScratchVolume(sp, vmName)
 	d, err := v.libvirt.DomainDefineXML(xml)
 	if err != nil {
 		return fmt.Errorf("could not define domain: %w", err)
 	}
 
+	log.Print("Start VM")
 	err = v.libvirt.DomainCreate(d)
 	if err != nil {
 		return fmt.Errorf("could create create (start) domain: %w", err)
@@ -204,17 +211,17 @@ func (v *Virter) VMRm(vmName string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	err = v.rmVolume(sp, scratchVolumeName(vmName))
+	err = v.rmVolume(sp, scratchVolumeName(vmName), "scratch")
 	if err != nil {
 		return err
 	}
 
-	err = v.rmVolume(sp, vmName)
+	err = v.rmVolume(sp, vmName, "boot")
 	if err != nil {
 		return err
 	}
 
-	err = v.rmVolume(sp, ciDataVolumeName(vmName))
+	err = v.rmVolume(sp, ciDataVolumeName(vmName), "cloud-init")
 	if err != nil {
 		return err
 	}
@@ -236,6 +243,7 @@ func (v *Virter) VMRm(vmName string) error {
 		}
 
 		if active != 0 {
+			log.Print("Stop VM")
 			err = v.libvirt.DomainDestroy(domain)
 			if err != nil {
 				return fmt.Errorf("could not destroy domain: %w", err)
@@ -243,6 +251,7 @@ func (v *Virter) VMRm(vmName string) error {
 		}
 
 		if persistent != 0 {
+			log.Print("Undefine VM")
 			err = v.libvirt.DomainUndefine(domain)
 			if err != nil {
 				return fmt.Errorf("could not undefine domain: %w", err)
@@ -253,16 +262,17 @@ func (v *Virter) VMRm(vmName string) error {
 	return nil
 }
 
-func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string) error {
+func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string, debugName string) error {
 	volume, err := v.libvirt.StorageVolLookupByName(sp, volumeName)
 	if !hasErrorCode(err, errNoStorageVol) {
 		if err != nil {
-			return fmt.Errorf("could not get volume %v: %w", volumeName, err)
+			return fmt.Errorf("could not get %v volume: %w", debugName, err)
 		}
 
+		log.Printf("Delete %v volume", debugName)
 		err = v.libvirt.StorageVolDelete(volume, 0)
 		if err != nil {
-			return fmt.Errorf("could not delete volume %v: %w", volumeName, err)
+			return fmt.Errorf("could not delete %v volume: %w", debugName, err)
 		}
 	}
 
