@@ -211,21 +211,6 @@ func (v *Virter) VMRm(vmName string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	err = v.rmVolume(sp, scratchVolumeName(vmName), "scratch")
-	if err != nil {
-		return err
-	}
-
-	err = v.rmVolume(sp, vmName, "boot")
-	if err != nil {
-		return err
-	}
-
-	err = v.rmVolume(sp, ciDataVolumeName(vmName), "cloud-init")
-	if err != nil {
-		return err
-	}
-
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if !hasErrorCode(err, errNoDomain) {
 		if err != nil {
@@ -257,6 +242,21 @@ func (v *Virter) VMRm(vmName string) error {
 				return fmt.Errorf("could not undefine domain: %w", err)
 			}
 		}
+	}
+
+	err = v.rmVolume(sp, scratchVolumeName(vmName), "scratch")
+	if err != nil {
+		return err
+	}
+
+	err = v.rmVolume(sp, vmName, "boot")
+	if err != nil {
+		return err
+	}
+
+	err = v.rmVolume(sp, ciDataVolumeName(vmName), "cloud-init")
+	if err != nil {
+		return err
 	}
 
 	return nil
