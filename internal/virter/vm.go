@@ -217,6 +217,11 @@ func (v *Virter) VMRm(vmName string) error {
 			return fmt.Errorf("could not get domain: %w", err)
 		}
 
+		err = v.rmSnapshots(domain)
+		if err != nil {
+			return err
+		}
+
 		active, err := v.libvirt.DomainIsActive(domain)
 		if err != nil {
 			return fmt.Errorf("could not check if domain is active: %w", err)
@@ -257,6 +262,23 @@ func (v *Virter) VMRm(vmName string) error {
 	err = v.rmVolume(sp, ciDataVolumeName(vmName), "cloud-init")
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (v *Virter) rmSnapshots(domain libvirt.Domain) error {
+	snapshots, _, err := v.libvirt.DomainListAllSnapshots(domain, -1, 0)
+	if err != nil {
+		return fmt.Errorf("could not list snapshots: %w", err)
+	}
+
+	for _, snapshot := range snapshots {
+		log.Printf("Delete snapshot %v", snapshot.Name)
+		err = v.libvirt.DomainSnapshotDelete(snapshot, 0)
+		if err != nil {
+			return fmt.Errorf("could not delete snapshot: %w", err)
+		}
 	}
 
 	return nil

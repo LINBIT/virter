@@ -145,6 +145,7 @@ func TestVMRm(t *testing.T) {
 			d := mockDomainLookup(l, vmName)
 			mockDomainActive(l, d, r[domainCreated])
 			mockDomainPersistent(l, d, r[domainPersistent])
+			mockSnapshotList(l, d)
 			if r[domainCreated] {
 				mockDomainDestroy(l, d)
 			}
@@ -203,6 +204,10 @@ func mockDomainPersistent(l *mocks.LibvirtConnection, d libvirt.Domain, persiste
 		rPersistent = 1
 	}
 	l.On("DomainIsPersistent", d).Return(rPersistent, nil)
+}
+
+func mockSnapshotList(l *mocks.LibvirtConnection, d libvirt.Domain) {
+	l.On("DomainListAllSnapshots", d, mock.Anything, mock.Anything).Return([]libvirt.DomainSnapshot{}, int32(0), nil)
 }
 
 func mockDomainDestroy(l *mocks.LibvirtConnection, d libvirt.Domain) {

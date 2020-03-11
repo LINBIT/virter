@@ -29,6 +29,8 @@ type LibvirtConnection interface {
 	DomainIsPersistent(Dom libvirt.Domain) (rPersistent int32, err error)
 	DomainDestroy(Dom libvirt.Domain) (err error)
 	DomainUndefine(Dom libvirt.Domain) (err error)
+	DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error)
+	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
 }
 
 // Virter manipulates libvirt for virter.
