@@ -26,7 +26,9 @@ type LibvirtConnection interface {
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainCreate(Dom libvirt.Domain) (err error)
 	DomainIsActive(Dom libvirt.Domain) (rActive int32, err error)
+	DomainIsPersistent(Dom libvirt.Domain) (rPersistent int32, err error)
 	DomainDestroy(Dom libvirt.Domain) (err error)
+	DomainUndefine(Dom libvirt.Domain) (err error)
 }
 
 // Virter manipulates libvirt for virter.

@@ -71,11 +71,11 @@ func mockBackingVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool) {
 }
 
 const (
-	ciDataVolume  = "ciDataVolume"
-	bootVolume    = "bootVolume"
-	scratchVolume = "scratchVolume"
-	domainDefined = "domainDefined"
-	domainCreated = "domainCreated"
+	ciDataVolume     = "ciDataVolume"
+	bootVolume       = "bootVolume"
+	scratchVolume    = "scratchVolume"
+	domainPersistent = "domainPersistent"
+	domainCreated    = "domainCreated"
 )
 
 var vmRmTests = []map[string]bool{
@@ -97,6 +97,19 @@ var vmRmTests = []map[string]bool{
 		bootVolume:    true,
 		scratchVolume: true,
 		domainCreated: true,
+	},
+	{
+		ciDataVolume:     true,
+		bootVolume:       true,
+		scratchVolume:    true,
+		domainPersistent: true,
+	},
+	{
+		ciDataVolume:     true,
+		bootVolume:       true,
+		scratchVolume:    true,
+		domainPersistent: true,
+		domainCreated:    true,
 	},
 }
 
@@ -128,10 +141,16 @@ func TestVMRm(t *testing.T) {
 			mockStorageVolNotFound(l, sp, ciDataVolumeName)
 		}
 
-		if r[domainCreated] {
+		if r[domainCreated] || r[domainPersistent] {
 			d := mockDomainLookup(l, vmName)
-			mockDomainActive(l, d)
-			mockDomainDestroy(l, d)
+			mockDomainActive(l, d, r[domainCreated])
+			mockDomainPersistent(l, d, r[domainPersistent])
+			if r[domainCreated] {
+				mockDomainDestroy(l, d)
+			}
+			if r[domainPersistent] {
+				mockDomainUndefine(l, d)
+			}
 		} else {
 			mockDomainNotFound(l, vmName)
 		}
@@ -170,12 +189,28 @@ func mockDomainLookup(l *mocks.LibvirtConnection, name string) libvirt.Domain {
 	return d
 }
 
-func mockDomainActive(l *mocks.LibvirtConnection, d libvirt.Domain) {
-	l.On("DomainIsActive", d).Return(int32(1), nil)
+func mockDomainActive(l *mocks.LibvirtConnection, d libvirt.Domain, active bool) {
+	var rActive int32
+	if active {
+		rActive = 1
+	}
+	l.On("DomainIsActive", d).Return(rActive, nil)
+}
+
+func mockDomainPersistent(l *mocks.LibvirtConnection, d libvirt.Domain, persistent bool) {
+	var rPersistent int32
+	if persistent {
+		rPersistent = 1
+	}
+	l.On("DomainIsPersistent", d).Return(rPersistent, nil)
 }
 
 func mockDomainDestroy(l *mocks.LibvirtConnection, d libvirt.Domain) {
 	l.On("DomainDestroy", d).Return(nil)
+}
+
+func mockDomainUndefine(l *mocks.LibvirtConnection, d libvirt.Domain) {
+	l.On("DomainUndefine", d).Return(nil)
 }
 
 func mockDomainNotFound(l *mocks.LibvirtConnection, name string) {

@@ -230,10 +230,22 @@ func (v *Virter) VMRm(vmName string) error {
 			return fmt.Errorf("could not check if domain is active: %w", err)
 		}
 
+		persistent, err := v.libvirt.DomainIsPersistent(domain)
+		if err != nil {
+			return fmt.Errorf("could not check if domain is persistent: %w", err)
+		}
+
 		if active != 0 {
 			err = v.libvirt.DomainDestroy(domain)
 			if err != nil {
 				return fmt.Errorf("could not destroy domain: %w", err)
+			}
+		}
+
+		if persistent != 0 {
+			err = v.libvirt.DomainUndefine(domain)
+			if err != nil {
+				return fmt.Errorf("could not undefine domain: %w", err)
 			}
 		}
 	}
