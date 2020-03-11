@@ -92,6 +92,12 @@ var vmRmTests = []map[string]bool{
 		bootVolume:    true,
 		scratchVolume: true,
 	},
+	{
+		ciDataVolume:  true,
+		bootVolume:    true,
+		scratchVolume: true,
+		domainCreated: true,
+	},
 }
 
 func TestVMRm(t *testing.T) {
@@ -122,6 +128,14 @@ func TestVMRm(t *testing.T) {
 			mockStorageVolNotFound(l, sp, ciDataVolumeName)
 		}
 
+		if r[domainCreated] {
+			d := mockDomainLookup(l, vmName)
+			mockDomainActive(l, d)
+			mockDomainDestroy(l, d)
+		} else {
+			mockDomainNotFound(l, vmName)
+		}
+
 		v := virter.New(l, poolName, directory)
 
 		err := v.VMRm(vmName)
@@ -148,6 +162,26 @@ func mockStorageVolNotFound(l *mocks.LibvirtConnection, sp libvirt.StoragePool, 
 	l.On("StorageVolLookupByName", sp, name).Return(libvirt.StorageVol{}, mockLibvirtError(errNoStorageVol))
 }
 
+func mockDomainLookup(l *mocks.LibvirtConnection, name string) libvirt.Domain {
+	d := libvirt.Domain{
+		Name: name,
+	}
+	l.On("DomainLookupByName", name).Return(d, nil)
+	return d
+}
+
+func mockDomainActive(l *mocks.LibvirtConnection, d libvirt.Domain) {
+	l.On("DomainIsActive", d).Return(int32(1), nil)
+}
+
+func mockDomainDestroy(l *mocks.LibvirtConnection, d libvirt.Domain) {
+	l.On("DomainDestroy", d).Return(nil)
+}
+
+func mockDomainNotFound(l *mocks.LibvirtConnection, name string) {
+	l.On("DomainLookupByName", name).Return(libvirt.Domain{}, mockLibvirtError(errNoDomain))
+}
+
 func mockLibvirtError(code errorNumber) error {
 	return libvirtError{uint32(code)}
 }
@@ -163,6 +197,7 @@ func (e libvirtError) Error() string {
 type errorNumber int32
 
 const (
+	errNoDomain     errorNumber = 42
 	errNoStorageVol errorNumber = 50
 )
 

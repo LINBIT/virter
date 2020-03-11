@@ -12,6 +12,7 @@ import (
 type errorNumber int32
 
 const (
+	errNoDomain     errorNumber = 42
 	errNoStorageVol errorNumber = 50
 )
 

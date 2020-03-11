@@ -219,6 +219,25 @@ func (v *Virter) VMRm(vmName string) error {
 		return err
 	}
 
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if !hasErrorCode(err, errNoDomain) {
+		if err != nil {
+			return fmt.Errorf("could not get domain: %w", err)
+		}
+
+		active, err := v.libvirt.DomainIsActive(domain)
+		if err != nil {
+			return fmt.Errorf("could not check if domain is active: %w", err)
+		}
+
+		if active != 0 {
+			err = v.libvirt.DomainDestroy(domain)
+			if err != nil {
+				return fmt.Errorf("could not destroy domain: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
 

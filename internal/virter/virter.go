@@ -22,8 +22,11 @@ type LibvirtConnection interface {
 	StorageVolGetPath(Vol libvirt.StorageVol) (rName string, err error)
 	StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error)
 	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
+	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainCreate(Dom libvirt.Domain) (err error)
+	DomainIsActive(Dom libvirt.Domain) (rActive int32, err error)
+	DomainDestroy(Dom libvirt.Domain) (err error)
 }
 
 // Virter manipulates libvirt for virter.
