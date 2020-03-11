@@ -42,6 +42,7 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	viper.SetDefault("libvirt.pool", "default")
+	viper.SetDefault("libvirt.template_dir", "assets/libvirt-templates")
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {

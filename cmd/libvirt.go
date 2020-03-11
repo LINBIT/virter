@@ -14,7 +14,7 @@ import (
 
 // VirterConnect connects to a local libvirt instance
 func VirterConnect() (*virter.Virter, error) {
-	var templates directory.Directory = "assets/libvirt-templates"
+	var templates directory.Directory = directory.Directory(viper.GetString("libvirt.template_dir"))
 
 	c, err := net.DialTimeout("unix", "/var/run/libvirt/libvirt-sock", 2*time.Second)
 	if err != nil {
