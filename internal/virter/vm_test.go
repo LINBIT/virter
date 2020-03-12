@@ -181,6 +181,41 @@ func TestVMRm(t *testing.T) {
 	}
 }
 
+func TestVMCommit(t *testing.T) {
+	directory := prepareImageDirectory()
+
+	l := new(mocks.LibvirtConnection)
+	sp := mockStoragePool(l)
+
+	sv := mockStorageVolLookup(l, sp, scratchVolumeName)
+	mockStorageVolDelete(l, sv)
+
+	sv = mockStorageVolLookup(l, sp, ciDataVolumeName)
+	mockStorageVolDelete(l, sv)
+
+	d := mockDomainLookup(l, vmName)
+	l.On("DomainGetXMLDesc", d, mock.Anything).Return(domainXML, nil)
+
+	// DHCP entry
+	n := mockNetworkLookup(l)
+	mockNetworkUpdate(
+		l, n,
+		uint32(libvirt.NetworkUpdateCommandDelete),
+		"<host mac='01:23:45:67:89:ab' ip='192.168.122.2'/>")
+
+	mockDomainActive(l, d, false)
+	mockDomainPersistent(l, d, true)
+	mockSnapshotList(l, d)
+	mockDomainUndefine(l, d)
+
+	v := virter.New(l, poolName, networkName, directory)
+
+	err := v.VMCommit(vmName)
+	assert.NoError(t, err)
+
+	l.AssertExpectations(t)
+}
+
 func mockStorageVolDelete(l *mocks.LibvirtConnection, sv libvirt.StorageVol) {
 	l.On("StorageVolDelete", sv, mock.Anything).Return(nil)
 }

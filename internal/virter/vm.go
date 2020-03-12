@@ -21,14 +21,14 @@ func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string, vmID uin
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, g, vmName, sshPublicKey)
+	log.Print("Create boot volume")
+	err = v.createVMVolume(sp, imageName, vmName)
 	if err != nil {
 		return err
 	}
 
-	log.Print("Create boot volume")
-	err = v.createVMVolume(sp, imageName, vmName)
+	log.Print("Create cloud-init volume")
+	err = v.createCIData(sp, g, vmName, sshPublicKey)
 	if err != nil {
 		return err
 	}
@@ -308,6 +308,20 @@ func (v *Virter) VMRm(vmName string) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
+	err = v.vmRmExceptBoot(sp, vmName)
+	if err != nil {
+		return err
+	}
+
+	err = v.rmVolume(sp, vmName, "boot")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if !hasErrorCode(err, errNoDomain) {
 		if err != nil {
@@ -352,11 +366,6 @@ func (v *Virter) VMRm(vmName string) error {
 	}
 
 	err = v.rmVolume(sp, scratchVolumeName(vmName), "scratch")
-	if err != nil {
-		return err
-	}
-
-	err = v.rmVolume(sp, vmName, "boot")
 	if err != nil {
 		return err
 	}
@@ -462,6 +471,35 @@ func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string, debugName s
 		if err != nil {
 			return fmt.Errorf("could not delete %v volume: %w", debugName, err)
 		}
+	}
+
+	return nil
+}
+
+// VMCommit commits a VM to an image.
+func (v *Virter) VMCommit(vmName string) error {
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return fmt.Errorf("could not get domain: %w", err)
+	}
+
+	active, err := v.libvirt.DomainIsActive(domain)
+	if err != nil {
+		return fmt.Errorf("could not check if domain is active: %w", err)
+	}
+
+	if active != 0 {
+		return fmt.Errorf("cannot commit a running VM")
+	}
+
+	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
+	if err != nil {
+		return fmt.Errorf("could not get storage pool: %w", err)
+	}
+
+	err = v.vmRmExceptBoot(sp, vmName)
+	if err != nil {
+		return err
 	}
 
 	return nil
