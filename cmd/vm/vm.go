@@ -19,3 +19,4 @@ func init() {
 
 var imageName string
 var vmName string
+var vmID uint

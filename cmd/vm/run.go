@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -24,7 +25,8 @@ func init() {
 	runCmd.Flags().StringVarP(&imageName, "image", "i", "", "image to use")
 	runCmd.MarkFlagRequired("image")
 	runCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of new VM")
-	runCmd.MarkFlagRequired("name")
+	runCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
+	runCmd.MarkFlagRequired("id")
 }
 
 func vmRun(cmd *cobra.Command, args []string) {
@@ -33,12 +35,17 @@ func vmRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	if vmName == "" {
+		vmName = fmt.Sprintf("%s-%d", imageName, vmID)
+	}
+
 	sshPublicKey := viper.GetString("auth.ssh_public_key")
 
 	err = v.VMRun(
 		isogenerator.ExternalISOGenerator{},
 		imageName,
 		vmName,
+		vmID,
 		sshPublicKey)
 	if err != nil {
 		log.Fatal(err)

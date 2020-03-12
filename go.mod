@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
+	github.com/libvirt/libvirt-go-xml v6.1.0+incompatible
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pelletier/go-toml v1.6.0 // indirect

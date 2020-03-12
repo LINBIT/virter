@@ -27,6 +27,7 @@ func VirterConnect() (*virter.Virter, error) {
 	}
 
 	pool := viper.GetString("libvirt.pool")
+	network := viper.GetString("libvirt.network")
 
-	return virter.New(l, pool, templates), nil
+	return virter.New(l, pool, network, templates), nil
 }

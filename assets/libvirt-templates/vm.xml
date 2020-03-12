@@ -45,6 +45,7 @@
     <controller type='scsi' model='virtio-scsi'>
     </controller>
     <interface type='network'>
+      <mac address='{{ .MAC }}'/>
       <source network='default' bridge='virbr0'/>
       <model type='virtio'/>
     </interface>

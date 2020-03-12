@@ -28,7 +28,7 @@ func TestImagePull(t *testing.T) {
 	sv := mockImageVolCreate(l, sp)
 	mockStorageVolUpload(l, sv, []byte(imageContent))
 
-	v := virter.New(l, poolName, directory)
+	v := virter.New(l, poolName, networkName, directory)
 
 	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
 	assert.NoError(t, err)
@@ -49,7 +49,7 @@ func TestImagePullBadStatus(t *testing.T) {
 	sp := mockStoragePool(l)
 	_ = mockImageVolCreate(l, sp)
 
-	v := virter.New(l, poolName, directory)
+	v := virter.New(l, poolName, networkName, directory)
 
 	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
 	assert.Error(t, err)

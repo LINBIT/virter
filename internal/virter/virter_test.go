@@ -61,4 +61,5 @@ func (d MemoryDirectory) ReadFile(subpath string) ([]byte, error) {
 }
 
 const poolName = "some-pool"
+const networkName = "some-network"
 const imageName = "some-image"

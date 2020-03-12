@@ -22,7 +22,11 @@ type LibvirtConnection interface {
 	StorageVolGetPath(Vol libvirt.StorageVol) (rName string, err error)
 	StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error)
 	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
+	NetworkLookupByName(Name string) (rNet libvirt.Network, err error)
+	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
+	NetworkUpdate(Net libvirt.Network, Command uint32, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error)
 	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
+	DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error)
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainCreate(Dom libvirt.Domain) (err error)
 	DomainIsActive(Dom libvirt.Domain) (rActive int32, err error)
@@ -37,16 +41,19 @@ type LibvirtConnection interface {
 type Virter struct {
 	libvirt         LibvirtConnection
 	storagePoolName string
+	networkName     string
 	templates       FileReader
 }
 
 // New configures a new Virter.
 func New(libvirtConnection LibvirtConnection,
 	storagePoolName string,
+	networkName string,
 	fileReader FileReader) *Virter {
 	return &Virter{
 		libvirt:         libvirtConnection,
 		storagePoolName: storagePoolName,
+		networkName:     networkName,
 		templates:       fileReader,
 	}
 }

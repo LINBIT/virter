@@ -34,6 +34,13 @@ func TestVMRun(t *testing.T) {
 	// scratch volume
 	mockStorageVolCreate(l, sp, scratchVolumeName, fmt.Sprintf("s0 %v s1", scratchVolumeName))
 
+	// DHCP entry
+	n := mockNetworkLookup(l)
+	mockNetworkUpdate(
+		l, n,
+		uint32(libvirt.NetworkUpdateCommandAddLast),
+		"<host mac='52:54:00:00:00:2a' ip='192.168.122.42'/>")
+
 	// VM
 	d := libvirt.Domain{
 		Name: vmName,
@@ -41,9 +48,9 @@ func TestVMRun(t *testing.T) {
 	l.On("DomainDefineXML", fmt.Sprintf("d0 %v d1 %v d2", poolName, vmName)).Return(d, nil)
 	l.On("DomainCreate", d).Return(nil)
 
-	v := virter.New(l, poolName, directory)
+	v := virter.New(l, poolName, networkName, directory)
 
-	err := v.VMRun(g, imageName, vmName, someSSHKey)
+	err := v.VMRun(g, imageName, vmName, vmID, someSSHKey)
 	assert.NoError(t, err)
 
 	l.AssertExpectations(t)
@@ -143,6 +150,15 @@ func TestVMRm(t *testing.T) {
 
 		if r[domainCreated] || r[domainPersistent] {
 			d := mockDomainLookup(l, vmName)
+			l.On("DomainGetXMLDesc", d, mock.Anything).Return(domainXML, nil)
+
+			// DHCP entry
+			n := mockNetworkLookup(l)
+			mockNetworkUpdate(
+				l, n,
+				uint32(libvirt.NetworkUpdateCommandDelete),
+				"<host mac='01:23:45:67:89:ab' ip='192.168.122.2'/>")
+
 			mockDomainActive(l, d, r[domainCreated])
 			mockDomainPersistent(l, d, r[domainPersistent])
 			mockSnapshotList(l, d)
@@ -156,7 +172,7 @@ func TestVMRm(t *testing.T) {
 			mockDomainNotFound(l, vmName)
 		}
 
-		v := virter.New(l, poolName, directory)
+		v := virter.New(l, poolName, networkName, directory)
 
 		err := v.VMRm(vmName)
 		assert.NoError(t, err)
@@ -180,6 +196,26 @@ func mockStorageVolLookup(l *mocks.LibvirtConnection, sp libvirt.StoragePool, na
 
 func mockStorageVolNotFound(l *mocks.LibvirtConnection, sp libvirt.StoragePool, name string) {
 	l.On("StorageVolLookupByName", sp, name).Return(libvirt.StorageVol{}, mockLibvirtError(errNoStorageVol))
+}
+
+func mockNetworkLookup(l *mocks.LibvirtConnection) libvirt.Network {
+	n := libvirt.Network{
+		Name: networkName,
+	}
+	l.On("NetworkLookupByName", networkName).Return(n, nil)
+	l.On("NetworkGetXMLDesc", n, mock.Anything).Return(networkXML, nil)
+	return n
+}
+
+func mockNetworkUpdate(l *mocks.LibvirtConnection, n libvirt.Network, command uint32, xml string) {
+	l.On(
+		"NetworkUpdate",
+		n,
+		uint32(libvirt.NetworkSectionIPDhcpHost),
+		command,
+		mock.Anything,
+		xml,
+		mock.Anything).Return(nil)
 }
 
 func mockDomainLookup(l *mocks.LibvirtConnection, name string) libvirt.Domain {
@@ -243,9 +279,28 @@ const (
 
 const (
 	vmName            = "some-vm"
+	vmID              = 42
 	ciDataVolumeName  = vmName + "-cidata"
 	scratchVolumeName = vmName + "-scratch"
 	ciDataContent     = "some-ci-data"
 	backingPath       = "/some/path"
 	someSSHKey        = "some-key"
 )
+
+const networkXML = `<network>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <host mac='01:23:45:67:89:ab' ip='192.168.122.2'/>
+    </dhcp>
+  </ip>
+</network>
+`
+
+const domainXML = `<domain>
+  <devices>
+    <interface type='network'>
+      <mac address='01:23:45:67:89:ab'/>
+    </interface>
+  </devices>
+</domain>
+`
