@@ -11,8 +11,8 @@ import (
 // rmCmd represents the rm command
 var rmCmd = &cobra.Command{
 	Use:   "rm",
-	Short: "Start a virtual machine",
-	Long:  `Start a fresh virtual machine from an image.`,
+	Short: "Remove a virtual machine",
+	Long:  `Remove a virtual machine including all data.`,
 	Run:   vmRm,
 }
 
