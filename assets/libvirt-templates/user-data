@@ -4,6 +4,6 @@ ssh_authorized_keys:
   - {{ .SSHPublicKey }}
 preserve_hostname: false
 hostname: {{ .VMName }}
-fqdn: {{ .VMName }}.local
+fqdn: {{ .VMName }}.test
 runcmd:
-  - echo {{ .IPAddress }} {{ .VMName }} {{ .VMName }}.local >> /etc/hosts
+  - echo {{ .IPAddress }} {{ .VMName }} {{ .VMName }}.test >> /etc/hosts
