@@ -74,6 +74,11 @@ hostname is set and SSH access is possible.
 Virter is good for starting and cloning `cloud-init` based VMs. `virsh` is
 useful for more detailed libvirt management. They work well together.
 
+### `virt-install`
+
+`virt-install` is built for the images that use conventional installers. Virter
+uses `cloud-init`, making it simpler to use and quicker to start a fresh VM.
+
 ### Running VMs in AWS/GCP/OpenNebula
 
 Virter is local to a single host making snapshot/restore/clone operations very
