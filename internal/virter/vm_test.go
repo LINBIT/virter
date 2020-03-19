@@ -50,7 +50,13 @@ func TestVMRun(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, directory)
 
-	err := v.VMRun(g, imageName, vmName, vmID, someSSHKey)
+	c := virter.VMConfig{
+		ImageName:    imageName,
+		VMName:       vmName,
+		VMID:         vmID,
+		SSHPublicKey: someSSHKey,
+	}
+	err := v.VMRun(g, c)
 	assert.NoError(t, err)
 
 	l.AssertExpectations(t)

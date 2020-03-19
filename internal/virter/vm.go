@@ -8,37 +8,32 @@ import (
 	"github.com/digitalocean/go-libvirt"
 )
 
-// ISOGenerator generates ISO images from file data
-type ISOGenerator interface {
-	Generate(files map[string][]byte) ([]byte, error)
-}
-
 // VMRun starts a VM.
-func (v *Virter) VMRun(g ISOGenerator, imageName string, vmName string, vmID uint, sshPublicKey string) error {
+func (v *Virter) VMRun(g ISOGenerator, vmConfig VMConfig) error {
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
 	log.Print("Create boot volume")
-	err = v.createVMVolume(sp, imageName, vmName)
+	err = v.createVMVolume(sp, vmConfig.ImageName, vmConfig.VMName)
 	if err != nil {
 		return err
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, g, vmName, sshPublicKey)
+	err = v.createCIData(sp, g, vmConfig.VMName, vmConfig.SSHPublicKey)
 	if err != nil {
 		return err
 	}
 
 	log.Print("Create scratch volume")
-	err = v.createScratchVolume(sp, vmName)
+	err = v.createScratchVolume(sp, vmConfig.VMName)
 	if err != nil {
 		return err
 	}
 
-	err = v.createVM(sp, vmName, vmID)
+	err = v.createVM(sp, vmConfig.VMName, vmConfig.VMID)
 	if err != nil {
 		return err
 	}

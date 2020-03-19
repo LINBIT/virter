@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 
 	connect "github.com/LINBIT/virter/cmd"
+	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/isogenerator"
 )
 
@@ -41,12 +42,13 @@ func vmRun(cmd *cobra.Command, args []string) {
 
 	sshPublicKey := viper.GetString("auth.ssh_public_key")
 
-	err = v.VMRun(
-		isogenerator.ExternalISOGenerator{},
-		imageName,
-		vmName,
-		vmID,
-		sshPublicKey)
+	c := virter.VMConfig{
+		ImageName:    imageName,
+		VMName:       vmName,
+		VMID:         vmID,
+		SSHPublicKey: sshPublicKey,
+	}
+	err = v.VMRun(isogenerator.ExternalISOGenerator{}, c)
 	if err != nil {
 		log.Fatal(err)
 	}

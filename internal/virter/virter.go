@@ -58,6 +58,19 @@ func New(libvirtConnection LibvirtConnection,
 	}
 }
 
+// VMConfig contains the configuration for starting a VM
+type VMConfig struct {
+	ImageName    string
+	VMName       string
+	VMID         uint
+	SSHPublicKey string
+}
+
+// ISOGenerator generates ISO images from file data
+type ISOGenerator interface {
+	Generate(files map[string][]byte) ([]byte, error)
+}
+
 func (v *Virter) renderTemplate(name string, data interface{}) (string, error) {
 	templateText, err := v.templates.ReadFile(name)
 	if err != nil {
