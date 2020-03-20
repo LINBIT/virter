@@ -15,28 +15,33 @@ import (
 
 var cfgFile string
 
-// RootCmd represents the base command when called without any subcommands
-var RootCmd = &cobra.Command{
-	Use:   "virter",
-	Short: "Virter manages local virtual machines",
-	Long: `Virter manages local virtual machines for development and testing. The
+func rootCommand() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:   "virter",
+		Short: "Virter manages local virtual machines",
+		Long: `Virter manages local virtual machines for development and testing. The
 machines are controlled with libvirt, with qcow2 chained images for storage
 and cloud-init for basic access configuration. This allows for fast cloning
 and resetting, for a stable test environment.`,
+	}
+
+	configName := filepath.Join(configPath(), "virter.toml")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
+
+	rootCmd.AddCommand(imageCommand())
+	rootCmd.AddCommand(vmCommand())
+	return rootCmd
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
+	if err := rootCommand().Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	configName := filepath.Join(configPath(), "virter.toml")
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
 }
 
 // initConfig reads in config file and ENV variables if set.
