@@ -9,11 +9,13 @@ import (
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/isogenerator"
+	"github.com/LINBIT/virter/pkg/tcpping"
 )
 
 func vmRunCommand() *cobra.Command {
 	var vmName string
 	var vmID uint
+	var waitSSH bool
 
 	runCmd := &cobra.Command{
 		Use:   "run image",
@@ -31,6 +33,11 @@ func vmRunCommand() *cobra.Command {
 				vmName = fmt.Sprintf("%s-%d", imageName, vmID)
 			}
 
+			pinger := tcpping.TCPPinger{
+				Count:  viper.GetInt("ping.count"),
+				Period: viper.GetDuration("ping.period"),
+			}
+
 			sshPublicKey := viper.GetString("auth.ssh_public_key")
 
 			c := virter.VMConfig{
@@ -39,7 +46,7 @@ func vmRunCommand() *cobra.Command {
 				VMID:         vmID,
 				SSHPublicKey: sshPublicKey,
 			}
-			err = v.VMRun(isogenerator.ExternalISOGenerator{}, c)
+			err = v.VMRun(isogenerator.ExternalISOGenerator{}, pinger, c, waitSSH)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -50,6 +57,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of new VM")
 	runCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	runCmd.MarkFlagRequired("id")
+	runCmd.Flags().BoolVarP(&waitSSH, "wait-ssh", "w", false, "whether to wait for SSH port (default false)")
 
 	return runCmd
 }

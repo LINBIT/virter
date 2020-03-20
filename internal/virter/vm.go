@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/digitalocean/go-libvirt"
 )
 
 // VMRun starts a VM.
-func (v *Virter) VMRun(g ISOGenerator, vmConfig VMConfig) error {
+func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, waitSSH bool) error {
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
@@ -33,9 +34,18 @@ func (v *Virter) VMRun(g ISOGenerator, vmConfig VMConfig) error {
 		return err
 	}
 
-	err = v.createVM(sp, vmConfig.VMName, vmConfig.VMID)
+	ip, err := v.createVM(sp, vmConfig.VMName, vmConfig.VMID)
 	if err != nil {
 		return err
+	}
+
+	if waitSSH {
+		log.Print("Wait for SSH port to open")
+		err = waiter.WaitPort(ip, "ssh")
+		if err != nil {
+			return fmt.Errorf("unable to connect to SSH port: %w", err)
+		}
+		log.Print("Successfully connected to SSH port")
 	}
 
 	return nil
@@ -168,36 +178,36 @@ func (v *Virter) scratchVolumeXML(name string) (string, error) {
 	return v.renderTemplate(templateScratchVolume, templateData)
 }
 
-func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint) error {
+func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint) (net.IP, error) {
 	mac := qemuMAC(vmID)
 
 	xml, err := v.vmXML(sp.Name, vmName, mac)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Print("Define VM")
 	err = v.createScratchVolume(sp, vmName)
 	d, err := v.libvirt.DomainDefineXML(xml)
 	if err != nil {
-		return fmt.Errorf("could not define domain: %w", err)
+		return nil, fmt.Errorf("could not define domain: %w", err)
 	}
 
 	// Add DHCP entry after defining the VM to ensure that it can be
 	// removed when removing the VM, but before starting it to ensure that
 	// it gets the correct IP address
-	err = v.addDHCPEntry(mac, vmID)
+	ip, err := v.addDHCPEntry(mac, vmID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Print("Start VM")
 	err = v.libvirt.DomainCreate(d)
 	if err != nil {
-		return fmt.Errorf("could create create (start) domain: %w", err)
+		return nil, fmt.Errorf("could create create (start) domain: %w", err)
 	}
 
-	return nil
+	return ip, nil
 }
 
 func (v *Virter) vmXML(poolName string, vmName string, mac string) (string, error) {

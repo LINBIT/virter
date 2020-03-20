@@ -2,6 +2,7 @@ package virter_test
 
 import (
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/digitalocean/go-libvirt"
@@ -12,13 +13,14 @@ import (
 	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
-//go:generate mockery -name=ISOGenerator
-
 func TestVMRun(t *testing.T) {
 	directory := prepareVMDirectory()
 
 	g := new(mocks.ISOGenerator)
 	mockISOGenerate(g)
+
+	w := new(mocks.PortWaiter)
+	w.On("WaitPort", net.ParseIP("192.168.122.42"), "ssh").Return(nil)
 
 	l := new(mocks.LibvirtConnection)
 	sp := mockStoragePool(l)
@@ -56,7 +58,7 @@ func TestVMRun(t *testing.T) {
 		VMID:         vmID,
 		SSHPublicKey: someSSHKey,
 	}
-	err := v.VMRun(g, c)
+	err := v.VMRun(g, w, c, true)
 	assert.NoError(t, err)
 
 	l.AssertExpectations(t)
