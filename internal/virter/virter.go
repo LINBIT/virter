@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 	"text/template"
 
 	"github.com/digitalocean/go-libvirt"
@@ -69,6 +70,11 @@ type VMConfig struct {
 // ISOGenerator generates ISO images from file data
 type ISOGenerator interface {
 	Generate(files map[string][]byte) ([]byte, error)
+}
+
+// PortWaiter waits for TCP ports to be open
+type PortWaiter interface {
+	WaitPort(ip net.IP, port string) error
 }
 
 func (v *Virter) renderTemplate(name string, data interface{}) (string, error) {

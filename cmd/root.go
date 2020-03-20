@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -50,6 +51,8 @@ func initConfig() {
 	viper.SetDefault("libvirt.network", "default")
 	viper.SetDefault("libvirt.template_dir", "assets/libvirt-templates")
 	viper.SetDefault("image.registry", "assets/images.toml")
+	viper.SetDefault("ping.count", 60)
+	viper.SetDefault("ping.period", time.Second)
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {

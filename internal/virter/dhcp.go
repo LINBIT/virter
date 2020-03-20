@@ -12,50 +12,22 @@ import (
 // the id. The same MAC address should always be paired with a given IP so that
 // DHCP entries do not need to be released between removing a VM and creating
 // another with the same ID.
-func (v *Virter) addDHCPEntry(mac string, id uint) error {
+func (v *Virter) addDHCPEntry(mac string, id uint) (net.IP, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
-		return fmt.Errorf("could not get network: %w", err)
+		return nil, fmt.Errorf("could not get network: %w", err)
 	}
 
-	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	ipNet, err := v.getIPNet(network)
 	if err != nil {
-		return err
-	}
-	if len(networkDescription.IPs) < 1 {
-		return fmt.Errorf("no IPs in network")
+		return nil, err
 	}
 
-	ipDescription := networkDescription.IPs[0]
-	if ipDescription.Address == "" {
-		return fmt.Errorf("could not find address in network XML")
-	}
-	if ipDescription.Netmask == "" {
-		return fmt.Errorf("could not find netmask in network XML")
-	}
-
-	networkIP := net.ParseIP(ipDescription.Address)
-	if networkIP == nil {
-		return fmt.Errorf("could not parse network IP address")
-	}
-
-	networkMaskIP := net.ParseIP(ipDescription.Netmask)
-	if networkMaskIP == nil {
-		return fmt.Errorf("could not parse network mask IP address")
-	}
-
-	networkMaskIPv4 := networkMaskIP.To4()
-	if networkMaskIPv4 == nil {
-		return fmt.Errorf("network mask is not IPv4 address")
-	}
-
-	networkMask := net.IPMask(networkMaskIPv4)
-	networkBaseIP := networkIP.Mask(networkMask)
+	networkBaseIP := ipNet.IP.Mask(ipNet.Mask)
 	ip := addToIP(networkBaseIP, id)
 
-	networkIPNet := net.IPNet{IP: networkIP, Mask: networkMask}
-	if !networkIPNet.Contains(ip) {
-		return fmt.Errorf("computed IP %v is not in network", ip)
+	if !ipNet.Contains(ip) {
+		return nil, fmt.Errorf("computed IP %v is not in network", ip)
 	}
 
 	log.Printf("Add DHCP entry from %v to %v", mac, ip)
@@ -69,10 +41,10 @@ func (v *Virter) addDHCPEntry(mac string, id uint) error {
 		fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
 		libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
 	if err != nil {
-		return fmt.Errorf("could not add DHCP entry: %w", err)
+		return nil, fmt.Errorf("could not add DHCP entry: %w", err)
 	}
 
-	return nil
+	return ip, nil
 }
 
 func addToIP(ip net.IP, addend uint) net.IP {
@@ -91,6 +63,45 @@ func qemuMAC(id uint) string {
 	id1 := byte((id >> 8) & 0xFF)
 	id2 := byte(id & 0xFF)
 	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", id0, id1, id2)
+}
+
+func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {
+	ipNet := net.IPNet{}
+
+	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	if err != nil {
+		return ipNet, err
+	}
+	if len(networkDescription.IPs) < 1 {
+		return ipNet, fmt.Errorf("no IPs in network")
+	}
+
+	ipDescription := networkDescription.IPs[0]
+	if ipDescription.Address == "" {
+		return ipNet, fmt.Errorf("could not find address in network XML")
+	}
+	if ipDescription.Netmask == "" {
+		return ipNet, fmt.Errorf("could not find netmask in network XML")
+	}
+
+	ipNet.IP = net.ParseIP(ipDescription.Address)
+	if ipNet.IP == nil {
+		return ipNet, fmt.Errorf("could not parse network IP address")
+	}
+
+	networkMaskIP := net.ParseIP(ipDescription.Netmask)
+	if networkMaskIP == nil {
+		return ipNet, fmt.Errorf("could not parse network mask IP address")
+	}
+
+	networkMaskIPv4 := networkMaskIP.To4()
+	if networkMaskIPv4 == nil {
+		return ipNet, fmt.Errorf("network mask is not IPv4 address")
+	}
+
+	ipNet.Mask = net.IPMask(networkMaskIPv4)
+
+	return ipNet, nil
 }
 
 func (v *Virter) rmDHCPEntry(domain libvirt.Domain) error {
