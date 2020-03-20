@@ -1,0 +1,35 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: go build -v .
+
+    - name: Test
+      run: |
+        go get github.com/vektra/mockery/.../
+        PATH=$PATH:$(go env GOPATH)/bin go generate ./...
+        go test ./internal/virter/
+
+    - name: Vet
+      run: go vet ./...
