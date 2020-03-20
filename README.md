@@ -17,11 +17,11 @@ First install and set up [libvirt](https://libvirt.org/index.html). Then:
 git clone https://github.com/LINBIT/virter
 cd virter
 go build .
-./virter image pull --name centos-7
-AUTH_SSH_PUBLIC_KEY="$(cat ~/.ssh/id_rsa.pub)" ./virter vm run --image centos-7 --name centos-7-hello --id 100
+./virter image pull centos-7
+AUTH_SSH_PUBLIC_KEY="$(cat ~/.ssh/id_rsa.pub)" ./virter vm run --name centos-7-hello --id 100 centos-7
 # wait a bit
 ssh root@192.168.122.100 # assuming default libvirt network configuration
-./virter vm rm --name centos-7-hello
+./virter vm rm centos-7-hello
 ```
 
 ## Installation Details

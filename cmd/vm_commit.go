@@ -7,13 +7,12 @@ import (
 )
 
 func vmCommitCommand() *cobra.Command {
-	var vmName string
-
 	var commitCmd = &cobra.Command{
-		Use:   "commit",
+		Use:   "commit name",
 		Short: "Commit a virtual machine",
 		Long: `Commit a virtual machine to an image. The image name will be
 the virtual machine name.`,
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 
 			v, err := VirterConnect()
@@ -21,15 +20,12 @@ the virtual machine name.`,
 				log.Fatal(err)
 			}
 
-			err = v.VMCommit(vmName)
+			err = v.VMCommit(args[0])
 			if err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
-
-	commitCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of the VM to commit")
-	commitCmd.MarkFlagRequired("name")
 
 	return commitCmd
 }
