@@ -7,28 +7,24 @@ import (
 )
 
 func vmRmCommand() *cobra.Command {
-	var vmName string
-
 	rmCmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove a virtual machine",
+		Use:   "rm name",
+		Short: "Remove a virtual machine given a VM name",
 		Long:  `Remove a virtual machine including all data.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			v, err := VirterConnect()
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			err = v.VMRm(vmName)
+			err = v.VMRm(args[0])
 			if err != nil {
 				log.Fatal(err)
 			}
 
 		},
 	}
-
-	rmCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of the VM to remove")
-	rmCmd.MarkFlagRequired("name")
 
 	return rmCmd
 }

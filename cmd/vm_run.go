@@ -12,19 +12,21 @@ import (
 )
 
 func vmRunCommand() *cobra.Command {
-	var imageName, vmName string
+	var vmName string
 	var vmID uint
 
 	runCmd := &cobra.Command{
-		Use:   "run",
-		Short: "Start a virtual machine",
+		Use:   "run image",
+		Short: "Start a virtual machine with a given image",
 		Long:  `Start a fresh virtual machine from an image.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			v, err := VirterConnect()
 			if err != nil {
 				log.Fatal(err)
 			}
 
+			imageName := args[0]
 			if vmName == "" {
 				vmName = fmt.Sprintf("%s-%d", imageName, vmID)
 			}
@@ -44,7 +46,6 @@ func vmRunCommand() *cobra.Command {
 		},
 	}
 
-	runCmd.Flags().StringVarP(&imageName, "image", "i", "", "image to use")
 	runCmd.MarkFlagRequired("image")
 	runCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of new VM")
 	runCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")

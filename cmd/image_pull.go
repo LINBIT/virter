@@ -14,16 +14,17 @@ import (
 
 func imagePullCommand() *cobra.Command {
 	var url string
-	var imageName string
 
 	pullCmd := &cobra.Command{
-		Use:   "pull",
+		Use:   "pull name",
 		Short: "Pull an image",
 		Long: `Pull an image into a libvirt storage pool. If a URL is
 explicitly given, the image will be fetched from there. Otherwise the
 URL for the specified name from the local image registry will be
 used.`,
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			imageName := args[0]
 			if url == "" {
 				url = fillURLFromRegistry(imageName)
 			}
@@ -55,8 +56,6 @@ used.`,
 	}
 
 	pullCmd.Flags().StringVarP(&url, "url", "u", "", "URL to fetch from")
-	pullCmd.Flags().StringVarP(&imageName, "name", "n", "", "name of image to create")
-	pullCmd.MarkFlagRequired("name")
 
 	return pullCmd
 }
