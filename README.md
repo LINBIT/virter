@@ -91,6 +91,10 @@ Virter and Vagrant have essentially the same goal. Virter is more tightly
 integrated with the Linux virtualization stack, resulting in better
 snapshot/restore/clone support.
 
+### Multipass
+
+Virter and Multipass have similar goals, but Multipass is Ubuntu specific.
+
 ### Docker
 
 Virter is like Docker for VMs. The user experience of the tools is generally
