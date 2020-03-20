@@ -26,7 +26,10 @@ ssh root@192.168.122.100 # assuming default libvirt network configuration
 
 ## Installation Details
 
-Virter requires a running libvirt daemon on the host where it is run.
+Virter requires:
+
+* A running libvirt daemon on the host where it is run
+* The `genisoimage` binary in your `PATH`
 
 Configuration is read by default from `~/.config/virter/virter.toml`. Here you
 can specify the SSH public key to be provided to the VMs:
