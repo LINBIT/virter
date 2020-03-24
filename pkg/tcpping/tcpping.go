@@ -3,6 +3,8 @@ package tcpping
 import (
 	"net"
 	"time"
+
+	"github.com/LINBIT/virter/pkg/actualtime"
 )
 
 // TCPPinger repeatedly attempts to open a TCP connection
@@ -15,21 +17,13 @@ type TCPPinger struct {
 func (p TCPPinger) WaitPort(ip net.IP, port string) error {
 	address := net.JoinHostPort(ip.String(), port)
 
-	ticker := time.NewTicker(p.Period)
-	defer ticker.Stop()
-
-	var lastErr error
-	for i := 0; i < p.Count; i++ {
+	sshTry := func() error {
 		conn, err := net.DialTimeout("tcp", address, p.Period)
 		if err == nil {
-			defer conn.Close()
-			return nil
+			conn.Close()
 		}
-		if i < p.Count-1 {
-			<-ticker.C
-		}
-		lastErr = err
+		return err
 	}
 
-	return lastErr
+	return actualtime.ActualTime{}.Ping(p.Count, p.Period, sshTry)
 }
