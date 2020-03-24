@@ -15,6 +15,7 @@ import (
 //go:generate mockery -name=LibvirtConnection
 //go:generate mockery -name=ISOGenerator
 //go:generate mockery -name=PortWaiter
+//go:generate mockery -name=AfterNotifier
 
 func mockStoragePool(l *mocks.LibvirtConnection) libvirt.StoragePool {
 	sp := libvirt.StoragePool{

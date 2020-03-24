@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"text/template"
+	"time"
 
 	"github.com/digitalocean/go-libvirt"
 )
@@ -32,10 +33,12 @@ type LibvirtConnection interface {
 	DomainCreate(Dom libvirt.Domain) (err error)
 	DomainIsActive(Dom libvirt.Domain) (rActive int32, err error)
 	DomainIsPersistent(Dom libvirt.Domain) (rPersistent int32, err error)
+	DomainShutdown(Dom libvirt.Domain) (err error)
 	DomainDestroy(Dom libvirt.Domain) (err error)
 	DomainUndefine(Dom libvirt.Domain) (err error)
 	DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error)
 	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
+	LifecycleEvents() (<-chan libvirt.DomainEventLifecycleMsg, error)
 }
 
 // Virter manipulates libvirt for virter.
@@ -75,6 +78,11 @@ type ISOGenerator interface {
 // PortWaiter waits for TCP ports to be open
 type PortWaiter interface {
 	WaitPort(ip net.IP, port string) error
+}
+
+// AfterNotifier wait for a duration to elapse
+type AfterNotifier interface {
+	After(d time.Duration) <-chan time.Time
 }
 
 func (v *Virter) renderTemplate(name string, data interface{}) (string, error) {

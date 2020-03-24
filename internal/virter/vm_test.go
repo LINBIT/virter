@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/digitalocean/go-libvirt"
 	"github.com/stretchr/testify/assert"
@@ -167,7 +168,7 @@ func TestVMRm(t *testing.T) {
 				uint32(libvirt.NetworkUpdateCommandDelete),
 				"<host mac='01:23:45:67:89:ab' ip='192.168.122.2'/>")
 
-			mockDomainActive(l, d, r[domainCreated])
+			l.On("DomainIsActive", d).Return(boolToInt32(r[domainCreated]), nil)
 			mockDomainPersistent(l, d, r[domainPersistent])
 			mockSnapshotList(l, d)
 			if r[domainCreated] {
@@ -189,39 +190,111 @@ func TestVMRm(t *testing.T) {
 	}
 }
 
+const (
+	commitDomainActive    = "domainActive"
+	commitShutdown        = "shutdown"
+	commitShutdownTimeout = "shutdownTimeout"
+)
+
+var vmCommitTests = []map[string]bool{
+	// OK: Not active
+	{},
+	// Error: Active, no shutdown
+	{
+		commitDomainActive: true,
+	},
+	// OK: Not active
+	{
+		commitShutdown: true,
+	},
+	// OK: Shutdown successful
+	{
+		commitDomainActive: true,
+		commitShutdown:     true,
+	},
+	// Error: Shutdown timeout
+	{
+		commitDomainActive:    true,
+		commitShutdown:        true,
+		commitShutdownTimeout: true,
+	},
+}
+
 func TestVMCommit(t *testing.T) {
-	directory := prepareImageDirectory()
+	for _, r := range vmCommitTests {
+		expectOk := !r[commitDomainActive] || (r[commitShutdown] && !r[commitShutdownTimeout])
 
-	l := new(mocks.LibvirtConnection)
-	sp := mockStoragePool(l)
+		directory := prepareImageDirectory()
 
-	sv := mockStorageVolLookup(l, sp, scratchVolumeName)
-	mockStorageVolDelete(l, sv)
+		ml := new(mockLibvirtConnection)
+		l := &ml.LibvirtConnection
 
-	sv = mockStorageVolLookup(l, sp, ciDataVolumeName)
-	mockStorageVolDelete(l, sv)
+		ml.overrideIsActive = true
+		ml.isActive = []int32{boolToInt32(r[commitDomainActive]), 0}
 
-	d := mockDomainLookup(l, vmName)
-	l.On("DomainGetXMLDesc", d, mock.Anything).Return(domainXML, nil)
+		d := mockDomainLookup(l, vmName)
 
-	// DHCP entry
-	n := mockNetworkLookup(l)
-	mockNetworkUpdate(
-		l, n,
-		uint32(libvirt.NetworkUpdateCommandDelete),
-		"<host mac='01:23:45:67:89:ab' ip='192.168.122.2'/>")
+		an := new(mocks.AfterNotifier)
 
-	mockDomainActive(l, d, false)
-	mockDomainPersistent(l, d, true)
-	mockSnapshotList(l, d)
-	mockDomainUndefine(l, d)
+		timeout := make(chan time.Time, 1)
+		events := make(chan libvirt.DomainEventLifecycleMsg, 1)
+		if r[commitShutdown] {
+			if r[commitDomainActive] {
+				l.On("DomainShutdown", d).Return(nil)
+			}
 
-	v := virter.New(l, poolName, networkName, directory)
+			if r[commitShutdownTimeout] {
+				timeout <- time.Unix(0, 0)
+			} else {
+				events <- libvirt.DomainEventLifecycleMsg{
+					Dom:    d,
+					Event:  int32(libvirt.DomainEventStopped),
+					Detail: int32(libvirt.DomainEventStoppedShutdown),
+				}
+			}
 
-	err := v.VMCommit(vmName)
-	assert.NoError(t, err)
+			mockLifecycleEvents(l, events)
+			mockAfter(an, timeout)
+		}
 
-	l.AssertExpectations(t)
+		if expectOk {
+			sp := mockStoragePool(l)
+
+			sv := mockStorageVolLookup(l, sp, scratchVolumeName)
+			mockStorageVolDelete(l, sv)
+
+			sv = mockStorageVolLookup(l, sp, ciDataVolumeName)
+			mockStorageVolDelete(l, sv)
+
+			l.On("DomainGetXMLDesc", d, mock.Anything).Return(domainXML, nil)
+
+			// DHCP entry
+			n := mockNetworkLookup(l)
+			mockNetworkUpdate(
+				l, n,
+				uint32(libvirt.NetworkUpdateCommandDelete),
+				"<host mac='01:23:45:67:89:ab' ip='192.168.122.2'/>")
+
+			mockDomainPersistent(l, d, true)
+			mockSnapshotList(l, d)
+			mockDomainUndefine(l, d)
+		}
+
+		v := virter.New(ml, poolName, networkName, directory)
+
+		err := v.VMCommit(an, vmName, r[commitShutdown], shutdownTimeout)
+		if expectOk {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
+
+		l.AssertExpectations(t)
+		an.AssertExpectations(t)
+
+		close(events)
+		close(timeout)
+	}
 }
 
 func mockStorageVolDelete(l *mocks.LibvirtConnection, sv libvirt.StorageVol) {
@@ -269,14 +342,6 @@ func mockDomainLookup(l *mocks.LibvirtConnection, name string) libvirt.Domain {
 	return d
 }
 
-func mockDomainActive(l *mocks.LibvirtConnection, d libvirt.Domain, active bool) {
-	var rActive int32
-	if active {
-		rActive = 1
-	}
-	l.On("DomainIsActive", d).Return(rActive, nil)
-}
-
 func mockDomainPersistent(l *mocks.LibvirtConnection, d libvirt.Domain, persistent bool) {
 	var rPersistent int32
 	if persistent {
@@ -320,6 +385,21 @@ const (
 	errNoStorageVol errorNumber = 50
 )
 
+func mockLifecycleEvents(l *mocks.LibvirtConnection, events <-chan libvirt.DomainEventLifecycleMsg) {
+	l.On("LifecycleEvents").Return(events, nil)
+}
+
+func mockAfter(an *mocks.AfterNotifier, timeout <-chan time.Time) {
+	an.On("After", shutdownTimeout).Return(timeout)
+}
+
+func boolToInt32(b bool) int32 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 const (
 	vmName            = "some-vm"
 	vmID              = 42
@@ -328,6 +408,7 @@ const (
 	ciDataContent     = "some-ci-data"
 	backingPath       = "/some/path"
 	someSSHKey        = "some-key"
+	shutdownTimeout   = time.Second
 )
 
 const networkXML = `<network>

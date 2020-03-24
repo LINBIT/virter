@@ -27,3 +27,9 @@ func (t ActualTime) Ping(count int, period time.Duration, f func() error) error 
 
 	return lastErr
 }
+
+// After waits for the duration to elapse and then sends the current time on
+// the returned channel
+func (t ActualTime) After(d time.Duration) <-chan time.Time {
+	return time.After(d)
+}

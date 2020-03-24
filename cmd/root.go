@@ -53,6 +53,7 @@ func initConfig() {
 	viper.SetDefault("image.registry", "assets/images.toml")
 	viper.SetDefault("ping.count", 60)
 	viper.SetDefault("ping.period", time.Second)
+	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {

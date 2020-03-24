@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/digitalocean/go-libvirt"
 )
@@ -331,20 +332,29 @@ func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string, debugName s
 	return nil
 }
 
-// VMCommit commits a VM to an image.
-func (v *Virter) VMCommit(vmName string) error {
+// VMCommit commits a VM to an image. If shutdown is true, a goroutine to watch
+// for events will be started. This goroutine will only terminate when the
+// libvirt connection is closed, so take care of leaking goroutines.
+func (v *Virter) VMCommit(afterNotifier AfterNotifier, vmName string, shutdown bool, shutdownTimeout time.Duration) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
 
-	active, err := v.libvirt.DomainIsActive(domain)
-	if err != nil {
-		return fmt.Errorf("could not check if domain is active: %w", err)
-	}
+	if shutdown {
+		err = v.vmShutdown(afterNotifier, shutdownTimeout, domain)
+		if err != nil {
+			return err
+		}
+	} else {
+		active, err := v.libvirt.DomainIsActive(domain)
+		if err != nil {
+			return fmt.Errorf("could not check if domain is active: %w", err)
+		}
 
-	if active != 0 {
-		return fmt.Errorf("cannot commit a running VM")
+		if active != 0 {
+			return fmt.Errorf("cannot commit a running VM")
+		}
 	}
 
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
@@ -355,6 +365,47 @@ func (v *Virter) VMCommit(vmName string) error {
 	err = v.vmRmExceptBoot(sp, vmName)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Duration, domain libvirt.Domain) error {
+	events, err := v.libvirt.LifecycleEvents()
+	if err != nil {
+		return fmt.Errorf("could not start waiting for events: %w", err)
+	}
+
+	// Check whether domain is active after starting event stream
+	// to ensure that the shutdown event is not missed.
+	active, err := v.libvirt.DomainIsActive(domain)
+	if err != nil {
+		return fmt.Errorf("could not check if domain is active: %w", err)
+	}
+
+	if active != 0 {
+		log.Printf("Shut down VM")
+
+		err = v.libvirt.DomainShutdown(domain)
+		if err != nil {
+			return fmt.Errorf("could not shut down domain: %w", err)
+		}
+
+		log.Printf("Wait for VM to stop")
+	}
+
+	timeout := afterNotifier.After(shutdownTimeout)
+
+	for active != 0 {
+		select {
+		case event := <-events:
+			if event.Dom.ID == domain.ID && event.Event == int32(libvirt.DomainEventStopped) {
+				log.Printf("VM stopped")
+				active = 0
+			}
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for domain to stop")
+		}
 	}
 
 	return nil
