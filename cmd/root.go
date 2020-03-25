@@ -51,8 +51,8 @@ func initConfig() {
 	viper.SetDefault("libvirt.network", "default")
 	viper.SetDefault("libvirt.template_dir", "assets/libvirt-templates")
 	viper.SetDefault("image.registry", "assets/images.toml")
-	viper.SetDefault("ping.count", 60)
-	viper.SetDefault("ping.period", time.Second)
+	viper.SetDefault("time.ssh_ping_count", 60)
+	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
 
 	viper.SetConfigType("toml")
