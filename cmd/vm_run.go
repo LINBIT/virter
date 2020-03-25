@@ -34,8 +34,8 @@ func vmRunCommand() *cobra.Command {
 			}
 
 			pinger := tcpping.TCPPinger{
-				Count:  viper.GetInt("ping.count"),
-				Period: viper.GetDuration("ping.period"),
+				Count:  viper.GetInt("time.ssh_ping_count"),
+				Period: viper.GetDuration("time.ssh_ping_period"),
 			}
 
 			sshPublicKey := viper.GetString("auth.ssh_public_key")
