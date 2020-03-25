@@ -1,6 +1,7 @@
 package virter_test
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -295,6 +296,30 @@ func TestVMCommit(t *testing.T) {
 		close(events)
 		close(timeout)
 	}
+}
+
+func TestVMExec(t *testing.T) {
+	directory := MemoryDirectory{}
+
+	l := new(mocks.LibvirtConnection)
+
+	d := mockDomainLookup(l, vmName)
+	l.On("DomainIsActive", d).Return(int32(1), nil)
+
+	// Getting IP address
+	l.On("DomainGetXMLDesc", d, mock.Anything).Return(domainXML, nil)
+	mockNetworkLookup(l)
+
+	docker := new(mocks.DockerClient)
+	mockDockerRun(docker)
+
+	v := virter.New(l, poolName, networkName, directory)
+
+	err := v.VMExec(context.Background(), docker, vmName, "some-docker-image", []byte("some-private-key"))
+	assert.NoError(t, err)
+
+	docker.AssertExpectations(t)
+	l.AssertExpectations(t)
 }
 
 func mockStorageVolDelete(l *mocks.LibvirtConnection, sv libvirt.StorageVol) {

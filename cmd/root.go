@@ -52,6 +52,7 @@ func initConfig() {
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
+	viper.SetDefault("time.docker_timeout", 5*time.Minute)
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {

@@ -2,6 +2,7 @@ package virter
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -406,6 +407,50 @@ func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Du
 		case <-timeout:
 			return fmt.Errorf("timed out waiting for domain to stop")
 		}
+	}
+
+	return nil
+}
+
+// VMExec runs a docker container against a VM.
+func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmName string, dockerImageName string, sshPrivateKey []byte) error {
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return fmt.Errorf("could not get domain: %w", err)
+	}
+
+	active, err := v.libvirt.DomainIsActive(domain)
+	if err != nil {
+		return fmt.Errorf("could not check if domain is active: %w", err)
+	}
+
+	if active == 0 {
+		return fmt.Errorf("cannot exec against VM that is not running")
+	}
+
+	mac, err := v.getMAC(domain)
+	if err != nil {
+		return err
+	}
+
+	network, err := v.libvirt.NetworkLookupByName(v.networkName)
+	if err != nil {
+		return fmt.Errorf("could not get network: %w", err)
+	}
+
+	ips, err := v.findIPs(network, mac)
+	if err != nil {
+		return err
+	}
+	if len(ips) < 1 {
+		return fmt.Errorf("no IP found for domain")
+	}
+
+	ip := ips[0]
+
+	err = dockerRun(ctx, docker, dockerImageName, vmName, ip, sshPrivateKey)
+	if err != nil {
+		return err
 	}
 
 	return nil

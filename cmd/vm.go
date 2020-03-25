@@ -12,6 +12,7 @@ func vmCommand() *cobra.Command {
 	}
 
 	vmCmd.AddCommand(vmCommitCommand())
+	vmCmd.AddCommand(vmExecCommand())
 	vmCmd.AddCommand(vmRmCommand())
 	vmCmd.AddCommand(vmRunCommand())
 	return vmCmd

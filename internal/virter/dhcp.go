@@ -105,65 +105,87 @@ func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {
 }
 
 func (v *Virter) rmDHCPEntry(domain libvirt.Domain) error {
-	domainDescription, err := getDomainDescription(v.libvirt, domain)
+	mac, err := v.getMAC(domain)
 	if err != nil {
 		return err
 	}
-
-	devicesDescription := domainDescription.Devices
-	if devicesDescription == nil {
-		return fmt.Errorf("no devices in domain")
-	}
-	if len(devicesDescription.Interfaces) < 1 {
-		return fmt.Errorf("no interface devices in domain")
-	}
-
-	interfaceDescription := devicesDescription.Interfaces[0]
-
-	macDescription := interfaceDescription.MAC
-	if macDescription == nil {
-		return fmt.Errorf("no MAC in domain interface device")
-	}
-
-	mac := macDescription.Address
 
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return fmt.Errorf("could not get network: %w", err)
 	}
 
-	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	ips, err := v.findIPs(network, mac)
 	if err != nil {
 		return err
 	}
+
+	for _, ip := range ips {
+		log.Printf("Remove DHCP entry from %v to %v", mac, ip)
+		err = v.libvirt.NetworkUpdate(
+			network,
+			// the following 2 arguments are swapped; see
+			// https://github.com/digitalocean/go-libvirt/issues/87
+			uint32(libvirt.NetworkSectionIPDhcpHost),
+			uint32(libvirt.NetworkUpdateCommandDelete),
+			-1,
+			fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
+			libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
+		if err != nil {
+			return fmt.Errorf("could not remove DHCP entry: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (v *Virter) getMAC(domain libvirt.Domain) (string, error) {
+	domainDescription, err := getDomainDescription(v.libvirt, domain)
+	if err != nil {
+		return "", err
+	}
+
+	devicesDescription := domainDescription.Devices
+	if devicesDescription == nil {
+		return "", fmt.Errorf("no devices in domain")
+	}
+	if len(devicesDescription.Interfaces) < 1 {
+		return "", fmt.Errorf("no interface devices in domain")
+	}
+
+	interfaceDescription := devicesDescription.Interfaces[0]
+
+	macDescription := interfaceDescription.MAC
+	if macDescription == nil {
+		return "", fmt.Errorf("no MAC in domain interface device")
+	}
+
+	return macDescription.Address, nil
+}
+
+func (v *Virter) findIPs(network libvirt.Network, mac string) ([]string, error) {
+	ips := []string{}
+
+	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	if err != nil {
+		return ips, err
+	}
 	if len(networkDescription.IPs) < 1 {
-		return fmt.Errorf("no IPs in network")
+		return ips, fmt.Errorf("no IPs in network")
 	}
 
 	ipDescription := networkDescription.IPs[0]
 
 	dhcpDescription := ipDescription.DHCP
 	if dhcpDescription == nil {
-		return fmt.Errorf("no DHCP in network")
+		return ips, fmt.Errorf("no DHCP in network")
 	}
 
 	for _, host := range dhcpDescription.Hosts {
 		if host.MAC == mac {
-			log.Printf("Remove DHCP entry from %v to %v", mac, host.IP)
-			err = v.libvirt.NetworkUpdate(
-				network,
-				// the following 2 arguments are swapped; see
-				// https://github.com/digitalocean/go-libvirt/issues/87
-				uint32(libvirt.NetworkSectionIPDhcpHost),
-				uint32(libvirt.NetworkUpdateCommandDelete),
-				-1,
-				fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, host.IP),
-				libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
-			if err != nil {
-				return fmt.Errorf("could not remove DHCP entry: %w", err)
-			}
+			ips = append(ips, host.IP)
 		}
 	}
 
-	return nil
+	return ips, nil
 }
