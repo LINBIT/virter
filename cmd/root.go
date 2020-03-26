@@ -36,13 +36,11 @@ and resetting, for a stable test environment.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately
 func Execute() {
+	cobra.OnInitialize(initConfig, initSSHFromConfig)
+
 	if err := rootCommand().Execute(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func init() {
-	cobra.OnInitialize(initConfig)
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -60,9 +58,15 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
+		p := configPath()
+
 		// Use config file from standard location
-		viper.AddConfigPath(configPath())
+		viper.AddConfigPath(p)
 		viper.SetConfigName("virter")
+
+		// When using the default config file location, make that also the default key location
+		viper.SetDefault("auth.virter_public_key_path", filepath.Join(p, "id_rsa.pub"))
+		viper.SetDefault("auth.virter_private_key_path", filepath.Join(p, "id_rsa"))
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
@@ -84,4 +88,21 @@ func configPath() string {
 		configHome = filepath.Join(home, ".config")
 	}
 	return filepath.Join(configHome, "virter")
+}
+
+func initSSHFromConfig() {
+	publicPath := viper.GetString("auth.virter_public_key_path")
+	if publicPath == "" {
+		log.Fatal("missing configuration key: auth.virter_public_key_path")
+	}
+
+	privatePath := viper.GetString("auth.virter_private_key_path")
+	if privatePath == "" {
+		log.Fatal("missing configuration key: auth.virter_private_key_path")
+	}
+
+	err := initSSHKeys(publicPath, privatePath)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

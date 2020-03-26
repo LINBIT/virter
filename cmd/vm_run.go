@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,13 +40,24 @@ func vmRunCommand() *cobra.Command {
 				Period: viper.GetDuration("time.ssh_ping_period"),
 			}
 
-			sshPublicKey := viper.GetString("auth.ssh_public_key")
+			publicKeyPath := viper.GetString("auth.virter_public_key_path")
+			publicKey, err := ioutil.ReadFile(publicKeyPath)
+			if err != nil {
+				log.Fatalf("failed to load public key from %s: %v", publicKeyPath, err)
+			}
+
+			publicKeys := []string{strings.TrimSpace(string(publicKey))}
+
+			userPublicKey := viper.GetString("auth.user_public_key")
+			if userPublicKey != "" {
+				publicKeys = append(publicKeys, userPublicKey)
+			}
 
 			c := virter.VMConfig{
-				ImageName:    imageName,
-				VMName:       vmName,
-				VMID:         vmID,
-				SSHPublicKey: sshPublicKey,
+				ImageName:     imageName,
+				VMName:        vmName,
+				VMID:          vmID,
+				SSHPublicKeys: publicKeys,
 			}
 			err = v.VMRun(isogenerator.ExternalISOGenerator{}, pinger, c, waitSSH)
 			if err != nil {

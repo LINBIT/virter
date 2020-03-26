@@ -18,7 +18,7 @@ git clone https://github.com/LINBIT/virter
 cd virter
 go build .
 ./virter image pull centos-7
-AUTH_SSH_PUBLIC_KEY="$(cat ~/.ssh/id_rsa.pub)" ./virter vm run --name centos-7-hello --id 100 --wait-ssh centos-7
+AUTH_USER_PUBLIC_KEY="$(cat ~/.ssh/id_rsa.pub)" ./virter vm run --name centos-7-hello --id 100 --wait-ssh centos-7
 ssh root@192.168.122.100 # assuming default libvirt network configuration
 ./virter vm rm centos-7-hello
 ```
@@ -35,7 +35,7 @@ can specify the SSH public key to be provided to the VMs:
 
 ```
 [auth]
-ssh_public_key = "ssh-rsa ..."
+user_public_key = "ssh-rsa ..."
 ```
 
 Further configuration options are not yet documented. Search the source code

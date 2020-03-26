@@ -64,10 +64,10 @@ func New(libvirtConnection LibvirtConnection,
 
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
-	ImageName    string
-	VMName       string
-	VMID         uint
-	SSHPublicKey string
+	ImageName     string
+	VMName        string
+	VMID          uint
+	SSHPublicKeys []string
 }
 
 // ISOGenerator generates ISO images from file data

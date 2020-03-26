@@ -24,7 +24,7 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, g, vmConfig.VMName, vmConfig.SSHPublicKey)
+	err = v.createCIData(sp, g, vmConfig.VMName, vmConfig.SSHPublicKeys)
 	if err != nil {
 		return err
 	}
@@ -52,13 +52,13 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 	return nil
 }
 
-func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName string, sshPublicKey string) error {
+func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName string, sshPublicKeys []string) error {
 	metaData, err := v.metaData(vmName)
 	if err != nil {
 		return err
 	}
 
-	userData, err := v.userData(vmName, sshPublicKey)
+	userData, err := v.userData(vmName, sshPublicKeys)
 	if err != nil {
 		return err
 	}
@@ -103,10 +103,10 @@ func (v *Virter) metaData(vmName string) (string, error) {
 	return v.renderTemplate(templateMetaData, templateData)
 }
 
-func (v *Virter) userData(vmName string, sshPublicKey string) (string, error) {
+func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error) {
 	templateData := map[string]interface{}{
-		"VMName":       vmName,
-		"SSHPublicKey": sshPublicKey,
+		"VMName":        vmName,
+		"SSHPublicKeys": sshPublicKeys,
 	}
 
 	return v.renderTemplate(templateUserData, templateData)

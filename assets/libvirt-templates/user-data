@@ -1,7 +1,9 @@
 #cloud-config
 disable_root: False
 ssh_authorized_keys:
-  - {{ .SSHPublicKey }}
+{{- range .SSHPublicKeys }}
+  - {{ . }}
+{{- end }}
 preserve_hostname: false
 hostname: {{ .VMName }}
 fqdn: {{ .VMName }}.test
