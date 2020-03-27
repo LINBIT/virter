@@ -14,7 +14,7 @@ type FakeLibvirtConnection struct {
 	vols            map[string]*FakeLibvirtStorageVol
 	network         *FakeLibvirtNetwork
 	domains         map[string]*FakeLibvirtDomain
-	lifecycleEvents *chan libvirt.DomainEventLifecycleMsg
+	lifecycleEvents <-chan libvirt.DomainEventLifecycleMsg
 }
 
 type FakeLibvirtStorageVol struct {
@@ -305,7 +305,7 @@ func (l *FakeLibvirtConnection) DomainSnapshotDelete(Snap libvirt.DomainSnapshot
 }
 
 func (l *FakeLibvirtConnection) LifecycleEvents() (<-chan libvirt.DomainEventLifecycleMsg, error) {
-	return *l.lifecycleEvents, nil
+	return l.lifecycleEvents, nil
 }
 
 func mockLibvirtError(code errorNumber) error {

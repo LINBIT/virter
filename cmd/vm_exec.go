@@ -1,13 +1,9 @@
 package cmd
 
 import (
-	"context"
-	"io/ioutil"
 	"log"
 
-	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
 )
@@ -24,8 +20,7 @@ func vmExecCommand() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			vmName := args[0]
 
-			dockerTimeout := viper.GetDuration("time.docker_timeout")
-			ctx, cancel := context.WithTimeout(context.Background(), dockerTimeout)
+			ctx, cancel := dockerContext()
 			defer cancel()
 
 			v, err := VirterConnect()
@@ -33,15 +28,14 @@ func vmExecCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
-			docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			docker, err := dockerConnect()
 			if err != nil {
-				log.Fatalf("could not connect to Docker %v", err)
+				log.Fatal(err)
 			}
 
-			privateKeyPath := viper.GetString("auth.virter_private_key_path")
-			privateKey, err := ioutil.ReadFile(privateKeyPath)
+			privateKey, err := loadPrivateKey()
 			if err != nil {
-				log.Fatalf("failed to load private key from '%s': %v", privateKeyPath, err)
+				log.Fatal(err)
 			}
 
 			dockerContainerConfig := virter.DockerContainerConfig{

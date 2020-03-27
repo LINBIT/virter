@@ -31,7 +31,7 @@ func TestVMRun(t *testing.T) {
 		ImageName:     imageName,
 		VMName:        vmName,
 		VMID:          vmID,
-		SSHPublicKeys: []string{someSSHKey},
+		SSHPublicKeys: []string{sshPublicKey},
 	}
 	err := v.VMRun(g, w, c, true)
 	assert.NoError(t, err)
@@ -49,6 +49,7 @@ func TestVMRun(t *testing.T) {
 	assert.True(t, domain.active)
 
 	g.AssertExpectations(t)
+	w.AssertExpectations(t)
 }
 
 func mockISOGenerate(g *mocks.ISOGenerator) {
@@ -183,21 +184,17 @@ func TestVMCommit(t *testing.T) {
 
 		an := new(mocks.AfterNotifier)
 
-		timeout := make(chan time.Time, 1)
-		events := make(chan libvirt.DomainEventLifecycleMsg, 1)
 		if r[commitShutdown] {
 			if r[commitShutdownTimeout] {
+				l.lifecycleEvents = make(chan libvirt.DomainEventLifecycleMsg)
+				timeout := make(chan time.Time, 1)
 				timeout <- time.Unix(0, 0)
+				mockAfter(an, timeout)
 			} else {
-				events <- libvirt.DomainEventLifecycleMsg{
-					Dom:    libvirt.Domain{Name: vmName},
-					Event:  int32(libvirt.DomainEventStopped),
-					Detail: int32(libvirt.DomainEventStoppedShutdown),
-				}
+				l.lifecycleEvents = makeShutdownEvents()
+				mockAfter(an, make(chan time.Time))
 			}
 
-			l.lifecycleEvents = &events
-			mockAfter(an, timeout)
 		}
 
 		v := virter.New(l, poolName, networkName, testDirectory())
@@ -214,10 +211,17 @@ func TestVMCommit(t *testing.T) {
 		}
 
 		an.AssertExpectations(t)
-
-		close(events)
-		close(timeout)
 	}
+}
+
+func makeShutdownEvents() chan libvirt.DomainEventLifecycleMsg {
+	events := make(chan libvirt.DomainEventLifecycleMsg, 1)
+	events <- libvirt.DomainEventLifecycleMsg{
+		Dom:    libvirt.Domain{Name: vmName},
+		Event:  int32(libvirt.DomainEventStopped),
+		Detail: int32(libvirt.DomainEventStoppedShutdown),
+	}
+	return events
 }
 
 func TestVMExec(t *testing.T) {
@@ -235,8 +239,8 @@ func TestVMExec(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, testDirectory())
 
-	dockercfg := virter.DockerContainerConfig{ImageName: "some-docker-image"}
-	err := v.VMExec(context.Background(), docker, vmName, dockercfg, []byte("some-private-key"))
+	dockercfg := virter.DockerContainerConfig{ImageName: dockerImageName}
+	err := v.VMExec(context.Background(), docker, vmName, dockercfg, []byte(sshPrivateKey))
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)
@@ -254,6 +258,8 @@ const (
 	ciDataVolumeName  = vmName + "-cidata"
 	scratchVolumeName = vmName + "-scratch"
 	ciDataContent     = "some-ci-data"
-	someSSHKey        = "some-key"
+	sshPublicKey      = "some-key"
+	sshPrivateKey     = "some-private-key"
 	shutdownTimeout   = time.Second
+	dockerImageName   = "some-docker-image"
 )

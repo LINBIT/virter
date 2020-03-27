@@ -1,9 +1,11 @@
 package virter
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // HTTPClient contains required HTTP methods.
@@ -60,6 +62,41 @@ func (v *Virter) imageVolumeXML(name string) (string, error) {
 	}
 
 	return v.renderTemplate(templateVolumeImage, templateData)
+}
+
+// ImageBuildTools includes the dependencies for building an image
+type ImageBuildTools struct {
+	ISOGenerator  ISOGenerator
+	PortWaiter    PortWaiter
+	DockerClient  DockerClient
+	AfterNotifier AfterNotifier
+}
+
+// ImageBuildConfig contains the configuration for building an image
+type ImageBuildConfig struct {
+	DockerContainerConfig DockerContainerConfig
+	SSHPrivateKey         []byte
+	ShutdownTimeout       time.Duration
+}
+
+// ImageBuild builds an image by running a VM and provisioning it
+func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
+	err := v.VMRun(tools.ISOGenerator, tools.PortWaiter, vmConfig, true)
+	if err != nil {
+		return err
+	}
+
+	err = v.VMExec(ctx, tools.DockerClient, vmConfig.VMName, buildConfig.DockerContainerConfig, buildConfig.SSHPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	err = v.VMCommit(tools.AfterNotifier, vmConfig.VMName, true, buildConfig.ShutdownTimeout)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 const templateVolumeImage = "volume-image.xml"
