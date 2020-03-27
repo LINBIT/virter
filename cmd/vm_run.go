@@ -66,7 +66,6 @@ func vmRunCommand() *cobra.Command {
 		},
 	}
 
-	runCmd.MarkFlagRequired("image")
 	runCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of new VM")
 	runCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	runCmd.MarkFlagRequired("id")
