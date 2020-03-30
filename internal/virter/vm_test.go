@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digitalocean/go-libvirt"
+	libvirt "github.com/digitalocean/go-libvirt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -315,7 +315,8 @@ func TestVMExec(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, directory)
 
-	err := v.VMExec(context.Background(), docker, vmName, "some-docker-image", []byte("some-private-key"))
+	dockercfg := virter.DockerContainerConfig{ImageName: "some-docker-image"}
+	err := v.VMExec(context.Background(), docker, vmName, dockercfg, []byte("some-private-key"))
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)

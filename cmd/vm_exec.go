@@ -5,12 +5,15 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/LINBIT/virter/internal/virter"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func vmExecCommand() *cobra.Command {
+	var dockerEnv []string
+
 	execCmd := &cobra.Command{
 		Use:   "exec vm_name docker_image",
 		Short: "Run a Docker container against a VM",
@@ -40,12 +43,17 @@ func vmExecCommand() *cobra.Command {
 				log.Fatalf("failed to load private key from '%s': %v", privateKeyPath, err)
 			}
 
-			err = v.VMExec(ctx, docker, vmName, dockerImageName, privateKey)
+			dockerContainerConfig := virter.DockerContainerConfig{
+				ImageName: dockerImageName,
+				Env:       dockerEnv,
+			}
+			err = v.VMExec(ctx, docker, vmName, dockerContainerConfig, privateKey)
 			if err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
 
+	execCmd.Flags().StringArrayVarP(&dockerEnv, "env", "e", []string{}, "environment variables to pass to the container (e.g., FOO=bar)")
 	return execCmd
 }

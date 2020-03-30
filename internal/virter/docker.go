@@ -22,7 +22,13 @@ type DockerClient interface {
 	ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error)
 }
 
-func dockerRun(ctx context.Context, docker DockerClient, dockerImageName string, vmName string, vmIP string, sshPrivateKey []byte) error {
+// DockerContainerConfig contains the configuration for a to be started container
+type DockerContainerConfig struct {
+	ImageName string   // the name of the container image
+	Env       []string // the environment (variables) passed to the container
+}
+
+func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig DockerContainerConfig, vmName string, vmIP string, sshPrivateKey []byte) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGET=$vmIP -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 
@@ -33,8 +39,8 @@ func dockerRun(ctx context.Context, docker DockerClient, dockerImageName string,
 	resp, err := docker.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image: dockerImageName,
-			Env:   []string{targetEnv, sshPrivateKeyEnv},
+			Image: dockerContainerConfig.ImageName,
+			Env:   append(dockerContainerConfig.Env, targetEnv, sshPrivateKeyEnv),
 		},
 		&container.HostConfig{
 			NetworkMode: "host",

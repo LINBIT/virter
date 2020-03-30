@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/digitalocean/go-libvirt"
+	libvirt "github.com/digitalocean/go-libvirt"
 )
 
 // VMRun starts a VM.
@@ -413,7 +413,7 @@ func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Du
 }
 
 // VMExec runs a docker container against a VM.
-func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmName string, dockerImageName string, sshPrivateKey []byte) error {
+func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmName string, dockerContainerConfig DockerContainerConfig, sshPrivateKey []byte) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
@@ -448,7 +448,7 @@ func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmName string,
 
 	ip := ips[0]
 
-	err = dockerRun(ctx, docker, dockerImageName, vmName, ip, sshPrivateKey)
+	err = dockerRun(ctx, docker, dockerContainerConfig, vmName, ip, sshPrivateKey)
 	if err != nil {
 		return err
 	}
