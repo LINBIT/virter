@@ -264,17 +264,17 @@ func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
 			return fmt.Errorf("could not check if domain is persistent: %w", err)
 		}
 
+		err = v.rmDHCPEntry(domain)
+		if err != nil {
+			return err
+		}
+
 		if active != 0 {
 			log.Print("Stop VM")
 			err = v.libvirt.DomainDestroy(domain)
 			if err != nil {
 				return fmt.Errorf("could not destroy domain: %w", err)
 			}
-		}
-
-		err = v.rmDHCPEntry(domain)
-		if err != nil {
-			return err
 		}
 
 		if persistent != 0 {
