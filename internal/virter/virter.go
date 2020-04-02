@@ -66,6 +66,7 @@ func New(libvirtConnection LibvirtConnection,
 type VMConfig struct {
 	ImageName     string
 	VMName        string
+	MemoryKiB     uint64
 	VMID          uint
 	SSHPublicKeys []string
 }

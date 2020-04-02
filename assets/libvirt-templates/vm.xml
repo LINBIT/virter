@@ -1,6 +1,6 @@
 <domain type='kvm'>
   <name>{{ .VMName }}</name>
-  <memory unit='GiB'>1</memory>
+  <memory unit='KiB'>{{ .MemoryKiB }}</memory>
   <vcpu placement='static'>1</vcpu>
   <os>
     <type arch='x86_64'>hvm</type>

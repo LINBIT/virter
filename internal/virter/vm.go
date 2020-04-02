@@ -36,7 +36,7 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 		return err
 	}
 
-	ip, err := v.createVM(sp, vmConfig.VMName, vmConfig.VMID)
+	ip, err := v.createVM(sp, vmConfig.VMName, vmConfig.VMID, vmConfig.MemoryKiB)
 	if err != nil {
 		return err
 	}
@@ -180,10 +180,10 @@ func (v *Virter) scratchVolumeXML(name string) (string, error) {
 	return v.renderTemplate(templateScratchVolume, templateData)
 }
 
-func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint) (net.IP, error) {
+func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint, memKiB uint64) (net.IP, error) {
 	mac := qemuMAC(vmID)
 
-	xml, err := v.vmXML(sp.Name, vmName, mac)
+	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB)
 	if err != nil {
 		return nil, err
 	}
@@ -212,11 +212,12 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint) (net
 	return ip, nil
 }
 
-func (v *Virter) vmXML(poolName string, vmName string, mac string) (string, error) {
+func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64) (string, error) {
 	templateData := map[string]interface{}{
-		"PoolName": poolName,
-		"VMName":   vmName,
-		"MAC":      mac,
+		"PoolName":  poolName,
+		"VMName":    vmName,
+		"MAC":       mac,
+		"MemoryKiB": memKiB,
 	}
 
 	return v.renderTemplate(templateVM, templateData)
