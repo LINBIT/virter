@@ -240,7 +240,7 @@ func TestVMExec(t *testing.T) {
 	v := virter.New(l, poolName, networkName, testDirectory())
 
 	dockercfg := virter.DockerContainerConfig{ImageName: dockerImageName}
-	err := v.VMExec(context.Background(), docker, vmName, dockercfg, []byte(sshPrivateKey))
+	err := v.VMExec(context.Background(), docker, []string{vmName}, dockercfg, []byte(sshPrivateKey))
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)

@@ -427,48 +427,60 @@ func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Du
 	return nil
 }
 
-// VMExec runs a docker container against a VM.
-func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmName string, dockerContainerConfig DockerContainerConfig, sshPrivateKey []byte) error {
-	domain, err := v.libvirt.DomainLookupByName(vmName)
-	if err != nil {
-		return fmt.Errorf("could not get domain: %w", err)
-	}
-
-	active, err := v.libvirt.DomainIsActive(domain)
-	if err != nil {
-		return fmt.Errorf("could not check if domain is active: %w", err)
-	}
-
-	if active == 0 {
-		return fmt.Errorf("cannot exec against VM that is not running")
-	}
-
-	mac, err := v.getMAC(domain)
-	if err != nil {
-		return err
-	}
-
+// VMExec runs a docker container against some VMs.
+func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmNames []string, dockerContainerConfig DockerContainerConfig, sshPrivateKey []byte) error {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return fmt.Errorf("could not get network: %w", err)
 	}
 
-	ips, err := v.findIPs(network, mac)
-	if err != nil {
-		return err
-	}
-	if len(ips) < 1 {
-		return fmt.Errorf("no IP found for domain")
+	var ips []string
+	for _, vmName := range vmNames {
+		domain, err := v.libvirt.DomainLookupByName(vmName)
+		if err != nil {
+			return fmt.Errorf("could not get domain '%s': %w", vmName, err)
+		}
+
+		active, err := v.libvirt.DomainIsActive(domain)
+		if err != nil {
+			return fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
+		}
+
+		if active == 0 {
+			return fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
+		}
+
+		ip, err := v.findVMIP(network, domain)
+		if err != nil {
+			return fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
+		}
+
+		ips = append(ips, ip)
 	}
 
-	ip := ips[0]
-
-	err = dockerRun(ctx, docker, dockerContainerConfig, vmName, ip, sshPrivateKey)
+	err = dockerRun(ctx, docker, dockerContainerConfig, ips, sshPrivateKey)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (string, error) {
+	mac, err := v.getMAC(domain)
+	if err != nil {
+		return "", err
+	}
+
+	ips, err := v.findIPs(network, mac)
+	if err != nil {
+		return "", err
+	}
+	if len(ips) < 1 {
+		return "", fmt.Errorf("no IP found for domain")
+	}
+
+	return ips[0], nil
 }
 
 const templateMetaData = "meta-data"

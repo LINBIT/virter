@@ -66,8 +66,9 @@ step, and then committing the resulting volume.`,
 			}
 
 			dockerContainerConfig := virter.DockerContainerConfig{
-				ImageName: dockerImageName,
-				Env:       dockerEnv,
+				ContainerName: "virter-build-" + newImageName,
+				ImageName:     dockerImageName,
+				Env:           dockerEnv,
 			}
 			buildConfig := virter.ImageBuildConfig{
 				DockerContainerConfig: dockerContainerConfig,

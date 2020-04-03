@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -25,17 +26,17 @@ type DockerClient interface {
 
 // DockerContainerConfig contains the configuration for a to be started container
 type DockerContainerConfig struct {
-	ImageName string   // the name of the container image
-	Env       []string // the environment (variables) passed to the container
+	ContainerName string   // the name of the container
+	ImageName     string   // the name of the container image
+	Env           []string // the environment (variables) passed to the container
 }
 
-func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig DockerContainerConfig, vmName string, vmIP string, sshPrivateKey []byte) error {
+func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig DockerContainerConfig, vmIPs []string, sshPrivateKey []byte) error {
 	// This is roughly equivalent to
-	// docker run --rm --network=host -e TARGET=$vmIP -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
+	// docker run --rm --network=host -e TARGET=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 
-	targetEnv := fmt.Sprintf("TARGET=%s", vmIP)
+	targetEnv := fmt.Sprintf("TARGET=%s", strings.Join(vmIPs, ","))
 	sshPrivateKeyEnv := fmt.Sprintf("SSH_PRIVATE_KEY=%s", sshPrivateKey)
-	containerName := fmt.Sprintf("virter-%s", vmName)
 
 	resp, err := docker.ContainerCreate(
 		ctx,
@@ -48,7 +49,7 @@ func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig D
 			AutoRemove:  true,
 		},
 		nil,
-		containerName)
+		dockerContainerConfig.ContainerName)
 	if err != nil {
 		return fmt.Errorf("could not create container: %w", err)
 	}

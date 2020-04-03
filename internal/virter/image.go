@@ -86,7 +86,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 		return err
 	}
 
-	err = v.VMExec(ctx, tools.DockerClient, vmConfig.VMName, buildConfig.DockerContainerConfig, buildConfig.SSHPrivateKey)
+	err = v.VMExec(ctx, tools.DockerClient, []string{vmConfig.VMName}, buildConfig.DockerContainerConfig, buildConfig.SSHPrivateKey)
 	if err != nil {
 		return err
 	}

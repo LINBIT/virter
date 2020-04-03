@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strings"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -13,12 +15,12 @@ func vmExecCommand() *cobra.Command {
 	var dockerImageName string
 
 	execCmd := &cobra.Command{
-		Use:   "exec vm_name",
+		Use:   "exec vm_name [vm_name...]",
 		Short: "Run a Docker container against a VM",
 		Long:  `Run a Docker container on the host with a connection to a VM.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			vmName := args[0]
+			vmNames := args
 
 			ctx, cancel := dockerContext()
 			defer cancel()
@@ -39,10 +41,11 @@ func vmExecCommand() *cobra.Command {
 			}
 
 			dockerContainerConfig := virter.DockerContainerConfig{
-				ImageName: dockerImageName,
-				Env:       dockerEnv,
+				ContainerName: "virter-" + strings.Join(vmNames, "-"),
+				ImageName:     dockerImageName,
+				Env:           dockerEnv,
 			}
-			err = v.VMExec(ctx, docker, vmName, dockerContainerConfig, privateKey)
+			err = v.VMExec(ctx, docker, vmNames, dockerContainerConfig, privateKey)
 			if err != nil {
 				log.Fatal(err)
 			}
