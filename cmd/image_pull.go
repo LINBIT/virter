@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"io"
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"

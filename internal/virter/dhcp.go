@@ -2,8 +2,9 @@ package virter
 
 import (
 	"fmt"
-	"log"
 	"net"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/digitalocean/go-libvirt"
 )

@@ -5,8 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
