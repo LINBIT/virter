@@ -15,7 +15,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+var defaultLogLevel = log.InfoLevel.String()
+
 var cfgFile string
+var logLevel string
 
 func rootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
@@ -25,10 +28,18 @@ func rootCommand() *cobra.Command {
 machines are controlled with libvirt, with qcow2 chained images for storage
 and cloud-init for basic access configuration. This allows for fast cloning
 and resetting, for a stable test environment.`,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			level, err := log.ParseLevel(logLevel)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.SetLevel(level)
+		},
 	}
 
 	configName := filepath.Join(configPath(), "virter.toml")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", defaultLogLevel, "Log level")
 
 	rootCmd.AddCommand(imageCommand())
 	rootCmd.AddCommand(vmCommand())
