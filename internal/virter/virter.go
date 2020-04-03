@@ -67,6 +67,7 @@ type VMConfig struct {
 	ImageName     string
 	VMName        string
 	MemoryKiB     uint64
+	VCPUs         uint
 	VMID          uint
 	SSHPublicKeys []string
 }

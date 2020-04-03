@@ -192,9 +192,10 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	vmName := vmConfig.VMName
 	vmID := vmConfig.VMID
 	memKiB := vmConfig.MemoryKiB
+	vcpus := vmConfig.VCPUs
 	mac := qemuMAC(vmID)
 
-	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB)
+	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB, vcpus)
 	if err != nil {
 		return nil, err
 	}
@@ -223,12 +224,13 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	return ip, nil
 }
 
-func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64) (string, error) {
+func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64, vcpus uint) (string, error) {
 	templateData := map[string]interface{}{
 		"PoolName":  poolName,
 		"VMName":    vmName,
 		"MAC":       mac,
 		"MemoryKiB": memKiB,
+		"VCPUs":     vcpus,
 	}
 
 	return v.renderTemplate(templateVM, templateData)

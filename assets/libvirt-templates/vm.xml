@@ -1,7 +1,7 @@
 <domain type='kvm'>
   <name>{{ .VMName }}</name>
   <memory unit='KiB'>{{ .MemoryKiB }}</memory>
-  <vcpu placement='static'>1</vcpu>
+  <vcpu placement='static'>{{ .VCPUs }}</vcpu>
   <os>
     <type arch='x86_64'>hvm</type>
     <boot dev='hd'/>

@@ -19,6 +19,8 @@ func vmRunCommand() *cobra.Command {
 	var mem *unit.Value
 	var memKiB uint64
 
+	var vcpus uint
+
 	runCmd := &cobra.Command{
 		Use:   "run image",
 		Short: "Start a virtual machine with a given image",
@@ -47,6 +49,7 @@ func vmRunCommand() *cobra.Command {
 				ImageName:     imageName,
 				VMName:        vmName,
 				MemoryKiB:     memKiB,
+				VCPUs:         vcpus,
 				VMID:          vmID,
 				SSHPublicKeys: publicKeys,
 			}
@@ -71,6 +74,7 @@ func vmRunCommand() *cobra.Command {
 	u := unit.MustNewUnit(units)
 	mem = u.MustNewValue(1*units["G"], unit.None)
 	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
+	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 
 	return runCmd
 }
