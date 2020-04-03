@@ -19,24 +19,24 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 	}
 
 	log.Print("Create boot volume")
-	err = v.createVMVolume(sp, vmConfig.ImageName, vmConfig.VMName)
+	err = v.createVMVolume(sp, vmConfig)
 	if err != nil {
 		return err
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, g, vmConfig.VMName, vmConfig.SSHPublicKeys)
+	err = v.createCIData(sp, g, vmConfig)
 	if err != nil {
 		return err
 	}
 
 	log.Print("Create scratch volume")
-	err = v.createScratchVolume(sp, vmConfig.VMName)
+	err = v.createScratchVolume(sp, vmConfig)
 	if err != nil {
 		return err
 	}
 
-	ip, err := v.createVM(sp, vmConfig.VMName, vmConfig.VMID, vmConfig.MemoryKiB)
+	ip, err := v.createVM(sp, vmConfig)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,10 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 	return nil
 }
 
-func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmName string, sshPublicKeys []string) error {
+func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmConfig VMConfig) error {
+	vmName := vmConfig.VMName
+	sshPublicKeys := vmConfig.SSHPublicKeys
+
 	metaData, err := v.metaData(vmName)
 	if err != nil {
 		return err
@@ -121,7 +124,10 @@ func (v *Virter) ciDataVolumeXML(name string) (string, error) {
 	return v.renderTemplate(templateCIData, templateData)
 }
 
-func (v *Virter) createVMVolume(sp libvirt.StoragePool, imageName string, vmName string) error {
+func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
+	imageName := vmConfig.ImageName
+	vmName := vmConfig.VMName
+
 	backingVolume, err := v.libvirt.StorageVolLookupByName(sp, imageName)
 	if err != nil {
 		return fmt.Errorf("could not get backing image volume: %w", err)
@@ -154,7 +160,9 @@ func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
 	return v.renderTemplate(templateVMVolume, templateData)
 }
 
-func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmName string) error {
+func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
+	vmName := vmConfig.VMName
+
 	xml, err := v.scratchVolumeXML(scratchVolumeName(vmName))
 	if err != nil {
 		return err
@@ -180,7 +188,10 @@ func (v *Virter) scratchVolumeXML(name string) (string, error) {
 	return v.renderTemplate(templateScratchVolume, templateData)
 }
 
-func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint, memKiB uint64) (net.IP, error) {
+func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
+	vmName := vmConfig.VMName
+	vmID := vmConfig.VMID
+	memKiB := vmConfig.MemoryKiB
 	mac := qemuMAC(vmID)
 
 	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB)
@@ -189,7 +200,7 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmName string, vmID uint, memK
 	}
 
 	log.Print("Define VM")
-	err = v.createScratchVolume(sp, vmName)
+	err = v.createScratchVolume(sp, vmConfig)
 	d, err := v.libvirt.DomainDefineXML(xml)
 	if err != nil {
 		return nil, fmt.Errorf("could not define domain: %w", err)
