@@ -72,6 +72,7 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	} else {
 		p := configPath()
+		os.MkdirAll(p, 0700)
 
 		// Use config file from standard location
 		viper.AddConfigPath(p)
