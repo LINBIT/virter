@@ -224,7 +224,7 @@ func makeShutdownEvents() chan libvirt.DomainEventLifecycleMsg {
 	return events
 }
 
-func TestVMExec(t *testing.T) {
+func TestVMExecDocker(t *testing.T) {
 	l := newFakeLibvirtConnection()
 
 	domain := newFakeLibvirtDomain(vmMAC)
@@ -240,7 +240,7 @@ func TestVMExec(t *testing.T) {
 	v := virter.New(l, poolName, networkName, testDirectory())
 
 	dockercfg := virter.DockerContainerConfig{ImageName: dockerImageName}
-	err := v.VMExec(context.Background(), docker, []string{vmName}, dockercfg, []byte(sshPrivateKey))
+	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, dockercfg, []byte(sshPrivateKey))
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)

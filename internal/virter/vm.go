@@ -5,9 +5,12 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
@@ -427,43 +430,134 @@ func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Du
 	return nil
 }
 
-// VMExec runs a docker container against some VMs.
-func (v *Virter) VMExec(ctx context.Context, docker DockerClient, vmNames []string, dockerContainerConfig DockerContainerConfig, sshPrivateKey []byte) error {
+func (v *Virter) getIPs(vmNames []string) ([]string, error) {
+	var ips []string
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
-		return fmt.Errorf("could not get network: %w", err)
+		return ips, fmt.Errorf("could not get network: %w", err)
 	}
 
-	var ips []string
 	for _, vmName := range vmNames {
 		domain, err := v.libvirt.DomainLookupByName(vmName)
 		if err != nil {
-			return fmt.Errorf("could not get domain '%s': %w", vmName, err)
+			return ips, fmt.Errorf("could not get domain '%s': %w", vmName, err)
 		}
 
 		active, err := v.libvirt.DomainIsActive(domain)
 		if err != nil {
-			return fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
+			return ips, fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
 		}
 
 		if active == 0 {
-			return fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
+			return ips, fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
 		}
 
 		ip, err := v.findVMIP(network, domain)
 		if err != nil {
-			return fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
+			return ips, fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
 		}
 
 		ips = append(ips, ip)
 	}
+	return ips, nil
+}
 
-	err = dockerRun(ctx, docker, dockerContainerConfig, ips, sshPrivateKey)
+// VMExecDocker runs a docker container against some VMs.
+func (v *Virter) VMExecDocker(ctx context.Context, docker DockerClient, vmNames []string, dockerContainerConfig DockerContainerConfig, sshPrivateKey []byte) error {
+	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
 
+	return dockerRun(ctx, docker, dockerContainerConfig, ips, sshPrivateKey)
+}
+
+// VMExecShell runs a simple shell command against some VMs.
+func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ShellStep) error {
+	ips, err := v.getIPs(vmNames)
+	if err != nil {
+		return err
+	}
+
+	signer, err := ssh.ParsePrivateKey(sshPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	config := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	for _, ip := range ips {
+		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
+		if err := runSSHCommand(config, net.JoinHostPort(ip, "22"), shellStep.Script, shellStep.Env); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env []string) error {
+	client, err := ssh.Dial("tcp", ipPort, config)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+
+	// there is a session.Setenv(), but usually ssh, for good reasons, does only alow to set a
+	// limited set of variables/no user variables at all. Fake this setting it in the script + export
+	// this certainly would need some shell escaping, but hey, if a user wants to destroy her VM, have fun injecting stuff.
+	var envBlob string
+	for _, kv := range env {
+		kvs := strings.SplitN(kv, "=", 2)
+		if len(kvs) == 1 { // "FOO="
+			kvs = append(kvs, "")
+		}
+		// now we need to have 2
+		if len(kvs) != 2 {
+			return fmt.Errorf("Got malformed shell variable: '%s'", kv)
+		}
+		envBlob += fmt.Sprintln(kv, "; export ", kvs[0])
+	}
+
+	inp, err := session.StdinPipe()
+	if err != nil {
+		return err
+	}
+	outp, err := session.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	errp, err := session.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go logLines(&wg, "SSH stdout: ", outp)
+	go logLines(&wg, "SSH stderr: ", errp)
+	if err := session.Shell(); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(inp, envBlob, script); err != nil {
+		return err
+	}
+	inp.Close()
+	err = session.Wait()
+	wg.Wait()
+
+	return err
 }
 
 func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (string, error) {

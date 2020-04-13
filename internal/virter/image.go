@@ -77,6 +77,7 @@ type ImageBuildConfig struct {
 	DockerContainerConfig DockerContainerConfig
 	SSHPrivateKey         []byte
 	ShutdownTimeout       time.Duration
+	ProvisionConfig       ProvisionConfig
 }
 
 // ImageBuild builds an image by running a VM and provisioning it
@@ -86,9 +87,22 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 		return err
 	}
 
-	err = v.VMExec(ctx, tools.DockerClient, []string{vmConfig.VMName}, buildConfig.DockerContainerConfig, buildConfig.SSHPrivateKey)
-	if err != nil {
-		return err
+	vmNames := []string{vmConfig.VMName}
+	sshPrivateKey := buildConfig.SSHPrivateKey
+
+	for _, s := range buildConfig.ProvisionConfig.Steps {
+		if s.Docker != nil {
+			dockerContainerConfig := buildConfig.DockerContainerConfig
+			dockerContainerConfig.ImageName = s.Docker.Image
+			dockerContainerConfig.Env = s.Docker.Env
+			err = v.VMExecDocker(ctx, tools.DockerClient, vmNames, dockerContainerConfig, sshPrivateKey)
+		} else if s.Shell != nil {
+			err = v.VMExecShell(ctx, vmNames, sshPrivateKey, s.Shell)
+		}
+
+		if err != nil {
+			return err
+		}
 	}
 
 	err = v.VMCommit(tools.AfterNotifier, vmConfig.VMName, true, buildConfig.ShutdownTimeout)

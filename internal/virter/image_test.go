@@ -105,11 +105,22 @@ func TestImageBuild(t *testing.T) {
 		SSHPublicKeys: []string{sshPublicKey},
 	}
 
-	dockercfg := virter.DockerContainerConfig{ImageName: dockerImageName}
+	provisionConfig := virter.ProvisionConfig{
+		Steps: []virter.Step{
+			virter.Step{
+				Docker: &virter.DockerStep{
+					Image: dockerImageName,
+				},
+			},
+		},
+	}
+
+	dockercfg := virter.DockerContainerConfig{}
 	buildConfig := virter.ImageBuildConfig{
 		DockerContainerConfig: dockercfg,
 		SSHPrivateKey:         []byte(sshPrivateKey),
 		ShutdownTimeout:       shutdownTimeout,
+		ProvisionConfig:       provisionConfig,
 	}
 
 	err := v.ImageBuild(context.Background(), tools, vmConfig, buildConfig)

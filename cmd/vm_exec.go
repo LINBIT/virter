@@ -1,18 +1,18 @@
 package cmd
 
 import (
+	"context"
 	"strings"
 
+	"github.com/BurntSushi/toml"
+	"github.com/LINBIT/virter/internal/virter"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
-
-	"github.com/LINBIT/virter/internal/virter"
 )
 
 func vmExecCommand() *cobra.Command {
-	var dockerEnv []string
-	var dockerImageName string
+	var provisionFile string
 
 	execCmd := &cobra.Command{
 		Use:   "exec vm_name [vm_name...]",
@@ -20,41 +20,79 @@ func vmExecCommand() *cobra.Command {
 		Long:  `Run a Docker container on the host with a connection to a VM.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			vmNames := args
-
-			ctx, cancel := dockerContext()
-			defer cancel()
-
-			v, err := VirterConnect()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			docker, err := dockerConnect()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			privateKey, err := loadPrivateKey()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			dockerContainerConfig := virter.DockerContainerConfig{
-				ContainerName: "virter-" + strings.Join(vmNames, "-"),
-				ImageName:     dockerImageName,
-				Env:           dockerEnv,
-			}
-			err = v.VMExec(ctx, docker, vmNames, dockerContainerConfig, privateKey)
-			if err != nil {
+			if err := execProvision(provisionFile, args); err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
 
-	execCmd.Flags().StringArrayVarP(&dockerEnv, "env", "e", []string{}, "environment variables to pass to the container (e.g., FOO=bar)")
-	execCmd.Flags().StringVarP(&dockerImageName, "docker-image", "d", "", "name of Docker image to run")
-	execCmd.MarkFlagRequired("docker-image")
+	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
+	execCmd.MarkFlagRequired("provision")
 
 	return execCmd
+}
+
+func execProvision(provisionFile string, vmNames []string) error {
+	var pc virter.ProvisionConfig
+
+	_, err := toml.DecodeFile(provisionFile, &pc)
+	if err != nil {
+		return err
+	}
+
+	for _, s := range pc.Steps {
+		if s.Docker != nil {
+			if err := execDocker(s.Docker, vmNames); err != nil {
+				return err
+			}
+		} else if s.Shell != nil {
+			if err := execShell(s.Shell, vmNames); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func execDocker(s *virter.DockerStep, vmNames []string) error {
+	ctx, cancel := dockerContext()
+	defer cancel()
+
+	v, err := VirterConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	docker, err := dockerConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	privateKey, err := loadPrivateKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dockerContainerConfig := virter.DockerContainerConfig{
+		ContainerName: "virter-" + strings.Join(vmNames, "-"),
+		ImageName:     s.Image,
+		Env:           s.Env,
+	}
+
+	return v.VMExecDocker(ctx, docker, vmNames, dockerContainerConfig, privateKey)
+}
+
+func execShell(s *virter.ShellStep, vmNames []string) error {
+	v, err := VirterConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	privateKey, err := loadPrivateKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return v.VMExecShell(context.TODO(), vmNames, privateKey, s)
 }

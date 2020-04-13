@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -12,9 +13,8 @@ import (
 )
 
 func imageBuildCommand() *cobra.Command {
-	var dockerEnv []string
-	var dockerImageName string
 	var vmID uint
+	var provisionFile string
 
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
@@ -69,13 +69,19 @@ step, and then committing the resulting volume.`,
 
 			dockerContainerConfig := virter.DockerContainerConfig{
 				ContainerName: "virter-build-" + newImageName,
-				ImageName:     dockerImageName,
-				Env:           dockerEnv,
 			}
+
+			var provisionConfig virter.ProvisionConfig
+			_, err = toml.DecodeFile(provisionFile, &provisionConfig)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			buildConfig := virter.ImageBuildConfig{
 				DockerContainerConfig: dockerContainerConfig,
 				SSHPrivateKey:         privateKey,
 				ShutdownTimeout:       shutdownTimeout,
+				ProvisionConfig:       provisionConfig,
 			}
 
 			err = v.ImageBuild(ctx, tools, vmConfig, buildConfig)
@@ -85,9 +91,8 @@ step, and then committing the resulting volume.`,
 		},
 	}
 
-	buildCmd.Flags().StringArrayVarP(&dockerEnv, "env", "e", []string{}, "environment variables to pass to the container (e.g., FOO=bar)")
-	buildCmd.Flags().StringVarP(&dockerImageName, "docker-image", "d", "", "name of Docker image to run")
-	buildCmd.MarkFlagRequired("docker-image")
+	buildCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
+	buildCmd.MarkFlagRequired("provision")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.MarkFlagRequired("id")
 
