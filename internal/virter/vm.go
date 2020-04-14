@@ -473,7 +473,7 @@ func (v *Virter) VMExecDocker(ctx context.Context, docker DockerClient, vmNames 
 }
 
 // VMExecShell runs a simple shell command against some VMs.
-func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ShellStep) error {
+func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ProvisionShellStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err

@@ -1,21 +1,24 @@
 package virter
 
-type DockerStep struct {
+// ProvisionDockerStep is a single provisioniong step executed in a docker container
+type ProvisionDockerStep struct {
 	Image string   `toml:"image"`
 	Env   []string `toml:"env"`
 }
 
-type ShellStep struct {
+// ProvisionShellStep is a single provisioniong step executed in a shell (via ssh)
+type ProvisionShellStep struct {
 	Script string   `toml:"script"`
 	Env    []string `toml:"env"`
 }
 
-type Step struct {
-	Docker *DockerStep `toml:"docker,omitempty"`
-	Shell  *ShellStep  `toml:"shell,omitempty"`
+// ProvisionStep is a single provisioniong step
+type ProvisionStep struct {
+	Docker *ProvisionDockerStep `toml:"docker,omitempty"`
+	Shell  *ProvisionShellStep  `toml:"shell,omitempty"`
 }
 
 type ProvisionConfig struct {
-	Memory string `toml:"memory"`
-	Steps  []Step `toml:"steps"`
+	Memory string          `toml:"memory"`
+	Steps  []ProvisionStep `toml:"steps"`
 }

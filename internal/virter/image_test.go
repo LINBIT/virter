@@ -106,9 +106,9 @@ func TestImageBuild(t *testing.T) {
 	}
 
 	provisionConfig := virter.ProvisionConfig{
-		Steps: []virter.Step{
-			virter.Step{
-				Docker: &virter.DockerStep{
+		Steps: []virter.ProvisionStep{
+			virter.ProvisionStep{
+				Docker: &virter.ProvisionDockerStep{
 					Image: dockerImageName,
 				},
 			},

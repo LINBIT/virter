@@ -55,7 +55,7 @@ func execProvision(provisionFile string, vmNames []string) error {
 	return nil
 }
 
-func execDocker(s *virter.DockerStep, vmNames []string) error {
+func execDocker(s *virter.ProvisionDockerStep, vmNames []string) error {
 	ctx, cancel := dockerContext()
 	defer cancel()
 
@@ -83,7 +83,7 @@ func execDocker(s *virter.DockerStep, vmNames []string) error {
 	return v.VMExecDocker(ctx, docker, vmNames, dockerContainerConfig, privateKey)
 }
 
-func execShell(s *virter.ShellStep, vmNames []string) error {
+func execShell(s *virter.ProvisionShellStep, vmNames []string) error {
 	v, err := VirterConnect()
 	if err != nil {
 		log.Fatal(err)
