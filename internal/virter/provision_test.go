@@ -36,6 +36,20 @@ env = ['rck=was', 'foo=rck']
 script = "echo rck"
 `
 
+	invalidGlobalOnly := `
+env = ['foo', 'bar=baz']
+[[steps]]
+[steps.shell]
+script = "echo rck"
+`
+
+	invalidLocalOnly := `
+[[steps]]
+[steps.shell]
+env = ['', 'bar=baz']
+script = "echo rck"
+`
+
 	// IMPORTANT: this asumes 1 shell step!
 	tests := []struct {
 		input    string
@@ -46,14 +60,21 @@ script = "echo rck"
 		{validLocalOnly, true, []string{"foo=bar", "bar=baz=lala"}},
 		{bothDistinct, true, []string{"foo=bar", "bar=baz", "rck=was", "here="}},
 		{bothOverride, true, []string{"foo=rck", "bar=baz", "rck=was"}},
+		{invalidGlobalOnly, false, []string{}},
+		{invalidLocalOnly, false, []string{}},
 	}
 
 	for i, tc := range tests {
 		r := strings.NewReader(tc.input)
 		pc, err := NewProvisionConfig(r)
-		if err != nil && tc.valid {
-			t.Errorf("Expexted test %d to be valid", i)
+
+		if err != nil {
+			if tc.valid {
+				t.Errorf("Expexted test %d to be valid", i)
+			}
+			continue // err but also expected to be not valid
 		}
+
 		e1, e2 := pc.Steps[0].Shell.Env, tc.expected
 		if !envEqual(e1, e2) {
 			t.Errorf("Expexted test %d cfg env (%q) and generated env (%q) to be equal", i, e1, e2)

@@ -107,9 +107,8 @@ func NewProvisionConfig(provReader io.Reader) (ProvisionConfig, error) {
 		return pc, err
 	}
 
-	if len(pc.Env) == 0 {
-		return pc, nil
-	}
+	// do not early return if len(pc.Env) == 0;
+	// we still want to run the checks for the "lower"/in Steps.*.Env variables
 
 	globalEnv, err := getEnvMap(pc.Env)
 	if err != nil {
