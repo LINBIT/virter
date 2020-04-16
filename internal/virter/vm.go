@@ -520,13 +520,6 @@ func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env [
 	var envBlob string
 	for _, kv := range env {
 		kvs := strings.SplitN(kv, "=", 2)
-		if len(kvs) == 1 { // "FOO="
-			kvs = append(kvs, "")
-		}
-		// now we need to have 2
-		if len(kvs) != 2 {
-			return fmt.Errorf("Got malformed shell variable: '%s'", kv)
-		}
 		envBlob += fmt.Sprintln(kv, "; export ", kvs[0])
 	}
 

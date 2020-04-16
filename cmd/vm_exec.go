@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/LINBIT/virter/internal/virter"
 	log "github.com/sirupsen/logrus"
 
@@ -33,9 +33,13 @@ func vmExecCommand() *cobra.Command {
 }
 
 func execProvision(provisionFile string, vmNames []string) error {
-	var pc virter.ProvisionConfig
+	r, err := os.Open(provisionFile)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
 
-	_, err := toml.DecodeFile(provisionFile, &pc)
+	pc, err := virter.NewProvisionConfig(r)
 	if err != nil {
 		return err
 	}

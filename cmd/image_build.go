@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	"github.com/BurntSushi/toml"
+	"os"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -71,8 +72,12 @@ step, and then committing the resulting volume.`,
 				ContainerName: "virter-build-" + newImageName,
 			}
 
-			var provisionConfig virter.ProvisionConfig
-			_, err = toml.DecodeFile(provisionFile, &provisionConfig)
+			r, err := os.Open(provisionFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer r.Close()
+			provisionConfig, err := virter.NewProvisionConfig(r)
 			if err != nil {
 				log.Fatal(err)
 			}
