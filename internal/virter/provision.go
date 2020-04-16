@@ -3,6 +3,7 @@ package virter
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -84,6 +85,17 @@ func mergeEnv(upper, lower *map[string]string) []string {
 		env = append(env, k+"="+v)
 	}
 	return env
+}
+
+// NewProvisionConfigFile returns a ProvisionConfig from a file patch by calling NewProvisionConfig
+func NewProvisionConfigFile(provisionFile string) (ProvisionConfig, error) {
+	r, err := os.Open(provisionFile)
+	if err != nil {
+		return ProvisionConfig{}, err
+	}
+	defer r.Close()
+
+	return NewProvisionConfig(r)
 }
 
 // NewProvisionConfig returns a ProvisionConfig and does some necesary checks and for example merges the global env to the individual steps.

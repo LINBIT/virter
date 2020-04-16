@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/LINBIT/virter/internal/virter"
@@ -33,13 +32,7 @@ func vmExecCommand() *cobra.Command {
 }
 
 func execProvision(provisionFile string, vmNames []string) error {
-	r, err := os.Open(provisionFile)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	pc, err := virter.NewProvisionConfig(r)
+	pc, err := virter.NewProvisionConfigFile(provisionFile)
 	if err != nil {
 		return err
 	}

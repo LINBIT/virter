@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -72,12 +70,7 @@ step, and then committing the resulting volume.`,
 				ContainerName: "virter-build-" + newImageName,
 			}
 
-			r, err := os.Open(provisionFile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer r.Close()
-			provisionConfig, err := virter.NewProvisionConfig(r)
+			provisionConfig, err := virter.NewProvisionConfigFile(provisionFile)
 			if err != nil {
 				log.Fatal(err)
 			}
