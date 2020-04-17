@@ -29,9 +29,8 @@ type ProvisionStep struct {
 
 // ProvisionConfig holds the configuration of the whole provisioning
 type ProvisionConfig struct {
-	Memory string          `toml:"memory"`
-	Env    []string        `toml:"env"`
-	Steps  []ProvisionStep `toml:"steps"`
+	Env   []string        `toml:"env"`
+	Steps []ProvisionStep `toml:"steps"`
 }
 
 // getEnvString returns an env string "foo=bar" as "foo", "bar" and checks for a limited number of errors
