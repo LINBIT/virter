@@ -30,16 +30,10 @@ Virter requires:
 * A running libvirt daemon on the host where it is run
 * The `genisoimage` binary in your `PATH`
 
-Configuration is read by default from `~/.config/virter/virter.toml`. Here you
-can specify the SSH public key to be provided to the VMs:
+Configuration is read by default from `~/.config/virter/virter.toml`.
 
-```
-[auth]
-user_public_key = "ssh-rsa ..."
-```
-
-Further configuration options are not yet documented. Search the source code
-for `viper.SetDefault`.
+When starting virter for the first time, a default configuration file will be
+generated, including documentation about the various flags.
 
 ### Network domain
 
