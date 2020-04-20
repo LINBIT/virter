@@ -21,10 +21,17 @@ type ProvisionShellStep struct {
 	Env    []string `toml:"env"`
 }
 
+// ProvisionRsyncStep is used to copy files to the target via the rsync utility
+type ProvisionRsyncStep struct {
+	Source string `toml:"source"`
+	Dest   string `toml:"dest"`
+}
+
 // ProvisionStep is a single provisioniong step
 type ProvisionStep struct {
 	Docker *ProvisionDockerStep `toml:"docker,omitempty"`
 	Shell  *ProvisionShellStep  `toml:"shell,omitempty"`
+	Rsync  *ProvisionRsyncStep  `toml:"rsync,omitempty"`
 }
 
 // ProvisionConfig holds the configuration of the whole provisioning

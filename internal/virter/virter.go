@@ -87,6 +87,13 @@ type AfterNotifier interface {
 	After(d time.Duration) <-chan time.Time
 }
 
+// NetworkCopier copies files over the network
+type NetworkCopier interface {
+	// Copy transfers a list of files (source) from the local machine to
+	// a target directory (destination) on a remote host (host).
+	Copy(host string, source []string, destination string) error
+}
+
 func (v *Virter) renderTemplate(name string, data interface{}) (string, error) {
 	templateText, err := v.templates.ReadFile(name)
 	if err != nil {

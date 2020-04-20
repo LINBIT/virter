@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/LINBIT/virter/internal/virter"
+	"github.com/LINBIT/virter/pkg/netcopy"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -44,6 +45,10 @@ func execProvision(provisionFile string, vmNames []string) error {
 			}
 		} else if s.Shell != nil {
 			if err := execShell(s.Shell, vmNames); err != nil {
+				return err
+			}
+		} else if s.Rsync != nil {
+			if err := execRsync(s.Rsync, vmNames); err != nil {
 				return err
 			}
 		}
@@ -92,4 +97,14 @@ func execShell(s *virter.ProvisionShellStep, vmNames []string) error {
 	}
 
 	return v.VMExecShell(context.TODO(), vmNames, privateKey, s)
+}
+
+func execRsync(s *virter.ProvisionRsyncStep, vmNames []string) error {
+	v, err := VirterConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	privateKeyPath := getPrivateKeyPath()
+	copier := netcopy.NewRsyncNetworkCopier(privateKeyPath)
+	return v.VMExecRsync(context.TODO(), copier, vmNames, s)
 }

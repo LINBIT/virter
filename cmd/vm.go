@@ -68,8 +68,12 @@ func loadPublicKeys() ([]string, error) {
 	return publicKeys, nil
 }
 
+func getPrivateKeyPath() string {
+	return viper.GetString("auth.virter_private_key_path")
+}
+
 func loadPrivateKey() ([]byte, error) {
-	privateKeyPath := viper.GetString("auth.virter_private_key_path")
+	privateKeyPath := getPrivateKeyPath()
 	privateKey, err := ioutil.ReadFile(privateKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key from '%s': %w", privateKeyPath, err)

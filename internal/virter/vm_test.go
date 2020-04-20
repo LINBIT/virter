@@ -2,7 +2,10 @@ package virter_test
 
 import (
 	"context"
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -244,6 +247,55 @@ func TestVMExecDocker(t *testing.T) {
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)
+}
+
+func TestVMExecRsync(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmMAC)
+	domain.persistent = true
+	domain.active = true
+	l.domains[vmName] = domain
+
+	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+
+	v := virter.New(l, poolName, networkName, testDirectory())
+
+	dir, err := createFakeDirectory()
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	step := &virter.ProvisionRsyncStep{
+		Source: filepath.Join(dir, "*.txt"),
+		Dest:   "/tmp",
+	}
+
+	copier := new(mocks.NetworkCopier)
+	copier.On("Copy", "192.168.122.42", []string{
+		filepath.Join(dir, "file1.txt"),
+		filepath.Join(dir, "file2.txt"),
+	}, "/tmp").Return(nil)
+
+	err = v.VMExecRsync(context.Background(), copier, []string{vmName}, step)
+	assert.NoError(t, err)
+}
+
+func createFakeDirectory() (string, error) {
+	dir, err := ioutil.TempDir("/tmp", "virter-test")
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := os.Create(filepath.Join(dir, "file1.txt")); err != nil {
+		return "", err
+	}
+	if _, err := os.Create(filepath.Join(dir, "file1.go")); err != nil {
+		return "", err
+	}
+	if _, err := os.Create(filepath.Join(dir, "file2.txt")); err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 
 func mockAfter(an *mocks.AfterNotifier, timeout <-chan time.Time) {

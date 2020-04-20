@@ -39,6 +39,18 @@ The `shell` provisioning step accepts the following parameters:
   It can be either a single line string to run only a single command, or a multi-line string (as defined by toml), in which case every line of the string will be considered a separate command to run.
 * `env` is an array of environment variables to be set in the target VM, in `KEY=value` format.
 
+## rsync
+
+The `rsync` provisioning step can be used to distribute files from the host to the guest machines using the `rsync` utility.
+
+**NOTE**: This step requires that the `rsync` program is installed both on the host and on the guest machine. The user is responsible for making sure that this requirement is met.
+
+### Configuration Options
+
+* `source` is as a glob pattern of files on the host machine. It is interpreted according to the rules of Go's [filepath.Match](https://golang.org/pkg/path/filepath/#Match) function, so refer to the Go documentation for details.
+* `dest` is the path on the guest machine(s) where the files should be copied to.
+
+The glob-expanded `source` list of files and the `dest` path are passed verbatim to the `rsync` command line, so `rsync`'s path rules apply. Refer to the `rsync` documentation for more details.
 
 ## Global Options
 
@@ -64,4 +76,9 @@ script = """
 yum remove -y make
 yum install -y make
 """
+
+[[steps]]
+[steps.rsync]
+source = "/tmp/*.rpm"
+dest = "/root/rpms"
 ```

@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/LINBIT/virter/pkg/netcopy"
 )
 
 // HTTPClient contains required HTTP methods.
@@ -75,6 +77,7 @@ type ImageBuildTools struct {
 // ImageBuildConfig contains the configuration for building an image
 type ImageBuildConfig struct {
 	DockerContainerConfig DockerContainerConfig
+	SSHPrivateKeyPath     string
 	SSHPrivateKey         []byte
 	ShutdownTimeout       time.Duration
 	ProvisionConfig       ProvisionConfig
@@ -98,6 +101,9 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 			err = v.VMExecDocker(ctx, tools.DockerClient, vmNames, dockerContainerConfig, sshPrivateKey)
 		} else if s.Shell != nil {
 			err = v.VMExecShell(ctx, vmNames, sshPrivateKey, s.Shell)
+		} else if s.Rsync != nil {
+			copier := netcopy.NewRsyncNetworkCopier(buildConfig.SSHPrivateKeyPath)
+			err = v.VMExecRsync(ctx, copier, vmNames, s.Rsync)
 		}
 
 		if err != nil {

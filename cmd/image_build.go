@@ -43,6 +43,7 @@ step, and then committing the resulting volume.`,
 				log.Fatal(err)
 			}
 
+			privateKeyPath := getPrivateKeyPath()
 			privateKey, err := loadPrivateKey()
 			if err != nil {
 				log.Fatal(err)
@@ -77,6 +78,7 @@ step, and then committing the resulting volume.`,
 
 			buildConfig := virter.ImageBuildConfig{
 				DockerContainerConfig: dockerContainerConfig,
+				SSHPrivateKeyPath:     privateKeyPath,
 				SSHPrivateKey:         privateKey,
 				ShutdownTimeout:       shutdownTimeout,
 				ProvisionConfig:       provisionConfig,
