@@ -54,6 +54,8 @@ func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig D
 		return fmt.Errorf("could not create container: %w", err)
 	}
 
+	statusCh, errCh := docker.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+
 	err = docker.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	if err != nil {
 		return fmt.Errorf("could not start container: %w", err)
@@ -64,7 +66,7 @@ func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig D
 		return err
 	}
 
-	err = dockerContainerWait(ctx, docker, resp.ID)
+	err = dockerContainerWait(ctx, statusCh, errCh)
 	if err != nil {
 		return err
 	}
@@ -114,8 +116,7 @@ func logLines(wg *sync.WaitGroup, prefix string, r io.Reader) {
 	}
 }
 
-func dockerContainerWait(ctx context.Context, docker DockerClient, id string) error {
-	statusCh, errCh := docker.ContainerWait(ctx, id, container.WaitConditionNotRunning)
+func dockerContainerWait(ctx context.Context, statusCh <-chan container.ContainerWaitOKBody, errCh <-chan error) error {
 	select {
 	case err := <-errCh:
 		return fmt.Errorf("error waiting for container: %w", err)
