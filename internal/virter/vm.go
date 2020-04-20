@@ -206,7 +206,6 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	}
 
 	log.Print("Define VM")
-	err = v.createScratchVolume(sp, vmConfig)
 	d, err := v.libvirt.DomainDefineXML(xml)
 	if err != nil {
 		return nil, fmt.Errorf("could not define domain: %w", err)
