@@ -104,16 +104,17 @@ type ProvisionOption struct {
 // NewProvisionConfig returns a ProvisionConfig from a ProvisionOption
 func NewProvisionConfig(provOpt ProvisionOption) (ProvisionConfig, error) {
 	// file has highest precedence
-	var r io.ReadCloser
+	var provReader io.ReadCloser
 	if provOpt.FilePath != "" {
 		r, err := os.Open(provOpt.FilePath)
 		if err != nil {
 			return ProvisionConfig{}, err
 		}
 		defer r.Close()
+		provReader = r
 	}
 
-	return newProvisionConfigReader(r, provOpt)
+	return newProvisionConfigReader(provReader, provOpt)
 }
 
 // newProvisionConfigReader returns a ProvisionConfig and does some necesary checks and for example merges the global env to the individual steps.
