@@ -54,7 +54,7 @@ func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig D
 		return fmt.Errorf("could not create container: %w", err)
 	}
 
-	statusCh, errCh := docker.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := docker.ContainerWait(ctx, resp.ID, container.WaitConditionRemoved)
 
 	err = docker.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	if err != nil {

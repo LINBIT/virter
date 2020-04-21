@@ -33,5 +33,5 @@ func mockDockerRun(docker *mocks.DockerClient) {
 // mockContainerWait wraps the ContainerWait mocking so that the channels have
 // the correct "<-chan" type instead of "chan"
 func mockContainerWait(docker *mocks.DockerClient, id string, statusCh <-chan container.ContainerWaitOKBody, errCh <-chan error) {
-	docker.On("ContainerWait", mock.Anything, id, container.WaitConditionNotRunning).Return(statusCh, errCh)
+	docker.On("ContainerWait", mock.Anything, id, container.WaitConditionRemoved).Return(statusCh, errCh)
 }
