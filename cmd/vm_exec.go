@@ -13,6 +13,7 @@ import (
 
 func vmExecCommand() *cobra.Command {
 	var provisionFile string
+	var provisionValues []string
 
 	execCmd := &cobra.Command{
 		Use:   "exec vm_name [vm_name...]",
@@ -20,20 +21,24 @@ func vmExecCommand() *cobra.Command {
 		Long:  `Run a Docker container on the host with a connection to a VM.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := execProvision(provisionFile, args); err != nil {
+			provOpt := virter.ProvisionOption{
+				FilePath: provisionFile,
+				Values:   provisionValues,
+			}
+			if err := execProvision(provOpt, args); err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
 
 	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
-	execCmd.MarkFlagRequired("provision")
+	execCmd.Flags().StringSliceVarP(&provisionValues, "set", "s", []string{}, "set/override provisioning steps")
 
 	return execCmd
 }
 
-func execProvision(provisionFile string, vmNames []string) error {
-	pc, err := virter.NewProvisionConfigFile(provisionFile)
+func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
+	pc, err := virter.NewProvisionConfig(provOpt)
 	if err != nil {
 		return err
 	}

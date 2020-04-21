@@ -14,6 +14,7 @@ import (
 func imageBuildCommand() *cobra.Command {
 	var vmID uint
 	var provisionFile string
+	var provisionValues []string
 
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
@@ -71,7 +72,12 @@ step, and then committing the resulting volume.`,
 				ContainerName: "virter-build-" + newImageName,
 			}
 
-			provisionConfig, err := virter.NewProvisionConfigFile(provisionFile)
+			provOpt := virter.ProvisionOption{
+				FilePath: provisionFile,
+				Values:   provisionValues,
+			}
+
+			provisionConfig, err := virter.NewProvisionConfig(provOpt)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -92,7 +98,7 @@ step, and then committing the resulting volume.`,
 	}
 
 	buildCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
-	buildCmd.MarkFlagRequired("provision")
+	buildCmd.Flags().StringSliceVarP(&provisionValues, "set", "s", []string{}, "set/override provisioning steps")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.MarkFlagRequired("id")
 

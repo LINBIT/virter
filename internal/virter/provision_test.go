@@ -54,19 +54,29 @@ script = "echo rck"
 	tests := []struct {
 		input    string
 		valid    bool
+		provOpts ProvisionOption
 		expected []string
 	}{
-		{validGlobalOnly, true, []string{"foo=bar", "bar=baz"}},
-		{validLocalOnly, true, []string{"foo=bar", "bar=baz=lala"}},
-		{bothDistinct, true, []string{"foo=bar", "bar=baz", "rck=was", "here="}},
-		{bothOverride, true, []string{"foo=rck", "bar=baz", "rck=was"}},
-		{invalidGlobalOnly, false, []string{}},
-		{invalidLocalOnly, false, []string{}},
+		{validGlobalOnly, true, ProvisionOption{Values: []string{}}, []string{"foo=bar", "bar=baz"}},
+		{validLocalOnly, true, ProvisionOption{Values: []string{}}, []string{"foo=bar", "bar=baz=lala"}},
+		{bothDistinct, true, ProvisionOption{Values: []string{}}, []string{"foo=bar", "bar=baz", "rck=was", "here="}},
+		{bothOverride, true, ProvisionOption{Values: []string{}}, []string{"foo=rck", "bar=baz", "rck=was"}},
+		{invalidGlobalOnly, false, ProvisionOption{Values: []string{}}, []string{}},
+		{invalidLocalOnly, false, ProvisionOption{Values: []string{}}, []string{}},
+		{"", true, ProvisionOption{
+			Values: []string{"steps[0].shell.script=env", "steps[0].shell.env[0]=foo=bar"},
+		}, []string{"foo=bar"}},
+		{"", true, ProvisionOption{
+			Values: []string{"steps[0].shell.script=env", "env[0]=foo=bar", "steps[0].shell.env[0]=foo=rck"},
+		}, []string{"foo=rck"}},
+		{bothOverride, true, ProvisionOption{
+			Values: []string{"steps[0].shell.script=env", "steps[0].shell.env[1]=foo=xyz"},
+		}, []string{"foo=xyz", "bar=baz", "rck=was"}},
 	}
 
 	for i, tc := range tests {
 		r := strings.NewReader(tc.input)
-		pc, err := NewProvisionConfig(r)
+		pc, err := newProvisionConfigReader(r, tc.provOpts)
 
 		if err != nil {
 			if tc.valid {
@@ -77,7 +87,7 @@ script = "echo rck"
 
 		e1, e2 := pc.Steps[0].Shell.Env, tc.expected
 		if !envEqual(e1, e2) {
-			t.Errorf("Expexted test %d cfg env (%q) and generated env (%q) to be equal", i, e1, e2)
+			t.Errorf("Expexted test %d cfg env (%q) and generated env (%q) to be equal", i, e2, e1)
 		}
 	}
 

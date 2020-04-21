@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/helm/helm/pkg/strvals"
+	"github.com/mitchellh/mapstructure"
 )
 
 // ProvisionDockerStep is a single provisioniong step executed in a docker container
@@ -93,23 +95,43 @@ func mergeEnv(upper, lower *map[string]string) []string {
 	return env
 }
 
-// NewProvisionConfigFile returns a ProvisionConfig from a file patch by calling NewProvisionConfig
-func NewProvisionConfigFile(provisionFile string) (ProvisionConfig, error) {
-	r, err := os.Open(provisionFile)
-	if err != nil {
-		return ProvisionConfig{}, err
-	}
-	defer r.Close()
-
-	return NewProvisionConfig(r)
+// ProvisionOption sumarizes all the options used for generating the final ProvisionConfig
+type ProvisionOption struct {
+	FilePath string
+	Values   []string
 }
 
-// NewProvisionConfig returns a ProvisionConfig and does some necesary checks and for example merges the global env to the individual steps.
-func NewProvisionConfig(provReader io.Reader) (ProvisionConfig, error) {
+// NewProvisionConfig returns a ProvisionConfig from a ProvisionOption
+func NewProvisionConfig(provOpt ProvisionOption) (ProvisionConfig, error) {
+	// file has highest precedence
+	var r io.ReadCloser
+	if provOpt.FilePath != "" {
+		r, err := os.Open(provOpt.FilePath)
+		if err != nil {
+			return ProvisionConfig{}, err
+		}
+		defer r.Close()
+	}
+
+	return newProvisionConfigReader(r, provOpt)
+}
+
+// newProvisionConfigReader returns a ProvisionConfig and does some necesary checks and for example merges the global env to the individual steps.
+func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (ProvisionConfig, error) {
 	var pc ProvisionConfig
 
-	_, err := toml.DecodeReader(provReader, &pc)
+	if provReader != nil {
+		_, err := toml.DecodeReader(provReader, &pc)
+		if err != nil {
+			return pc, err
+		}
+	}
+
+	m, err := genValueMap(provOpt)
 	if err != nil {
+		return pc, err
+	}
+	if err := mapstructure.Decode(m, &pc); err != nil {
 		return pc, err
 	}
 
@@ -138,4 +160,16 @@ func NewProvisionConfig(provReader io.Reader) (ProvisionConfig, error) {
 	}
 
 	return pc, nil
+}
+
+func genValueMap(provOpt ProvisionOption) (map[string]interface{}, error) {
+	base := map[string]interface{}{}
+
+	for _, value := range provOpt.Values {
+		if err := strvals.ParseInto(value, base); err != nil {
+			return base, err
+		}
+	}
+
+	return base, nil
 }
