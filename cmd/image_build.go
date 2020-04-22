@@ -34,11 +34,6 @@ step, and then committing the resulting volume.`,
 				log.Fatal(err)
 			}
 
-			docker, err := dockerConnect()
-			if err != nil {
-				log.Fatal(err)
-			}
-
 			publicKeys, err := loadPublicKeys()
 			if err != nil {
 				log.Fatal(err)
@@ -52,10 +47,10 @@ step, and then committing the resulting volume.`,
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
+			// DockerClient will be set later if needed
 			tools := virter.ImageBuildTools{
 				ISOGenerator:  isogenerator.ExternalISOGenerator{},
 				PortWaiter:    newSSHPinger(),
-				DockerClient:  docker,
 				AfterNotifier: actualtime.ActualTime{},
 			}
 
@@ -80,6 +75,13 @@ step, and then committing the resulting volume.`,
 			provisionConfig, err := virter.NewProvisionConfig(provOpt)
 			if err != nil {
 				log.Fatal(err)
+			}
+			if provisionConfig.NeedsDocker() {
+				docker, err := dockerConnect()
+				if err != nil {
+					log.Fatal(err)
+				}
+				tools.DockerClient = docker
 			}
 
 			buildConfig := virter.ImageBuildConfig{
