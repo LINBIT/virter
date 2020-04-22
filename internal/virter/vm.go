@@ -494,7 +494,7 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 
 	for _, ip := range ips {
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
-		if err := runSSHCommand(config, net.JoinHostPort(ip, "22"), shellStep.Script, shellStep.Env); err != nil {
+		if err := runSSHCommand(config, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env)); err != nil {
 			return err
 		}
 	}

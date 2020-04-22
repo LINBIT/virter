@@ -7,7 +7,10 @@ import (
 
 func TestNewProvisionConfig(t *testing.T) {
 	validGlobalOnly := `
-env = ['foo=bar', 'bar=baz']
+[env]
+foo="bar"
+bar="baz"
+
 [[steps]]
 [steps.shell]
 script = "echo rck"
@@ -16,38 +19,36 @@ script = "echo rck"
 	validLocalOnly := `
 [[steps]]
 [steps.shell]
-env = ['foo=bar', 'bar=baz=lala']
 script = "echo rck"
+[steps.shell.env]
+foo = "bar"
+bar="baz=lala"
 `
 
 	bothDistinct := `
-env = ['foo=bar', 'bar=baz']
+[env]
+foo="bar"
+bar="baz"
+
 [[steps]]
 [steps.shell]
-env = ['rck=was', 'here=']
 script = "echo rck"
+[steps.shell.env]
+rck="was"
+here=""
 `
 
 	bothOverride := `
-env = ['foo=bar', 'bar=baz']
-[[steps]]
-[steps.shell]
-env = ['rck=was', 'foo=rck']
-script = "echo rck"
-`
+[env]
+foo="bar"
+bar="baz"
 
-	invalidGlobalOnly := `
-env = ['foo', 'bar=baz']
 [[steps]]
 [steps.shell]
 script = "echo rck"
-`
-
-	invalidLocalOnly := `
-[[steps]]
-[steps.shell]
-env = ['', 'bar=baz']
-script = "echo rck"
+[steps.shell.env]
+rck="was"
+foo="rck"
 `
 
 	// IMPORTANT: this asumes 1 shell step!
@@ -61,16 +62,14 @@ script = "echo rck"
 		{validLocalOnly, true, ProvisionOption{Values: []string{}}, []string{"foo=bar", "bar=baz=lala"}},
 		{bothDistinct, true, ProvisionOption{Values: []string{}}, []string{"foo=bar", "bar=baz", "rck=was", "here="}},
 		{bothOverride, true, ProvisionOption{Values: []string{}}, []string{"foo=rck", "bar=baz", "rck=was"}},
-		{invalidGlobalOnly, false, ProvisionOption{Values: []string{}}, []string{}},
-		{invalidLocalOnly, false, ProvisionOption{Values: []string{}}, []string{}},
 		{"", true, ProvisionOption{
-			Values: []string{"steps[0].shell.script=env", "steps[0].shell.env[0]=foo=bar"},
+			Values: []string{"steps[0].shell.script=env", "steps[0].shell.env.foo=bar"},
 		}, []string{"foo=bar"}},
 		{"", true, ProvisionOption{
-			Values: []string{"steps[0].shell.script=env", "env[0]=foo=bar", "steps[0].shell.env[0]=foo=rck"},
+			Values: []string{"steps[0].shell.script=env", "env.foo=bar", "steps[0].shell.env.foo=rck"},
 		}, []string{"foo=rck"}},
 		{bothOverride, true, ProvisionOption{
-			Values: []string{"steps[0].shell.script=env", "steps[0].shell.env[1]=foo=xyz"},
+			Values: []string{"steps[0].shell.script=env", "steps[0].shell.env.foo=xyz"},
 		}, []string{"foo=xyz", "bar=baz", "rck=was"}},
 	}
 
@@ -85,7 +84,7 @@ script = "echo rck"
 			continue // err but also expected to be not valid
 		}
 
-		e1, e2 := pc.Steps[0].Shell.Env, tc.expected
+		e1, e2 := EnvmapToSlice(pc.Steps[0].Shell.Env), tc.expected
 		if !envEqual(e1, e2) {
 			t.Errorf("Expexted test %d cfg env (%q) and generated env (%q) to be equal", i, e2, e1)
 		}

@@ -97,7 +97,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 		if s.Docker != nil {
 			dockerContainerConfig := buildConfig.DockerContainerConfig
 			dockerContainerConfig.ImageName = s.Docker.Image
-			dockerContainerConfig.Env = s.Docker.Env
+			dockerContainerConfig.Env = EnvmapToSlice(s.Docker.Env)
 			err = v.VMExecDocker(ctx, tools.DockerClient, vmNames, dockerContainerConfig, sshPrivateKey)
 		} else if s.Shell != nil {
 			err = v.VMExecShell(ctx, vmNames, sshPrivateKey, s.Shell)

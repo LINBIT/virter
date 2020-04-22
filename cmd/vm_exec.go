@@ -84,7 +84,7 @@ func execDocker(s *virter.ProvisionDockerStep, vmNames []string) error {
 	dockerContainerConfig := virter.DockerContainerConfig{
 		ContainerName: "virter-" + strings.Join(vmNames, "-"),
 		ImageName:     s.Image,
-		Env:           s.Env,
+		Env:           virter.EnvmapToSlice(s.Env),
 	}
 
 	return v.VMExecDocker(ctx, docker, vmNames, dockerContainerConfig, privateKey)
