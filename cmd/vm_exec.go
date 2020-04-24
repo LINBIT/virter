@@ -75,6 +75,7 @@ func execDocker(s *virter.ProvisionDockerStep, vmNames []string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer docker.Close()
 
 	privateKey, err := loadPrivateKey()
 	if err != nil {

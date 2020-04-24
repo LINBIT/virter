@@ -81,6 +81,7 @@ step, and then committing the resulting volume.`,
 				if err != nil {
 					log.Fatal(err)
 				}
+				defer docker.Close()
 				tools.DockerClient = docker
 			}
 
