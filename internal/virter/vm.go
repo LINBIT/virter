@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -472,19 +473,18 @@ func (v *Virter) VMExecDocker(ctx context.Context, docker DockerClient, vmNames 
 	return dockerRun(ctx, docker, dockerContainerConfig, ips, sshPrivateKey)
 }
 
-// VMExecShell runs a simple shell command against some VMs.
-func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ProvisionShellStep) error {
+func (v *Virter) getSSHClientConfig(vmNames []string, sshPrivateKey []byte) (ssh.ClientConfig, []string, error) {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
-		return err
+		return ssh.ClientConfig{}, nil, err
 	}
 
 	signer, err := ssh.ParsePrivateKey(sshPrivateKey)
 	if err != nil {
-		return err
+		return ssh.ClientConfig{}, nil, err
 	}
 
-	config := &ssh.ClientConfig{
+	config := ssh.ClientConfig{
 		User: "root",
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
@@ -492,9 +492,55 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
+	return config, ips, nil
+}
+
+// VMSSHSession runs an interactive shell session in a VM
+func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey []byte) error {
+	sshConfig, ips, err := v.getSSHClientConfig([]string{vmName}, sshPrivateKey)
+	if err != nil {
+		return err
+	}
+	if len(ips) != 1 {
+		return fmt.Errorf("Expected a single IP")
+	}
+
+	client, err := ssh.Dial("tcp", net.JoinHostPort(ips[0], "22"), &sshConfig)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+
+	session.Stdin = os.Stdin
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+
+	if err := session.RequestPty("xterm", 40, 80, ssh.TerminalModes{}); err != nil {
+		return err
+	}
+
+	if err := session.Shell(); err != nil {
+		return err
+	}
+
+	return session.Wait()
+}
+
+// VMExecShell runs a simple shell command against some VMs.
+func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ProvisionShellStep) error {
+	sshConfig, ips, err := v.getSSHClientConfig(vmNames, sshPrivateKey)
+	if err != nil {
+		return err
+	}
+
 	for _, ip := range ips {
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
-		if err := runSSHCommand(config, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env)); err != nil {
+		if err := runSSHCommand(&sshConfig, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env)); err != nil {
 			return err
 		}
 	}
