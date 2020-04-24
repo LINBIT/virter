@@ -6,7 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/digitalocean/go-libvirt"
+	libvirt "github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
 
@@ -38,6 +38,10 @@ func newFakeLibvirtConnection() *FakeLibvirtConnection {
 		network: fakeLibvirtNetwork(),
 		domains: make(map[string]*FakeLibvirtDomain),
 	}
+}
+
+func (l *FakeLibvirtConnection) Disconnect() error {
+	return nil
 }
 
 func (l *FakeLibvirtConnection) StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error) {

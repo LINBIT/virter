@@ -17,6 +17,7 @@ func vmRmCommand() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
+			defer v.Disconnect()
 
 			err = v.VMRm(args[0])
 			if err != nil {

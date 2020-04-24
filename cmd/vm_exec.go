@@ -42,18 +42,23 @@ func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
 	if err != nil {
 		return err
 	}
+	v, err := VirterConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer v.Disconnect()
 
 	for _, s := range pc.Steps {
 		if s.Docker != nil {
-			if err := execDocker(s.Docker, vmNames); err != nil {
+			if err := execDocker(v, s.Docker, vmNames); err != nil {
 				return err
 			}
 		} else if s.Shell != nil {
-			if err := execShell(s.Shell, vmNames); err != nil {
+			if err := execShell(v, s.Shell, vmNames); err != nil {
 				return err
 			}
 		} else if s.Rsync != nil {
-			if err := execRsync(s.Rsync, vmNames); err != nil {
+			if err := execRsync(v, s.Rsync, vmNames); err != nil {
 				return err
 			}
 		}
@@ -62,14 +67,9 @@ func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
 	return nil
 }
 
-func execDocker(s *virter.ProvisionDockerStep, vmNames []string) error {
+func execDocker(v *virter.Virter, s *virter.ProvisionDockerStep, vmNames []string) error {
 	ctx, cancel := dockerContext()
 	defer cancel()
-
-	v, err := VirterConnect()
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	docker, err := dockerConnect()
 	if err != nil {
@@ -91,12 +91,7 @@ func execDocker(s *virter.ProvisionDockerStep, vmNames []string) error {
 	return v.VMExecDocker(ctx, docker, vmNames, dockerContainerConfig, privateKey)
 }
 
-func execShell(s *virter.ProvisionShellStep, vmNames []string) error {
-	v, err := VirterConnect()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func execShell(v *virter.Virter, s *virter.ProvisionShellStep, vmNames []string) error {
 	privateKey, err := loadPrivateKey()
 	if err != nil {
 		log.Fatal(err)
@@ -105,11 +100,7 @@ func execShell(s *virter.ProvisionShellStep, vmNames []string) error {
 	return v.VMExecShell(context.TODO(), vmNames, privateKey, s)
 }
 
-func execRsync(s *virter.ProvisionRsyncStep, vmNames []string) error {
-	v, err := VirterConnect()
-	if err != nil {
-		log.Fatal(err)
-	}
+func execRsync(v *virter.Virter, s *virter.ProvisionRsyncStep, vmNames []string) error {
 	privateKeyPath := getPrivateKeyPath()
 	copier := netcopy.NewRsyncNetworkCopier(privateKeyPath)
 	return v.VMExecRsync(context.TODO(), copier, vmNames, s)

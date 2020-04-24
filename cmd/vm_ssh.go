@@ -18,6 +18,7 @@ func vmSSHCommand() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
+			defer v.Disconnect()
 
 			privateKey, err := loadPrivateKey()
 			if err != nil {

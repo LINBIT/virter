@@ -35,6 +35,7 @@ func vmRunCommand() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
+			defer v.Disconnect()
 
 			imageName := args[0]
 			if vmName == "" {

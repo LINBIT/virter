@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/digitalocean/go-libvirt"
+	libvirt "github.com/digitalocean/go-libvirt"
 )
 
 // FileReader is the interface for reading whole files.
@@ -39,6 +39,7 @@ type LibvirtConnection interface {
 	DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error)
 	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
 	LifecycleEvents() (<-chan libvirt.DomainEventLifecycleMsg, error)
+	Disconnect() error
 }
 
 // Virter manipulates libvirt for virter.
@@ -60,6 +61,11 @@ func New(libvirtConnection LibvirtConnection,
 		networkName:     networkName,
 		templates:       fileReader,
 	}
+}
+
+// Disconnect disconnects virter's connection to libvirt
+func (v *Virter) Disconnect() error {
+	return v.libvirt.Disconnect()
 }
 
 // VMConfig contains the configuration for starting a VM

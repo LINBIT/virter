@@ -34,6 +34,7 @@ used.`,
 			if err != nil {
 				log.Fatal(err)
 			}
+			defer v.Disconnect()
 
 			client := &http.Client{}
 
