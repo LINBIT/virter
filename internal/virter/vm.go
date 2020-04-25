@@ -13,6 +13,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/sync/errgroup"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
@@ -538,14 +539,16 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 		return err
 	}
 
+	var g errgroup.Group
 	for _, ip := range ips {
+		ip := ip
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
-		if err := runSSHCommand(&sshConfig, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env)); err != nil {
-			return err
-		}
+		g.Go(func() error {
+			return runSSHCommand(&sshConfig, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))
+		})
 	}
 
-	return nil
+	return g.Wait()
 }
 
 func (v *Virter) VMExecRsync(ctx context.Context, copier NetworkCopier, vmNames []string, rsyncStep *ProvisionRsyncStep) error {
@@ -559,14 +562,15 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier NetworkCopier, vmNames 
 		return err
 	}
 
+	var g errgroup.Group
 	for _, ip := range ips {
+		ip := ip
 		log.Printf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, ip)
-		err = copier.Copy(ip, files, rsyncStep.Dest)
-		if err != nil {
-			return fmt.Errorf("failed to copy files: %w", err)
-		}
+		g.Go(func() error {
+			return copier.Copy(ip, files, rsyncStep.Dest)
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env []string) error {
