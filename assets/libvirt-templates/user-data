@@ -7,5 +7,3 @@ ssh_authorized_keys:
 preserve_hostname: false
 hostname: {{ .VMName }}
 fqdn: {{ .VMName }}.test
-runcmd:
-  - echo {{ .IPAddress }} {{ .VMName }} {{ .VMName }}.test >> /etc/hosts
