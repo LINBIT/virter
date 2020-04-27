@@ -33,9 +33,9 @@ type DockerContainerConfig struct {
 
 func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig DockerContainerConfig, vmIPs []string, sshPrivateKey []byte) error {
 	// This is roughly equivalent to
-	// docker run --rm --network=host -e TARGET=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
+	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 
-	targetEnv := fmt.Sprintf("TARGET=%s", strings.Join(vmIPs, ","))
+	targetEnv := fmt.Sprintf("TARGETS=%s", strings.Join(vmIPs, ","))
 	sshPrivateKeyEnv := fmt.Sprintf("SSH_PRIVATE_KEY=%s", sshPrivateKey)
 
 	resp, err := docker.ContainerCreate(

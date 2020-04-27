@@ -27,7 +27,7 @@ The Docker provisioning step can be parameterized using the following configurat
 * `env` is a map of environment variables to be passed to the Docker container, in `KEY=value` format.
 
   Note that Virter already passes two environment variables by default:
-  * `TARGET` is a comma separated list of all VMs to run the provisioning on.
+  * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
   * `SSH_PRIVATE_KEY` is the SSH private key Virter uses to connect to the machine as `root`.
 
 ## Shell
