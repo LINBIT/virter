@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/sync/errgroup"
 
 	libvirt "github.com/digitalocean/go-libvirt"
@@ -517,19 +520,59 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey 
 		return err
 	}
 
+	fd := int(os.Stdin.Fd())
+	state, err := terminal.MakeRaw(fd)
+	if err != nil {
+		return err
+	}
+	defer terminal.Restore(fd, state)
+
+	w, h, err := terminal.GetSize(fd)
+	if err != nil {
+		return err
+	}
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	if err = session.RequestPty("xterm", h, w, modes); err != nil {
+		return err
+	}
+
 	session.Stdin = os.Stdin
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
-
-	if err := session.RequestPty("xterm", 40, 80, ssh.TerminalModes{}); err != nil {
-		return err
-	}
 
 	if err := session.Shell(); err != nil {
 		return err
 	}
 
-	return session.Wait()
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGWINCH)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for s := range sigChan {
+			switch s {
+			case syscall.SIGWINCH:
+				fd := int(os.Stdout.Fd())
+				w, h, _ = terminal.GetSize(fd)
+				session.WindowChange(h, w)
+			}
+		}
+	}()
+
+	err = session.Wait()
+	close(sigChan)
+	wg.Wait()
+
+	return err
 }
 
 // VMExecShell runs a simple shell command against some VMs.
