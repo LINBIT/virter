@@ -1,11 +1,9 @@
 package isogenerator
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"path/filepath"
+	"bytes"
+
+	"github.com/kdomanski/iso9660"
 )
 
 // ExternalISOGenerator generates ISO images using an external command
@@ -14,27 +12,22 @@ type ExternalISOGenerator struct {
 
 // Generate generates a "CD-ROM" filesystem
 func (g ExternalISOGenerator) Generate(files map[string][]byte) ([]byte, error) {
-	dir, err := ioutil.TempDir(os.TempDir(), "virter-iso-root")
+	isoWriter, err := iso9660.NewWriter()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
+		return nil, err
 	}
-	defer os.RemoveAll(dir)
-
-	var filePaths []string
+	defer isoWriter.Cleanup()
 
 	for name, content := range files {
-		path := filepath.Join(dir, name)
-		ioutil.WriteFile(path, content, 0600)
-		filePaths = append(filePaths, path)
+		if err := isoWriter.AddFile(bytes.NewReader(content), name); err != nil {
+			return nil, err
+		}
 	}
 
-	args := []string{
-		"-input-charset", "utf-8",
-		"-volid", "cidata",
-		"-joliet",
-		"-rock"}
+	wab := newWriteAtBuffer(nil)
+	if err := isoWriter.WriteTo(wab, "cidata"); err != nil {
+		return nil, err
+	}
 
-	args = append(args, filePaths...)
-
-	return exec.Command("genisoimage", args...).Output()
+	return wab.Bytes(), nil
 }

@@ -11,7 +11,7 @@ COPY --from=builder /virter /opt/virter/
 COPY --from=builder /assets /opt/virter/assets
 
 RUN apk update \
-	&& apk add cdrkit rsync \
+	&& apk add rsync \
 	&& rm -rf /var/cache/apk/*
 
 WORKDIR /opt/virter

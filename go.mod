@@ -17,6 +17,7 @@ require (
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/gorilla/mux v1.7.4 // indirect
 	github.com/helm/helm v2.16.6+incompatible
+	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/libvirt/libvirt-go-xml v6.1.0+incompatible
 	github.com/mattn/go-isatty v0.0.12 // indirect
@@ -35,7 +36,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.6.2
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.5.1
 	github.com/vbauerster/mpb v3.4.0+incompatible
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e // indirect
