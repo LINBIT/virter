@@ -109,7 +109,7 @@ func logLines(wg *sync.WaitGroup, prefix string, r io.Reader) {
 	defer wg.Done()
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		log.Printf("%s%s", prefix, scanner.Text())
+		log.Printf("%s%s", prefix, strings.TrimRight(scanner.Text(), " \t\r\n"))
 	}
 	if err := scanner.Err(); err != nil {
 		log.Printf("%sError reading: %v", prefix, err)
