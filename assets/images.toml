@@ -1,3 +1,6 @@
+[ubuntu-focal]
+url = "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
+
 [ubuntu-bionic]
 url = "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img"
 
