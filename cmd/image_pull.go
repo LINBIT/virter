@@ -6,9 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
 )
@@ -25,9 +23,14 @@ URL for the specified name from the local image registry will be
 used.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			reg := loadRegistry()
 			imageName := args[0]
 			if url == "" {
-				url = fillURLFromRegistry(imageName)
+				var err error
+				url, err = reg.Lookup(imageName)
+				if err != nil {
+					log.Fatalf("Error pulling image: %v", err)
+				}
 			}
 
 			v, err := VirterConnect()
@@ -61,30 +64,6 @@ used.`,
 
 	return pullCmd
 }
-
-func fillURLFromRegistry(imageName string) string {
-	var registry imageRegistry
-
-	registryPath := viper.GetString("image.registry")
-
-	_, err := toml.DecodeFile(registryPath, &registry)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	entry, ok := registry[imageName]
-	if !ok {
-		log.Fatalf("Image %v not found in registry and no URL given", imageName)
-	}
-
-	return entry.URL
-}
-
-type imageEntry struct {
-	URL string `toml:"url"`
-}
-
-type imageRegistry map[string]imageEntry
 
 // BarReaderProxy adds the ReaderProxy methods to Bar
 type BarReaderProxy struct {
