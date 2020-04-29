@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/BurntSushi/toml v0.3.1
-	github.com/LINBIT/gosshclient v0.1.0
+	github.com/LINBIT/gosshclient v0.1.1
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/containerd/containerd v1.3.3 // indirect
