@@ -1,5 +1,19 @@
 image: golang:buster
 
+stages:
+  - build
+  - test
+  - deploy
+
+build:
+  stage: build
+  script:
+    - GOPATH=$(pwd)/.mygo go build
+  artifacts:
+    paths:
+      - virter
+    expire_in: 1 week
+
 test:
   stage: test
   cache:
@@ -10,3 +24,18 @@ test:
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
     - GOPATH=$(pwd)/.mygo go test -coverprofile .testCoverage.txt ./internal/virter/
     - GOPATH=$(pwd)/.mygo go tool cover -func=.testCoverage.txt
+
+deploy:
+  stage: deploy
+  dependencies:
+    - build
+  before_script:
+    - echo "DEPLOY"
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY/linbit/virter/virter:latest .
+    - docker push $CI_REGISTRY/linbit/virter/virter:latest
+  tags:
+    - shell
+  only:
+    - master
