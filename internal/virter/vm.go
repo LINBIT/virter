@@ -5,18 +5,15 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
-	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/sync/errgroup"
+
+	sshclient "github.com/LINBIT/gosshclient"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
@@ -509,70 +506,8 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey 
 		return fmt.Errorf("Expected a single IP")
 	}
 
-	client, err := ssh.Dial("tcp", net.JoinHostPort(ips[0], "22"), &sshConfig)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-
-	fd := int(os.Stdin.Fd())
-	state, err := terminal.MakeRaw(fd)
-	if err != nil {
-		return err
-	}
-	defer terminal.Restore(fd, state)
-
-	w, h, err := terminal.GetSize(fd)
-	if err != nil {
-		return err
-	}
-
-	modes := ssh.TerminalModes{
-		ssh.ECHO:          1,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	}
-
-	if err = session.RequestPty("xterm", h, w, modes); err != nil {
-		return err
-	}
-
-	session.Stdin = os.Stdin
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
-
-	if err := session.Shell(); err != nil {
-		return err
-	}
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGWINCH)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for s := range sigChan {
-			switch s {
-			case syscall.SIGWINCH:
-				fd := int(os.Stdout.Fd())
-				w, h, _ = terminal.GetSize(fd)
-				session.WindowChange(h, w)
-			}
-		}
-	}()
-
-	err = session.Wait()
-	close(sigChan)
-	wg.Wait()
-
-	return err
+	hostPort := net.JoinHostPort(ips[0], "22")
+	return sshclient.NewSSHClient(hostPort, sshConfig).Shell()
 }
 
 // VMExecShell runs a simple shell command against some VMs.
@@ -617,35 +552,17 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier NetworkCopier, vmNames 
 }
 
 func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env []string) error {
-	client, err := ssh.Dial("tcp", ipPort, config)
+	script, err := sshclient.AddEnv(script, env)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	sshclient := sshclient.NewSSHClient(ipPort, *config)
 
-	session, err := client.NewSession()
+	outp, err := sshclient.StdoutPipe()
 	if err != nil {
 		return err
 	}
-
-	// there is a session.Setenv(), but usually ssh, for good reasons, does only alow to set a
-	// limited set of variables/no user variables at all. Fake this setting it in the script + export
-	// this certainly would need some shell escaping, but hey, if a user wants to destroy her VM, have fun injecting stuff.
-	var envBlob string
-	for _, kv := range env {
-		kvs := strings.SplitN(kv, "=", 2)
-		envBlob += fmt.Sprintln(kv, "; export ", kvs[0])
-	}
-
-	inp, err := session.StdinPipe()
-	if err != nil {
-		return err
-	}
-	outp, err := session.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	errp, err := session.StderrPipe()
+	errp, err := sshclient.StderrPipe()
 	if err != nil {
 		return err
 	}
@@ -654,14 +571,8 @@ func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env [
 	wg.Add(2)
 	go logLines(&wg, "SSH stdout: ", outp)
 	go logLines(&wg, "SSH stderr: ", errp)
-	if err := session.Shell(); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintln(inp, envBlob, script); err != nil {
-		return err
-	}
-	inp.Close()
-	err = session.Wait()
+
+	err = sshclient.ExecScript(script)
 	wg.Wait()
 
 	return err
