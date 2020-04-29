@@ -19,8 +19,9 @@ func NewRsyncNetworkCopier(sshPrivateKeyPath string) *RsyncNetworkCopier {
 }
 
 func (r *RsyncNetworkCopier) Copy(host string, source []string, dest string) error {
+	rsyncOpts := []string{"--recursive", "--perms", "--times"}
 	destPath := fmt.Sprintf("root@%s:%s", host, dest)
-	args := append(source, destPath)
+	args := append(append(rsyncOpts, source...), destPath)
 
 	cmd := exec.Command("rsync", args...)
 	cmd.Env = []string{
