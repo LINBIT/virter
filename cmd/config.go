@@ -38,14 +38,6 @@ network = "{{ get "libvirt.network" }}"
 # Default value: "{{ get "libvirt.template_dir" }}"
 template_dir = "{{ get "libvirt.template_dir" }}"
 
-[image]
-# registry is the toml file where the image registry is stored.
-# When pulling an image, virter looks up the image URL in this file.
-# Relative paths will be interpreted as relative to the current working directory
-# when executing virter.
-# Default value: "{{ get "image.registry" }}"
-registry = "{{ get "image.registry" }}"
-
 [time]
 # ssh_ping_count is the number of times virter will try to connect to a VM's
 # ssh port after starting it.
@@ -94,7 +86,6 @@ func initConfig() {
 	viper.SetDefault("libvirt.pool", "default")
 	viper.SetDefault("libvirt.network", "default")
 	viper.SetDefault("libvirt.template_dir", "assets/libvirt-templates")
-	viper.SetDefault("image.registry", "assets/images.toml")
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
