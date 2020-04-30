@@ -16,6 +16,8 @@ func imageBuildCommand() *cobra.Command {
 	var provisionFile string
 	var provisionValues []string
 
+	var vcpus uint
+
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
 		Short: "Build an image",
@@ -59,7 +61,7 @@ step, and then committing the resulting volume.`,
 				ImageName:     baseImageName,
 				VMName:        newImageName,
 				MemoryKiB:     1048576, // one gigabyte
-				VCPUs:         1,
+				VCPUs:         vcpus,
 				VMID:          vmID,
 				SSHPublicKeys: publicKeys,
 			}
@@ -105,6 +107,7 @@ step, and then committing the resulting volume.`,
 	buildCmd.Flags().StringSliceVarP(&provisionValues, "set", "s", []string{}, "set/override provisioning steps")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.MarkFlagRequired("id")
+	buildCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 
 	return buildCmd
 }
