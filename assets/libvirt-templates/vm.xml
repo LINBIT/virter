@@ -46,9 +46,20 @@
       <source network='default' bridge='virbr0'/>
       <model type='virtio'/>
     </interface>
+{{ if eq .ConsoleFile "" }}
     <console type='pty'>
-      <source type='serial'/>
+      <target port='0'/>
     </console>
+{{ else }}
+    <console type='file'>
+      <source path='{{ .ConsoleFile }}' append='off'>
+        <seclabel model='dac' type='static'>
+            <label>+{{ .CurrentUser }}:+{{ .CurrentGroup }}</label>
+        </seclabel>
+      </source>
+      <target port='0'/>
+    </console>
+{{ end }}
     <video>
       <model type='cirrus'/>
     </video>

@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -201,8 +203,9 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	memKiB := vmConfig.MemoryKiB
 	vcpus := vmConfig.VCPUs
 	mac := qemuMAC(vmID)
+	consoleFile := vmConfig.ConsoleFile
 
-	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB, vcpus)
+	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB, vcpus, consoleFile)
 	if err != nil {
 		return nil, err
 	}
@@ -230,13 +233,63 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	return ip, nil
 }
 
-func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64, vcpus uint) (string, error) {
+// currentUidGid returns the user id and group id of the current user, parsed
+// as an uint32. An error is returned if the retrieval of the user or parsing
+// of the IDs fails.
+func currentUidGid() (uint32, uint32, error) {
+	u, err := user.Current()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	uid, err := strconv.ParseUint(u.Uid, 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to convert uid '%s' to number: %w",
+			u.Uid, err)
+	}
+
+	gid, err := strconv.ParseUint(u.Gid, 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to convert gid '%s' to number: %w",
+			u.Gid, err)
+	}
+
+	// uid and gid are uint64, but we can safely cast here because we
+	// ensured bitsize = 32 in the ParseUint calls above
+	return uint32(uid), uint32(gid), nil
+}
+
+func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64, vcpus uint, consoleFile string) (string, error) {
+	var currentUser uint32
+	var currentGroup uint32
+	if consoleFile != "" {
+		var err error
+		currentUser, currentGroup, err = currentUidGid()
+		if err != nil {
+			log.Warnf("Failed to determine current user: %v", err)
+			log.Warnf("Creating console logfile as root")
+			currentUser, currentGroup = 0, 0
+		}
+
+		// libvirt doesn't like relative paths
+		consoleFile, err = filepath.Abs(consoleFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to determine absolute path for console file '%v': %w",
+				consoleFile, err)
+		}
+
+		log.Debugf("Logging VM console output to %s", consoleFile)
+	}
+
 	templateData := map[string]interface{}{
-		"PoolName":  poolName,
-		"VMName":    vmName,
-		"MAC":       mac,
-		"MemoryKiB": memKiB,
-		"VCPUs":     vcpus,
+		"PoolName":     poolName,
+		"VMName":       vmName,
+		"MAC":          mac,
+		"MemoryKiB":    memKiB,
+		"VCPUs":        vcpus,
+		"ConsoleFile":  consoleFile,
+		"CurrentUser":  currentUser,
+		"CurrentGroup": currentGroup,
 	}
 
 	return v.renderTemplate(templateVM, templateData)

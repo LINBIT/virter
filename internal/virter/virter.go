@@ -76,6 +76,7 @@ type VMConfig struct {
 	VCPUs         uint
 	VMID          uint
 	SSHPublicKeys []string
+	ConsoleFile   string
 }
 
 // ISOGenerator generates ISO images from file data

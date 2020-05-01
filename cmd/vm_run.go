@@ -22,6 +22,8 @@ func vmRunCommand() *cobra.Command {
 
 	var vcpus uint
 
+	var consoleFile string
+
 	runCmd := &cobra.Command{
 		Use:   "run image",
 		Short: "Start a virtual machine with a given image",
@@ -54,6 +56,7 @@ func vmRunCommand() *cobra.Command {
 				VCPUs:         vcpus,
 				VMID:          vmID,
 				SSHPublicKeys: publicKeys,
+				ConsoleFile:   consoleFile,
 			}
 			err = v.VMRun(isogenerator.ExternalISOGenerator{}, newSSHPinger(), c, waitSSH)
 			if err != nil {
@@ -77,6 +80,7 @@ func vmRunCommand() *cobra.Command {
 	mem = u.MustNewValue(1*units["G"], unit.None)
 	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
+	runCmd.Flags().StringVarP(&consoleFile, "console", "c", "", "File to redirect the VM's console output to")
 
 	return runCmd
 }
