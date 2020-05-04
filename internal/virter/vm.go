@@ -202,10 +202,11 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	vmID := vmConfig.VMID
 	memKiB := vmConfig.MemoryKiB
 	vcpus := vmConfig.VCPUs
+	vmNetwork := v.networkName
 	mac := qemuMAC(vmID)
 	consoleFile := vmConfig.ConsoleFile
 
-	xml, err := v.vmXML(sp.Name, vmName, mac, memKiB, vcpus, consoleFile)
+	xml, err := v.vmXML(sp.Name, vmName, vmNetwork, mac, memKiB, vcpus, consoleFile)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +260,14 @@ func currentUidGid() (uint32, uint32, error) {
 	return uint32(uid), uint32(gid), nil
 }
 
-func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64, vcpus uint, consoleFile string) (string, error) {
+func (v *Virter) vmXML(
+	poolName string,
+	vmName string,
+	networkName string,
+	mac string,
+	memKiB uint64,
+	vcpus uint,
+	consoleFile string) (string, error) {
 	var currentUser uint32
 	var currentGroup uint32
 	if consoleFile != "" {
@@ -284,6 +292,7 @@ func (v *Virter) vmXML(poolName string, vmName string, mac string, memKiB uint64
 	templateData := map[string]interface{}{
 		"PoolName":     poolName,
 		"VMName":       vmName,
+		"NetworkName":  networkName,
 		"MAC":          mac,
 		"MemoryKiB":    memKiB,
 		"VCPUs":        vcpus,

@@ -43,7 +43,7 @@
     </controller>
     <interface type='network'>
       <mac address='{{ .MAC }}'/>
-      <source network='default' bridge='virbr0'/>
+      <source network='{{ .NetworkName }}' bridge='virbr0'/>
       <model type='virtio'/>
     </interface>
 {{ if eq .ConsoleFile "" }}
