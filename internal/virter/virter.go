@@ -76,7 +76,13 @@ type VMConfig struct {
 	VCPUs         uint
 	ID            uint
 	SSHPublicKeys []string
-	ConsoleFile   string
+	ConsoleFile   *VMConsoleFile
+}
+
+type VMConsoleFile struct {
+	Path     string
+	OwnerUID uint32
+	OwnerGID uint32
 }
 
 // CheckVMConfig takes a VMConfig, does basic checks, and returns it back.

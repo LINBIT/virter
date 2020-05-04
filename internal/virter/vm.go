@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -201,18 +199,13 @@ func (v *Virter) scratchVolumeXML(name string) (string, error) {
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
-	vmName := vmConfig.Name
-	vmID := vmConfig.ID
-	memKiB := vmConfig.MemoryKiB
-	vcpus := vmConfig.VCPUs
-	vmNetwork := v.networkName
-	mac := qemuMAC(vmID)
-	consoleFile := vmConfig.ConsoleFile
-
-	xml, err := v.vmXML(sp.Name, vmName, vmNetwork, mac, memKiB, vcpus, consoleFile)
+	mac := qemuMAC(vmConfig.ID)
+	xml, err := v.vmXML(sp.Name, vmConfig, mac)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("Using domain XML: %s", xml)
 
 	log.Print("Define VM")
 	d, err := v.libvirt.DomainDefineXML(xml)
@@ -223,7 +216,7 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	// Add DHCP entry after defining the VM to ensure that it can be
 	// removed when removing the VM, but before starting it to ensure that
 	// it gets the correct IP address
-	ip, err := v.addDHCPEntry(mac, vmID)
+	ip, err := v.addDHCPEntry(mac, vmConfig.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -235,76 +228,6 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	}
 
 	return ip, nil
-}
-
-// currentUidGid returns the user id and group id of the current user, parsed
-// as an uint32. An error is returned if the retrieval of the user or parsing
-// of the IDs fails.
-func currentUidGid() (uint32, uint32, error) {
-	u, err := user.Current()
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get current user: %w", err)
-	}
-
-	uid, err := strconv.ParseUint(u.Uid, 10, 32)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to convert uid '%s' to number: %w",
-			u.Uid, err)
-	}
-
-	gid, err := strconv.ParseUint(u.Gid, 10, 32)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to convert gid '%s' to number: %w",
-			u.Gid, err)
-	}
-
-	// uid and gid are uint64, but we can safely cast here because we
-	// ensured bitsize = 32 in the ParseUint calls above
-	return uint32(uid), uint32(gid), nil
-}
-
-func (v *Virter) vmXML(
-	poolName string,
-	vmName string,
-	networkName string,
-	mac string,
-	memKiB uint64,
-	vcpus uint,
-	consoleFile string) (string, error) {
-	var currentUser uint32
-	var currentGroup uint32
-	if consoleFile != "" {
-		var err error
-		currentUser, currentGroup, err = currentUidGid()
-		if err != nil {
-			log.Warnf("Failed to determine current user: %v", err)
-			log.Warnf("Creating console logfile as root")
-			currentUser, currentGroup = 0, 0
-		}
-
-		// libvirt doesn't like relative paths
-		consoleFile, err = filepath.Abs(consoleFile)
-		if err != nil {
-			return "", fmt.Errorf("failed to determine absolute path for console file '%v': %w",
-				consoleFile, err)
-		}
-
-		log.Debugf("Logging VM console output to %s", consoleFile)
-	}
-
-	templateData := map[string]interface{}{
-		"PoolName":     poolName,
-		"VMName":       vmName,
-		"NetworkName":  networkName,
-		"MAC":          mac,
-		"MemoryKiB":    memKiB,
-		"VCPUs":        vcpus,
-		"ConsoleFile":  consoleFile,
-		"CurrentUser":  currentUser,
-		"CurrentGroup": currentGroup,
-	}
-
-	return v.renderTemplate(templateVM, templateData)
 }
 
 // VMRm removes a VM.
@@ -671,4 +594,3 @@ const templateUserData = "user-data"
 const templateCIData = "volume-cidata.xml"
 const templateVMVolume = "volume-vm.xml"
 const templateScratchVolume = "volume-scratch.xml"
-const templateVM = "vm.xml"

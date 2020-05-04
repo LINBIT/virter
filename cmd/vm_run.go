@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os/user"
+	"path/filepath"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 
@@ -11,6 +14,54 @@ import (
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/isogenerator"
 )
+
+// currentUidGid returns the user id and group id of the current user, parsed
+// as an uint32. An error is returned if the retrieval of the user or parsing
+// of the IDs fails.
+func currentUidGid() (uint32, uint32, error) {
+	u, err := user.Current()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	uid, err := strconv.ParseUint(u.Uid, 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to convert uid '%s' to number: %w",
+			u.Uid, err)
+	}
+
+	gid, err := strconv.ParseUint(u.Gid, 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to convert gid '%s' to number: %w",
+			u.Gid, err)
+	}
+
+	// uid and gid are uint64, but we can safely cast here because we
+	// ensured bitsize = 32 in the ParseUint calls above
+	return uint32(uid), uint32(gid), nil
+}
+
+func currentUserConsoleFile(filename string) (*virter.VMConsoleFile, error) {
+	currentUser, currentGroup, err := currentUidGid()
+	if err != nil {
+		log.Warnf("Failed to determine current user: %v", err)
+		log.Warnf("Creating console logfile as root")
+		currentUser, currentGroup = 0, 0
+	}
+
+	// libvirt doesn't like relative paths
+	path, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine absolute path for console file '%v': %w",
+			filename, err)
+	}
+
+	return &virter.VMConsoleFile{
+		Path:     path,
+		OwnerUID: currentUser,
+		OwnerGID: currentGroup,
+	}, nil
+}
 
 func vmRunCommand() *cobra.Command {
 	var vmName string
@@ -49,6 +100,10 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
+			console, err := currentUserConsoleFile(consoleFile)
+			if err != nil {
+				log.Fatalf("Error while configuring console: %v", err)
+			}
 			c := virter.VMConfig{
 				ImageName:     imageName,
 				Name:          vmName,
@@ -56,7 +111,7 @@ func vmRunCommand() *cobra.Command {
 				VCPUs:         vcpus,
 				ID:            vmID,
 				SSHPublicKeys: publicKeys,
-				ConsoleFile:   consoleFile,
+				ConsoleFile:   console,
 			}
 			err = v.VMRun(isogenerator.ExternalISOGenerator{}, newSSHPinger(), c, waitSSH)
 			if err != nil {
