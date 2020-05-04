@@ -42,6 +42,9 @@ func currentUidGid() (uint32, uint32, error) {
 }
 
 func currentUserConsoleFile(filename string) (*virter.VMConsoleFile, error) {
+	if filename == "" {
+		return nil, nil
+	}
 	currentUser, currentGroup, err := currentUidGid()
 	if err != nil {
 		log.Warnf("Failed to determine current user: %v", err)
