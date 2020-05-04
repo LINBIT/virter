@@ -79,6 +79,21 @@ type VMConfig struct {
 	ConsoleFile   string
 }
 
+// CheckVMConfig takes a VMConfig, does basic checks, and returns it back.
+func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
+	// I don't want to put any arbitrary limits on the amount of mem,
+	// but this protects against the zero value case
+	if vmConfig.MemoryKiB == 0 {
+		return vmConfig, fmt.Errorf("cannot start a VM with 0 memory")
+	} else if vmConfig.VCPUs == 0 {
+		return vmConfig, fmt.Errorf("cannot start a VM with 0 (virtual) CPUs")
+	} else if vmConfig.VMID <= 1 {
+		return vmConfig, fmt.Errorf("cannot start a VM with reserved ID (i.e., IP) 'x.y.z.%d'", vmConfig.VMID)
+	}
+
+	return vmConfig, nil
+}
+
 // ISOGenerator generates ISO images from file data
 type ISOGenerator interface {
 	Generate(files map[string][]byte) ([]byte, error)

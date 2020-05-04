@@ -18,6 +18,29 @@ import (
 	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
+func TestCheckVMConfig(t *testing.T) {
+	c := virter.VMConfig{}
+
+	_, err := virter.CheckVMConfig(c)
+	assert.Error(t, err)
+
+	c.VCPUs = 1
+	_, err = virter.CheckVMConfig(c)
+	assert.Error(t, err)
+
+	c.MemoryKiB = 1024
+	_, err = virter.CheckVMConfig(c)
+	assert.Error(t, err)
+
+	c.VMID = 1
+	_, err = virter.CheckVMConfig(c)
+	assert.Error(t, err)
+
+	c.VMID = 2
+	_, err = virter.CheckVMConfig(c)
+	assert.NoError(t, err)
+}
+
 func TestVMRun(t *testing.T) {
 	g := new(mocks.ISOGenerator)
 	mockISOGenerate(g)
@@ -35,6 +58,8 @@ func TestVMRun(t *testing.T) {
 		ImageName:     imageName,
 		VMName:        vmName,
 		VMID:          vmID,
+		VCPUs:         1,
+		MemoryKiB:     1024,
 		SSHPublicKeys: []string{sshPublicKey},
 	}
 	err := v.VMRun(g, w, c, true)

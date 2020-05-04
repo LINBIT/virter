@@ -23,6 +23,10 @@ import (
 
 // VMRun starts a VM.
 func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, waitSSH bool) error {
+	vmConfig, err := CheckVMConfig(vmConfig)
+	if err != nil {
+		return err
+	}
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
