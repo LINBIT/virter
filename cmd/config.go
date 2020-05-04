@@ -144,7 +144,7 @@ func writeDefaultConfig(path string) error {
 		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	err = ioutil.WriteFile(path, defaultConfig.Bytes(), 0700)
+	err = ioutil.WriteFile(path, defaultConfig.Bytes(), 0600)
 	if err != nil {
 		return fmt.Errorf("failed to write default config file: %w", err)
 	}
