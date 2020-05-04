@@ -1,7 +1,0 @@
-<volume>
-  <name>{{ .VolumeName }}</name>
-  <capacity>0</capacity>
-  <target>
-    <format type='raw'/>
-  </target>
-</volume>

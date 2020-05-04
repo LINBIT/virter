@@ -128,14 +128,6 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error)
 	return v.renderTemplate(templateUserData, templateData)
 }
 
-func (v *Virter) ciDataVolumeXML(name string) (string, error) {
-	templateData := map[string]interface{}{
-		"VolumeName": name,
-	}
-
-	return v.renderTemplate(templateCIData, templateData)
-}
-
 func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
 	imageName := vmConfig.ImageName
 	vmName := vmConfig.Name
@@ -163,15 +155,6 @@ func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error
 	return nil
 }
 
-func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
-	templateData := map[string]interface{}{
-		"VolumeName":  name,
-		"BackingPath": backingPath,
-	}
-
-	return v.renderTemplate(templateVMVolume, templateData)
-}
-
 func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
 	xml, err := v.scratchVolumeXML(scratchVolumeName(vmConfig.Name))
 	if err != nil {
@@ -188,14 +171,6 @@ func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmConfig VMConfig) 
 
 func scratchVolumeName(vmName string) string {
 	return vmName + "-scratch"
-}
-
-func (v *Virter) scratchVolumeXML(name string) (string, error) {
-	templateData := map[string]interface{}{
-		"VolumeName": name,
-	}
-
-	return v.renderTemplate(templateScratchVolume, templateData)
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
@@ -591,6 +566,3 @@ func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (strin
 
 const templateMetaData = "meta-data"
 const templateUserData = "user-data"
-const templateCIData = "volume-cidata.xml"
-const templateVMVolume = "volume-vm.xml"
-const templateScratchVolume = "volume-scratch.xml"

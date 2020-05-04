@@ -99,6 +99,54 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 	return domain.Marshal()
 }
 
+func (v *Virter) ciDataVolumeXML(name string) (string, error) {
+	volume := &lx.StorageVolume{
+		Name:     name,
+		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "B"},
+		Target: &lx.StorageVolumeTarget{
+			Format: &lx.StorageVolumeTargetFormat{Type: "raw"},
+		},
+	}
+	return volume.Marshal()
+}
+
+func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
+	volume := &lx.StorageVolume{
+		Name:     name,
+		Capacity: &lx.StorageVolumeSize{Value: 10, Unit: "GiB"},
+		Target: &lx.StorageVolumeTarget{
+			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
+		},
+		BackingStore: &lx.StorageVolumeBackingStore{
+			Path:   backingPath,
+			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
+		},
+	}
+	return volume.Marshal()
+}
+
+func (v *Virter) scratchVolumeXML(name string) (string, error) {
+	volume := &lx.StorageVolume{
+		Name:     name,
+		Capacity: &lx.StorageVolumeSize{Value: 2, Unit: "GiB"},
+		Target: &lx.StorageVolumeTarget{
+			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
+		},
+	}
+	return volume.Marshal()
+}
+
+func (v *Virter) imageVolumeXML(name string) (string, error) {
+	volume := &lx.StorageVolume{
+		Name:     name,
+		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "B"},
+		Target: &lx.StorageVolumeTarget{
+			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
+		},
+	}
+	return volume.Marshal()
+}
+
 func libvirtConsole(file *VMConsoleFile) lx.DomainConsole {
 	var source *lx.DomainChardevSource
 	// no file -> just return a regular PTY console

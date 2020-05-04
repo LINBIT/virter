@@ -58,14 +58,6 @@ func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url strin
 	return nil
 }
 
-func (v *Virter) imageVolumeXML(name string) (string, error) {
-	templateData := map[string]interface{}{
-		"ImageName": name,
-	}
-
-	return v.renderTemplate(templateVolumeImage, templateData)
-}
-
 // ImageBuildTools includes the dependencies for building an image
 type ImageBuildTools struct {
 	ISOGenerator  ISOGenerator

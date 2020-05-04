@@ -1,7 +1,0 @@
-<volume>
-  <name>{{.ImageName}}</name>
-  <capacity>0</capacity>
-  <target>
-    <format type='qcow2'/>
-  </target>
-</volume>
