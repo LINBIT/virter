@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -277,6 +278,30 @@ func TestVMExecRsync(t *testing.T) {
 	}, "/tmp").Return(nil)
 
 	err = v.VMExecRsync(context.Background(), copier, []string{vmName}, step)
+	assert.NoError(t, err)
+
+	step = &virter.ProvisionRsyncStep{
+		Source: filepath.Join("~/*"),
+		Dest:   "/tmp",
+	}
+	copier2 := new(mocks.NetworkCopier)
+	copierCall := copier2.On("Copy", "192.168.122.42", mock.AnythingOfType("[]string"), "/tmp").Return(nil)
+	copierCall.RunFn = func(args mock.Arguments) {
+		files := args[1].([]string)
+		for _, f := range files {
+			assert.True(t, strings.HasPrefix(f, os.Getenv("HOME")))
+		}
+	}
+	err = v.VMExecRsync(context.Background(), copier2, []string{vmName}, step)
+	assert.NoError(t, err)
+
+	step = &virter.ProvisionRsyncStep{
+		Source: filepath.Join("/", "323willnotbeherefile.txt"),
+		Dest:   "/tmp",
+	}
+	copier3 := new(mocks.NetworkCopier)
+	copier3.AssertNotCalled(t, "Copy")
+	err = v.VMExecRsync(context.Background(), copier3, []string{vmName}, step)
 	assert.NoError(t, err)
 }
 

@@ -47,7 +47,10 @@ The `rsync` provisioning step can be used to distribute files from the host to t
 
 ### Configuration Options
 
-* `source` is as a glob pattern of files on the host machine. It is interpreted according to the rules of Go's [filepath.Match](https://golang.org/pkg/path/filepath/#Match) function, so refer to the Go documentation for details.
+* `source` is as a glob pattern of files on the host machine.
+  It will first be expanded by Go's [os.ExpandEnv](https://golang.org/pkg/os/#ExpandEnv) and
+  then interpreted according to the rules of Go's [filepath.Match](https://golang.org/pkg/path/filepath/#Match)
+  function, so refer to the Go documentation for details.
 * `dest` is the path on the guest machine(s) where the files should be copied to.
 
 The glob-expanded `source` list of files and the `dest` path are passed verbatim to the `rsync` command line, so `rsync`'s path rules apply. Refer to the `rsync` documentation for more details.
