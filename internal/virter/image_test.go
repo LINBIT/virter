@@ -100,8 +100,8 @@ func TestImageBuild(t *testing.T) {
 
 	vmConfig := virter.VMConfig{
 		ImageName:     imageName,
-		VMName:        vmName,
-		VMID:          vmID,
+		Name:          vmName,
+		ID:            vmID,
 		MemoryKiB:     1024,
 		VCPUs:         1,
 		SSHPublicKeys: []string{sshPublicKey},

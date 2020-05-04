@@ -68,7 +68,7 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 }
 
 func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmConfig VMConfig) error {
-	vmName := vmConfig.VMName
+	vmName := vmConfig.Name
 	sshPublicKeys := vmConfig.SSHPublicKeys
 
 	metaData, err := v.metaData(vmName)
@@ -140,7 +140,7 @@ func (v *Virter) ciDataVolumeXML(name string) (string, error) {
 
 func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
 	imageName := vmConfig.ImageName
-	vmName := vmConfig.VMName
+	vmName := vmConfig.Name
 
 	backingVolume, err := v.libvirt.StorageVolLookupByName(sp, imageName)
 	if err != nil {
@@ -175,9 +175,7 @@ func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
 }
 
 func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
-	vmName := vmConfig.VMName
-
-	xml, err := v.scratchVolumeXML(scratchVolumeName(vmName))
+	xml, err := v.scratchVolumeXML(scratchVolumeName(vmConfig.Name))
 	if err != nil {
 		return err
 	}
@@ -203,8 +201,8 @@ func (v *Virter) scratchVolumeXML(name string) (string, error) {
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
-	vmName := vmConfig.VMName
-	vmID := vmConfig.VMID
+	vmName := vmConfig.Name
+	vmID := vmConfig.ID
 	memKiB := vmConfig.MemoryKiB
 	vcpus := vmConfig.VCPUs
 	vmNetwork := v.networkName

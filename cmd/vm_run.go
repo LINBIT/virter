@@ -51,10 +51,10 @@ func vmRunCommand() *cobra.Command {
 
 			c := virter.VMConfig{
 				ImageName:     imageName,
-				VMName:        vmName,
+				Name:          vmName,
 				MemoryKiB:     memKiB,
 				VCPUs:         vcpus,
-				VMID:          vmID,
+				ID:            vmID,
 				SSHPublicKeys: publicKeys,
 				ConsoleFile:   consoleFile,
 			}

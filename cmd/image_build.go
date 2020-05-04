@@ -59,10 +59,10 @@ step, and then committing the resulting volume.`,
 
 			vmConfig := virter.VMConfig{
 				ImageName:     baseImageName,
-				VMName:        newImageName,
+				Name:          newImageName,
 				MemoryKiB:     1048576, // one gigabyte
 				VCPUs:         vcpus,
-				VMID:          vmID,
+				ID:            vmID,
 				SSHPublicKeys: publicKeys,
 			}
 

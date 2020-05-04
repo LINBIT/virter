@@ -32,11 +32,11 @@ func TestCheckVMConfig(t *testing.T) {
 	_, err = virter.CheckVMConfig(c)
 	assert.Error(t, err)
 
-	c.VMID = 1
+	c.ID = 1
 	_, err = virter.CheckVMConfig(c)
 	assert.Error(t, err)
 
-	c.VMID = 2
+	c.ID = 2
 	_, err = virter.CheckVMConfig(c)
 	assert.NoError(t, err)
 }
@@ -56,8 +56,8 @@ func TestVMRun(t *testing.T) {
 
 	c := virter.VMConfig{
 		ImageName:     imageName,
-		VMName:        vmName,
-		VMID:          vmID,
+		Name:          vmName,
+		ID:            vmID,
 		VCPUs:         1,
 		MemoryKiB:     1024,
 		SSHPublicKeys: []string{sshPublicKey},

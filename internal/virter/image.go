@@ -91,7 +91,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 		return err
 	}
 
-	vmNames := []string{vmConfig.VMName}
+	vmNames := []string{vmConfig.Name}
 	sshPrivateKey := buildConfig.SSHPrivateKey
 
 	for _, s := range buildConfig.ProvisionConfig.Steps {
@@ -112,7 +112,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 		}
 	}
 
-	err = v.VMCommit(tools.AfterNotifier, vmConfig.VMName, true, buildConfig.ShutdownTimeout)
+	err = v.VMCommit(tools.AfterNotifier, vmConfig.Name, true, buildConfig.ShutdownTimeout)
 	if err != nil {
 		return err
 	}
