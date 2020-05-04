@@ -23,7 +23,7 @@ func VirterConnect() (*virter.Virter, error) {
 
 	l := libvirt.New(c)
 	if err := l.Connect(); err != nil {
-		return nil, fmt.Errorf("failed to connect: %w", err)
+		return nil, fmt.Errorf("failed to connect to libvirt socket: %w", err)
 	}
 
 	pool := viper.GetString("libvirt.pool")
