@@ -1,9 +1,13 @@
 FROM golang:alpine as builder
 
+RUN apk update \
+	&& apk add make git \
+	&& rm -rf /var/cache/apk/*
+
 WORKDIR /go/src/virter
 COPY . .
 
-RUN go build && mv ./virter / && mv ./assets /
+RUN make && mv ./virter / && mv ./assets /
 
 FROM alpine:latest
 
