@@ -122,22 +122,17 @@ type NetworkCopier interface {
 	Copy(host string, source []string, destination string) error
 }
 
-func (v *Virter) renderTemplate(name string, data interface{}) (string, error) {
-	templateText, err := v.templates.ReadFile(name)
-	if err != nil {
-		return "", fmt.Errorf("could not read template: %w", err)
-	}
-
-	t, err := template.New(name).Parse(string(templateText))
+func (v *Virter) renderTemplate(name, content string, data interface{}) (string, error) {
+	t, err := template.New(name).Parse(content)
 	if err != nil {
 		return "", fmt.Errorf("invalid template %v: %w", name, err)
 	}
 
-	xml := bytes.NewBuffer([]byte{})
-	err = t.Execute(xml, data)
+	result := bytes.NewBuffer([]byte{})
+	err = t.Execute(result, data)
 	if err != nil {
 		return "", fmt.Errorf("could not execute template %v: %w", name, err)
 	}
 
-	return xml.String(), nil
+	return result.String(), nil
 }
