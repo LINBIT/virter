@@ -111,5 +111,3 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 
 	return nil
 }
-
-const templateVolumeImage = "volume-image.xml"

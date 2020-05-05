@@ -25,7 +25,7 @@ func TestImagePull(t *testing.T) {
 
 	l := newFakeLibvirtConnection()
 
-	v := virter.New(l, poolName, networkName, testDirectory())
+	v := virter.New(l, poolName, networkName)
 
 	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
 	assert.NoError(t, err)
@@ -42,7 +42,7 @@ func TestImagePullBadStatus(t *testing.T) {
 
 	l := newFakeLibvirtConnection()
 
-	v := virter.New(l, poolName, networkName, testDirectory())
+	v := virter.New(l, poolName, networkName)
 
 	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
 	assert.Error(t, err)
@@ -89,7 +89,7 @@ func TestImageBuild(t *testing.T) {
 	l.vols[imageName] = &FakeLibvirtStorageVol{}
 	l.lifecycleEvents = makeShutdownEvents()
 
-	v := virter.New(l, poolName, networkName, testDirectory())
+	v := virter.New(l, poolName, networkName)
 
 	tools := virter.ImageBuildTools{
 		ISOGenerator:  g,

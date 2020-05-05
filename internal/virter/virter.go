@@ -11,11 +11,6 @@ import (
 	libvirt "github.com/digitalocean/go-libvirt"
 )
 
-// FileReader is the interface for reading whole files.
-type FileReader interface {
-	ReadFile(subpath string) ([]byte, error)
-}
-
 // LibvirtConnection contains required libvirt connection methods.
 type LibvirtConnection interface {
 	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
@@ -47,19 +42,16 @@ type Virter struct {
 	libvirt         LibvirtConnection
 	storagePoolName string
 	networkName     string
-	templates       FileReader
 }
 
 // New configures a new Virter.
 func New(libvirtConnection LibvirtConnection,
 	storagePoolName string,
-	networkName string,
-	fileReader FileReader) *Virter {
+	networkName string) *Virter {
 	return &Virter{
 		libvirt:         libvirtConnection,
 		storagePoolName: storagePoolName,
 		networkName:     networkName,
-		templates:       fileReader,
 	}
 }
 
@@ -122,7 +114,7 @@ type NetworkCopier interface {
 	Copy(host string, source []string, destination string) error
 }
 
-func (v *Virter) renderTemplate(name, content string, data interface{}) (string, error) {
+func renderTemplate(name, content string, data interface{}) (string, error) {
 	t, err := template.New(name).Parse(content)
 	if err != nil {
 		return "", fmt.Errorf("invalid template %v: %w", name, err)

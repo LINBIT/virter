@@ -31,13 +31,6 @@ pool = "{{ get "libvirt.pool" }}"
 # Default value: "{{ get "libvirt.network" }}"
 network = "{{ get "libvirt.network" }}"
 
-# template_dir is the directory where virters libvirt template files are stored.
-# These are static and normally do not have to be touched by the user.
-# Relative paths will be interpreted as relative to the current working directory
-# when executing virter.
-# Default value: "{{ get "libvirt.template_dir" }}"
-template_dir = "{{ get "libvirt.template_dir" }}"
-
 [time]
 # ssh_ping_count is the number of times virter will try to connect to a VM's
 # ssh port after starting it.
@@ -85,7 +78,6 @@ virter_private_key_path = "{{ get "auth.virter_private_key_path" }}"
 func initConfig() {
 	viper.SetDefault("libvirt.pool", "default")
 	viper.SetDefault("libvirt.network", "default")
-	viper.SetDefault("libvirt.template_dir", "assets/libvirt-templates")
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)

@@ -51,9 +51,6 @@ By default, virter uses the libvirt network named `default`.
 
 ## Usage
 
-Virter uses some templates and an image registry file. It is simplest just to
-run it from a checkout of this repository.
-
 For usage just run `virter help`.
 
 ## Architecture

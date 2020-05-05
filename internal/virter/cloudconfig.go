@@ -27,7 +27,7 @@ func (v *Virter) metaData(vmName string) (string, error) {
 		"VMName": vmName,
 	}
 
-	return v.renderTemplate("meta-data", templateMetaData, templateData)
+	return renderTemplate("meta-data", templateMetaData, templateData)
 }
 
 func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error) {
@@ -36,7 +36,7 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error)
 		"SSHPublicKeys": sshPublicKeys,
 	}
 
-	return v.renderTemplate("user-data", templateUserData, templateData)
+	return renderTemplate("user-data", templateUserData, templateData)
 }
 
 func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmConfig VMConfig) error {

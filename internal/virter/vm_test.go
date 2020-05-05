@@ -52,7 +52,7 @@ func TestVMRun(t *testing.T) {
 
 	l.vols[imageName] = &FakeLibvirtStorageVol{}
 
-	v := virter.New(l, poolName, networkName, testDirectory())
+	v := virter.New(l, poolName, networkName)
 
 	c := virter.VMConfig{
 		ImageName:     imageName,
@@ -153,7 +153,7 @@ func TestVMRm(t *testing.T) {
 			fakeNetworkAddHost(l.network, vmMAC, vmIP)
 		}
 
-		v := virter.New(l, poolName, networkName, testDirectory())
+		v := virter.New(l, poolName, networkName)
 
 		err := v.VMRm(vmName)
 		assert.NoError(t, err)
@@ -226,7 +226,7 @@ func TestVMCommit(t *testing.T) {
 
 		}
 
-		v := virter.New(l, poolName, networkName, testDirectory())
+		v := virter.New(l, poolName, networkName)
 
 		err := v.VMCommit(an, vmName, r[commitShutdown], shutdownTimeout)
 		if expectOk {
@@ -266,7 +266,7 @@ func TestVMExecDocker(t *testing.T) {
 	docker := new(mocks.DockerClient)
 	mockDockerRun(docker)
 
-	v := virter.New(l, poolName, networkName, testDirectory())
+	v := virter.New(l, poolName, networkName)
 
 	dockercfg := virter.DockerContainerConfig{ImageName: dockerImageName}
 	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, dockercfg, []byte(sshPrivateKey))
@@ -285,7 +285,7 @@ func TestVMExecRsync(t *testing.T) {
 
 	fakeNetworkAddHost(l.network, vmMAC, vmIP)
 
-	v := virter.New(l, poolName, networkName, testDirectory())
+	v := virter.New(l, poolName, networkName)
 
 	dir, err := createFakeDirectory()
 	assert.NoError(t, err)
