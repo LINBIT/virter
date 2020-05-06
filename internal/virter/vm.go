@@ -446,8 +446,7 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier NetworkCopier, vmNames 
 	}
 
 	if len(files) == 0 {
-		log.Debugf(
-			"step-rsync didn't result in any files to copy: %s to %s", rsyncStep.Source, rsyncStep.Dest)
+		log.Warnf("rsync source '%s' did not match any files, skipping copy step", rsyncStep.Source)
 		return nil
 	}
 
