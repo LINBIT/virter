@@ -17,6 +17,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/gorilla/mux v1.7.4 // indirect
+	github.com/hashicorp/go-multierror v1.1.0
 	github.com/helm/helm v2.16.6+incompatible
 	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
