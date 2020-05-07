@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net"
 	"text/template"
 	"time"
 
 	libvirt "github.com/digitalocean/go-libvirt"
+	"golang.org/x/crypto/ssh"
 )
 
 // LibvirtConnection contains required libvirt connection methods.
@@ -68,6 +68,10 @@ type VMConfig struct {
 	VCPUs         uint
 	ID            uint
 	SSHPublicKeys []string
+	SSHPrivateKey []byte
+	WaitSSH       bool
+	SSHPingCount  int
+	SSHPingPeriod time.Duration
 	ConsoleFile   *VMConsoleFile
 }
 
@@ -92,9 +96,19 @@ func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
 	return vmConfig, nil
 }
 
-// PortWaiter waits for TCP ports to be open
-type PortWaiter interface {
-	WaitPort(ip net.IP, port string) error
+// ShellClientBuilder provides SSH connections
+type ShellClientBuilder interface {
+	NewShellClient(hostPort string, sshconfig ssh.ClientConfig) ShellClient
+}
+
+// ShellClient executes shell commands
+type ShellClient interface {
+	Dial() error
+	Close() error
+	StdoutPipe() (io.Reader, error)
+	StderrPipe() (io.Reader, error)
+	ExecScript(script string) error
+	Shell() error
 }
 
 // AfterNotifier wait for a duration to elapse

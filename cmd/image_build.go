@@ -51,8 +51,8 @@ step, and then committing the resulting volume.`,
 
 			// DockerClient will be set later if needed
 			tools := virter.ImageBuildTools{
-				PortWaiter:    newSSHPinger(),
-				AfterNotifier: actualtime.ActualTime{},
+				ShellClientBuilder: SSHClientBuilder{},
+				AfterNotifier:      actualtime.ActualTime{},
 			}
 
 			vmConfig := virter.VMConfig{
@@ -62,6 +62,10 @@ step, and then committing the resulting volume.`,
 				VCPUs:         vcpus,
 				ID:            vmID,
 				SSHPublicKeys: publicKeys,
+				SSHPrivateKey: privateKey,
+				WaitSSH:       true,
+				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
+				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 			}
 
 			dockerContainerConfig := virter.DockerContainerConfig{

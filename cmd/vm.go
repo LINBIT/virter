@@ -9,8 +9,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/ssh"
 
-	"github.com/LINBIT/virter/pkg/tcpping"
+	sshclient "github.com/LINBIT/gosshclient"
+	"github.com/LINBIT/virter/internal/virter"
 )
 
 func vmCommand() *cobra.Command {
@@ -42,12 +44,13 @@ func dockerContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dockerTimeout)
 }
 
-func newSSHPinger() tcpping.TCPPinger {
-	return tcpping.TCPPinger{
-		Count:  viper.GetInt("time.ssh_ping_count"),
-		Period: viper.GetDuration("time.ssh_ping_period"),
-	}
+// SSHClientBuilder builds SSH shell clients
+type SSHClientBuilder struct {
+}
 
+// NewShellClient returns an SSH shell client
+func (SSHClientBuilder) NewShellClient(hostPort string, sshConfig ssh.ClientConfig) virter.ShellClient {
+	return sshclient.NewSSHClient(hostPort, sshConfig)
 }
 
 func loadPublicKeys() ([]string, error) {

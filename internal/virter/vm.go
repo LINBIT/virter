@@ -14,12 +14,13 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	sshclient "github.com/LINBIT/gosshclient"
+	"github.com/LINBIT/virter/pkg/actualtime"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
 
 // VMRun starts a VM.
-func (v *Virter) VMRun(waiter PortWaiter, vmConfig VMConfig, waitSSH bool) error {
+func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig) error {
 	vmConfig, err := CheckVMConfig(vmConfig)
 	if err != nil {
 		return err
@@ -52,13 +53,11 @@ func (v *Virter) VMRun(waiter PortWaiter, vmConfig VMConfig, waitSSH bool) error
 		return err
 	}
 
-	if waitSSH {
-		log.Print("Wait for SSH port to open")
-		err = waiter.WaitPort(ip, "ssh")
+	if vmConfig.WaitSSH {
+		err := pingSSH(shellClientBuilder, vmConfig, ip)
 		if err != nil {
-			return fmt.Errorf("unable to connect to SSH port: %w", err)
+			return err
 		}
-		log.Print("Successfully connected to SSH port")
 	}
 
 	return nil
@@ -139,6 +138,42 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	}
 
 	return ip, nil
+}
+
+func pingSSH(shellClientBuilder ShellClientBuilder, vmConfig VMConfig, ip net.IP) error {
+	log.Print("Wait for SSH port to open")
+
+	hostPort := net.JoinHostPort(ip.String(), "ssh")
+
+	sshConfig, err := getSSHClientConfig(vmConfig.SSHPrivateKey)
+	if err != nil {
+		return err
+	}
+	sshConfig.Timeout = vmConfig.SSHPingPeriod
+
+	sshTry := func() error {
+		return tryDialSSH(shellClientBuilder, hostPort, sshConfig)
+	}
+
+	// Using ActualTime breaks the expectation of the unit tests
+	// that this code does not sleep, but we work around that by
+	// always making the first ping successful in tests
+	if err := (actualtime.ActualTime{}.Ping(vmConfig.SSHPingCount, vmConfig.SSHPingPeriod, sshTry)); err != nil {
+		return fmt.Errorf("unable to connect to SSH port: %w", err)
+	}
+
+	log.Print("Successfully connected to SSH port")
+	return nil
+}
+
+func tryDialSSH(shellClientBuilder ShellClientBuilder, hostPort string, sshConfig ssh.ClientConfig) error {
+	sshClient := shellClientBuilder.NewShellClient(hostPort, sshConfig)
+	if err := sshClient.Dial(); err != nil {
+		log.Debugf("SSH dial attempt failed: %v", err)
+		return err
+	}
+	sshClient.Close()
+	return nil
 }
 
 // VMRm removes a VM.
@@ -373,15 +408,10 @@ func (v *Virter) VMExecDocker(ctx context.Context, docker DockerClient, vmNames 
 	return dockerRun(ctx, docker, dockerContainerConfig, ips, sshPrivateKey)
 }
 
-func (v *Virter) getSSHClientConfig(vmNames []string, sshPrivateKey []byte) (ssh.ClientConfig, []string, error) {
-	ips, err := v.getIPs(vmNames)
-	if err != nil {
-		return ssh.ClientConfig{}, nil, err
-	}
-
+func getSSHClientConfig(sshPrivateKey []byte) (ssh.ClientConfig, error) {
 	signer, err := ssh.ParsePrivateKey(sshPrivateKey)
 	if err != nil {
-		return ssh.ClientConfig{}, nil, err
+		return ssh.ClientConfig{}, err
 	}
 
 	config := ssh.ClientConfig{
@@ -392,17 +422,22 @@ func (v *Virter) getSSHClientConfig(vmNames []string, sshPrivateKey []byte) (ssh
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	return config, ips, nil
+	return config, nil
 }
 
 // VMSSHSession runs an interactive shell session in a VM
 func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey []byte) error {
-	sshConfig, ips, err := v.getSSHClientConfig([]string{vmName}, sshPrivateKey)
+	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
 	}
 	if len(ips) != 1 {
 		return fmt.Errorf("Expected a single IP")
+	}
+
+	sshConfig, err := getSSHClientConfig(sshPrivateKey)
+	if err != nil {
+		return err
 	}
 
 	hostPort := net.JoinHostPort(ips[0], "22")
@@ -417,7 +452,12 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey 
 
 // VMExecShell runs a simple shell command against some VMs.
 func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ProvisionShellStep) error {
-	sshConfig, ips, err := v.getSSHClientConfig(vmNames, sshPrivateKey)
+	ips, err := v.getIPs(vmNames)
+	if err != nil {
+		return err
+	}
+
+	sshConfig, err := getSSHClientConfig(sshPrivateKey)
 	if err != nil {
 		return err
 	}

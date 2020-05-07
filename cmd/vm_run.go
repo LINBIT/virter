@@ -10,6 +10,7 @@ import (
 
 	"github.com/rck/unit"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
 )
@@ -102,6 +103,11 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
+			privateKey, err := loadPrivateKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			console, err := currentUserConsoleFile(consoleFile)
 			if err != nil {
 				log.Fatalf("Error while configuring console: %v", err)
@@ -113,9 +119,13 @@ func vmRunCommand() *cobra.Command {
 				VCPUs:         vcpus,
 				ID:            vmID,
 				SSHPublicKeys: publicKeys,
+				SSHPrivateKey: privateKey,
+				WaitSSH:       waitSSH,
+				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
+				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 				ConsoleFile:   console,
 			}
-			err = v.VMRun(newSSHPinger(), c, waitSSH)
+			err = v.VMRun(SSHClientBuilder{}, c)
 			if err != nil {
 				log.Fatal(err)
 			}

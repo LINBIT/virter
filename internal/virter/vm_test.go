@@ -3,7 +3,6 @@ package virter_test
 import (
 	"context"
 	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,8 +41,9 @@ func TestCheckVMConfig(t *testing.T) {
 }
 
 func TestVMRun(t *testing.T) {
-	w := new(mocks.PortWaiter)
-	w.On("WaitPort", net.ParseIP("192.168.122.42"), "ssh").Return(nil)
+	shell := new(mocks.ShellClient)
+	shell.On("Dial").Return(nil)
+	shell.On("Close").Return(nil)
 
 	l := newFakeLibvirtConnection()
 
@@ -58,8 +58,12 @@ func TestVMRun(t *testing.T) {
 		VCPUs:         1,
 		MemoryKiB:     1024,
 		SSHPublicKeys: []string{sshPublicKey},
+		SSHPrivateKey: []byte(sshPrivateKey),
+		WaitSSH:       true,
+		SSHPingCount:  1,
+		SSHPingPeriod: time.Second, // ignored
 	}
-	err := v.VMRun(w, c, true)
+	err := v.VMRun(MockShellClientBuilder{shell}, c)
 	assert.NoError(t, err)
 
 	assert.Empty(t, l.vols[vmName].content)
@@ -73,7 +77,7 @@ func TestVMRun(t *testing.T) {
 	assert.True(t, domain.persistent)
 	assert.True(t, domain.active)
 
-	w.AssertExpectations(t)
+	shell.AssertExpectations(t)
 }
 
 const (
@@ -351,7 +355,14 @@ const (
 	ciDataVolumeName  = vmName + "-cidata"
 	scratchVolumeName = vmName + "-scratch"
 	sshPublicKey      = "some-key"
-	sshPrivateKey     = "some-private-key"
 	shutdownTimeout   = time.Second
 	dockerImageName   = "some-docker-image"
 )
+
+// A parsable private key is required; this is not authorized anywhere
+const sshPrivateKey = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIN4gIrqpayWZB21fYRvZ6vMqhXRZVmeDmj2Nxg7YdGOToAoGCCqGSM49
+AwEHoUQDQgAE1h7uFTDldfJM+ca8nW9dlL3zbJRXhV+g5hmm+r3ovTrvI2WA5SvS
+dxX5vs9jCz9HcV6xS/2bFQXXSDxb+NHcug==
+-----END EC PRIVATE KEY-----
+`

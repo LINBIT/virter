@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -72,8 +71,9 @@ func (b nopReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
 }
 
 func TestImageBuild(t *testing.T) {
-	w := new(mocks.PortWaiter)
-	w.On("WaitPort", net.ParseIP("192.168.122.42"), "ssh").Return(nil)
+	shell := new(mocks.ShellClient)
+	shell.On("Dial").Return(nil)
+	shell.On("Close").Return(nil)
 
 	docker := new(mocks.DockerClient)
 	mockDockerRun(docker)
@@ -89,9 +89,9 @@ func TestImageBuild(t *testing.T) {
 	v := virter.New(l, poolName, networkName)
 
 	tools := virter.ImageBuildTools{
-		PortWaiter:    w,
-		DockerClient:  docker,
-		AfterNotifier: an,
+		ShellClientBuilder: MockShellClientBuilder{shell},
+		DockerClient:       docker,
+		AfterNotifier:      an,
 	}
 
 	vmConfig := virter.VMConfig{
@@ -101,6 +101,10 @@ func TestImageBuild(t *testing.T) {
 		MemoryKiB:     1024,
 		VCPUs:         1,
 		SSHPublicKeys: []string{sshPublicKey},
+		SSHPrivateKey: []byte(sshPrivateKey),
+		WaitSSH:       true,
+		SSHPingCount:  1,
+		SSHPingPeriod: time.Second, // ignored
 	}
 
 	provisionConfig := virter.ProvisionConfig{
@@ -128,7 +132,7 @@ func TestImageBuild(t *testing.T) {
 	assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
 	assert.Empty(t, l.domains)
 
-	w.AssertExpectations(t)
+	shell.AssertExpectations(t)
 	docker.AssertExpectations(t)
 	an.AssertExpectations(t)
 }
