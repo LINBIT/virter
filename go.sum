@@ -7,6 +7,8 @@ github.com/LINBIT/gosshclient v0.1.1 h1:NNo0mIbYl+FbMxUIzriMtRqBFTC8YfKIQKQsnCS9
 github.com/LINBIT/gosshclient v0.1.1/go.mod h1:4EXUjKmUjf8SeM0PViLEGJU+pjtX0zM28AE1zwJ3zAk=
 github.com/LINBIT/gosshclient v0.2.0 h1:1nVfdR8LNhwu3Lj4P8BOhlUiQRzsZt2K97EHgW9kPyQ=
 github.com/LINBIT/gosshclient v0.2.0/go.mod h1:keh/sgzk2XsYJEii4vWR6vIamFyxLq5++jVqYVA+ihM=
+github.com/LINBIT/gosshclient v0.2.1 h1:iUuNOMANXrMS/8VyjzjkEFJgILblEZ6fFfGl5wAs9i0=
+github.com/LINBIT/gosshclient v0.2.1/go.mod h1:keh/sgzk2XsYJEii4vWR6vIamFyxLq5++jVqYVA+ihM=
 github.com/Microsoft/go-winio v0.4.14 h1:+hMXMk01us9KgxGb7ftKQt2Xpf5hH/yky+TDA+qxleU=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
