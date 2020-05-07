@@ -1,4 +1,4 @@
-package isogenerator
+package virter
 
 import "sync"
 

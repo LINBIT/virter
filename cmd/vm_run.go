@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/LINBIT/virter/internal/virter"
-	"github.com/LINBIT/virter/pkg/isogenerator"
 )
 
 // currentUidGid returns the user id and group id of the current user, parsed
@@ -116,7 +115,7 @@ func vmRunCommand() *cobra.Command {
 				SSHPublicKeys: publicKeys,
 				ConsoleFile:   console,
 			}
-			err = v.VMRun(isogenerator.ExternalISOGenerator{}, newSSHPinger(), c, waitSSH)
+			err = v.VMRun(newSSHPinger(), c, waitSSH)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -60,7 +60,6 @@ func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url strin
 
 // ImageBuildTools includes the dependencies for building an image
 type ImageBuildTools struct {
-	ISOGenerator  ISOGenerator
 	PortWaiter    PortWaiter
 	DockerClient  DockerClient
 	AfterNotifier AfterNotifier
@@ -78,7 +77,7 @@ type ImageBuildConfig struct {
 // ImageBuild builds an image by running a VM and provisioning it
 func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
 	// VMRun is responsible to call CheckVMConfig here!
-	err := v.VMRun(tools.ISOGenerator, tools.PortWaiter, vmConfig, true)
+	err := v.VMRun(tools.PortWaiter, vmConfig, true)
 	if err != nil {
 		return err
 	}

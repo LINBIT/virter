@@ -72,9 +72,6 @@ func (b nopReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
 }
 
 func TestImageBuild(t *testing.T) {
-	g := new(mocks.ISOGenerator)
-	mockISOGenerate(g)
-
 	w := new(mocks.PortWaiter)
 	w.On("WaitPort", net.ParseIP("192.168.122.42"), "ssh").Return(nil)
 
@@ -92,7 +89,6 @@ func TestImageBuild(t *testing.T) {
 	v := virter.New(l, poolName, networkName)
 
 	tools := virter.ImageBuildTools{
-		ISOGenerator:  g,
 		PortWaiter:    w,
 		DockerClient:  docker,
 		AfterNotifier: an,
@@ -132,7 +128,6 @@ func TestImageBuild(t *testing.T) {
 	assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
 	assert.Empty(t, l.domains)
 
-	g.AssertExpectations(t)
 	w.AssertExpectations(t)
 	docker.AssertExpectations(t)
 	an.AssertExpectations(t)

@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/digitalocean/go-libvirt"
+	libvirt "github.com/digitalocean/go-libvirt"
+	"github.com/kdomanski/iso9660"
 )
 
 const templateMetaData = `instance-id: {{ .VMName }}
@@ -39,7 +40,7 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error)
 	return renderTemplate("user-data", templateUserData, templateData)
 }
 
-func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmConfig VMConfig) error {
+func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig) error {
 	vmName := vmConfig.Name
 	sshPublicKeys := vmConfig.SSHPublicKeys
 
@@ -58,7 +59,7 @@ func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmConfig V
 		"user-data": []byte(userData),
 	}
 
-	ciData, err := g.Generate(files)
+	ciData, err := GenerateISO(files)
 	if err != nil {
 		return fmt.Errorf("failed to generate ISO: %w", err)
 	}
@@ -83,4 +84,26 @@ func (v *Virter) createCIData(sp libvirt.StoragePool, g ISOGenerator, vmConfig V
 
 func ciDataVolumeName(vmName string) string {
 	return vmName + "-cidata"
+}
+
+// GenerateISO generates a "CD-ROM" filesystem
+func GenerateISO(files map[string][]byte) ([]byte, error) {
+	isoWriter, err := iso9660.NewWriter()
+	if err != nil {
+		return nil, err
+	}
+	defer isoWriter.Cleanup()
+
+	for name, content := range files {
+		if err := isoWriter.AddFile(bytes.NewReader(content), name); err != nil {
+			return nil, err
+		}
+	}
+
+	wab := newWriteAtBuffer(nil)
+	if err := isoWriter.WriteTo(wab, "cidata"); err != nil {
+		return nil, err
+	}
+
+	return wab.Bytes(), nil
 }

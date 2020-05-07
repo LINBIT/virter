@@ -92,11 +92,6 @@ func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
 	return vmConfig, nil
 }
 
-// ISOGenerator generates ISO images from file data
-type ISOGenerator interface {
-	Generate(files map[string][]byte) ([]byte, error)
-}
-
 // PortWaiter waits for TCP ports to be open
 type PortWaiter interface {
 	WaitPort(ip net.IP, port string) error

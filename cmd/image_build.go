@@ -8,7 +8,6 @@ import (
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/actualtime"
-	"github.com/LINBIT/virter/pkg/isogenerator"
 )
 
 func imageBuildCommand() *cobra.Command {
@@ -52,7 +51,6 @@ step, and then committing the resulting volume.`,
 
 			// DockerClient will be set later if needed
 			tools := virter.ImageBuildTools{
-				ISOGenerator:  isogenerator.ExternalISOGenerator{},
 				PortWaiter:    newSSHPinger(),
 				AfterNotifier: actualtime.ActualTime{},
 			}

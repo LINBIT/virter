@@ -19,7 +19,7 @@ import (
 )
 
 // VMRun starts a VM.
-func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, waitSSH bool) error {
+func (v *Virter) VMRun(waiter PortWaiter, vmConfig VMConfig, waitSSH bool) error {
 	vmConfig, err := CheckVMConfig(vmConfig)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func (v *Virter) VMRun(g ISOGenerator, waiter PortWaiter, vmConfig VMConfig, wai
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, g, vmConfig)
+	err = v.createCIData(sp, vmConfig)
 	if err != nil {
 		return err
 	}

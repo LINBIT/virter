@@ -42,9 +42,6 @@ func TestCheckVMConfig(t *testing.T) {
 }
 
 func TestVMRun(t *testing.T) {
-	g := new(mocks.ISOGenerator)
-	mockISOGenerate(g)
-
 	w := new(mocks.PortWaiter)
 	w.On("WaitPort", net.ParseIP("192.168.122.42"), "ssh").Return(nil)
 
@@ -62,10 +59,9 @@ func TestVMRun(t *testing.T) {
 		MemoryKiB:     1024,
 		SSHPublicKeys: []string{sshPublicKey},
 	}
-	err := v.VMRun(g, w, c, true)
+	err := v.VMRun(w, c, true)
 	assert.NoError(t, err)
 
-	assert.Equal(t, []byte(ciDataContent), l.vols[ciDataVolumeName].content)
 	assert.Empty(t, l.vols[vmName].content)
 	assert.Empty(t, l.vols[scratchVolumeName].content)
 
@@ -77,12 +73,7 @@ func TestVMRun(t *testing.T) {
 	assert.True(t, domain.persistent)
 	assert.True(t, domain.active)
 
-	g.AssertExpectations(t)
 	w.AssertExpectations(t)
-}
-
-func mockISOGenerate(g *mocks.ISOGenerator) {
-	g.On("Generate", mock.Anything).Return([]byte(ciDataContent), nil)
 }
 
 const (
@@ -359,7 +350,6 @@ const (
 	vmIP              = "192.168.122.42"
 	ciDataVolumeName  = vmName + "-cidata"
 	scratchVolumeName = vmName + "-scratch"
-	ciDataContent     = "some-ci-data"
 	sshPublicKey      = "some-key"
 	sshPrivateKey     = "some-private-key"
 	shutdownTimeout   = time.Second
