@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/BurntSushi/toml v0.3.1
-	github.com/LINBIT/gosshclient v0.1.1
+	github.com/LINBIT/gosshclient v0.2.0
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/containerd/containerd v1.3.3 // indirect
@@ -40,7 +40,7 @@ require (
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.5.1
 	github.com/vbauerster/mpb v3.4.0+incompatible
-	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
+	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/text v0.3.2 // indirect

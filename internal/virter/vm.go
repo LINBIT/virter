@@ -406,7 +406,13 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey 
 	}
 
 	hostPort := net.JoinHostPort(ips[0], "22")
-	return sshclient.NewSSHClient(hostPort, sshConfig).Shell()
+	sshClient := sshclient.NewSSHClient(hostPort, sshConfig)
+	if err := sshClient.Dial(); err != nil {
+		return err
+	}
+	defer sshClient.Close()
+
+	return sshClient.Shell()
 }
 
 // VMExecShell runs a simple shell command against some VMs.
@@ -461,13 +467,17 @@ func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env [
 	if err != nil {
 		return err
 	}
-	sshclient := sshclient.NewSSHClient(ipPort, *config)
+	sshClient := sshclient.NewSSHClient(ipPort, *config)
+	if err := sshClient.Dial(); err != nil {
+		return err
+	}
+	defer sshClient.Close()
 
-	outp, err := sshclient.StdoutPipe()
+	outp, err := sshClient.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	errp, err := sshclient.StderrPipe()
+	errp, err := sshClient.StderrPipe()
 	if err != nil {
 		return err
 	}
@@ -477,7 +487,7 @@ func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env [
 	go logLines(&wg, "SSH stdout: ", outp)
 	go logLines(&wg, "SSH stderr: ", errp)
 
-	err = sshclient.ExecScript(script)
+	err = sshClient.ExecScript(script)
 	wg.Wait()
 
 	return err
