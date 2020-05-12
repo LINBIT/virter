@@ -29,7 +29,7 @@ func TestCheckVMConfig(t *testing.T) {
 
 	c.MemoryKiB = 1024
 	_, err = virter.CheckVMConfig(c)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 
 	c.ID = 1
 	_, err = virter.CheckVMConfig(c)

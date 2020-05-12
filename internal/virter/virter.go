@@ -89,7 +89,7 @@ func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
 		return vmConfig, fmt.Errorf("cannot start a VM with 0 memory")
 	} else if vmConfig.VCPUs == 0 {
 		return vmConfig, fmt.Errorf("cannot start a VM with 0 (virtual) CPUs")
-	} else if vmConfig.ID <= 1 {
+	} else if vmConfig.ID == 1 {
 		return vmConfig, fmt.Errorf("cannot start a VM with reserved ID (i.e., IP) 'x.y.z.%d'", vmConfig.ID)
 	}
 

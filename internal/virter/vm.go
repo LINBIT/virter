@@ -126,6 +126,12 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	// Add DHCP entry after defining the VM to ensure that it can be
 	// removed when removing the VM, but before starting it to ensure that
 	// it gets the correct IP address
+	if vmConfig.ID == 0 {
+		vmConfig.ID, err = v.GetFreeID()
+		if err != nil {
+			return nil, err
+		}
+	}
 	ip, err := v.addDHCPEntry(mac, vmConfig.ID)
 	if err != nil {
 		return nil, err
