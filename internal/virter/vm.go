@@ -24,9 +24,6 @@ import (
 func (v *Virter) ImageExists(imageName string) (bool, error) {
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
-		if hasErrorCode(err, errNoStoragePool) {
-			return false, nil
-		}
 		return false, fmt.Errorf("could not get storage pool: %w", err)
 	}
 
