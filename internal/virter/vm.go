@@ -19,6 +19,28 @@ import (
 	libvirt "github.com/digitalocean/go-libvirt"
 )
 
+// ImageExists checks whether an image called imageName exists in the libvirt
+// virter storage pool.
+func (v *Virter) ImageExists(imageName string) (bool, error) {
+	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
+	if err != nil {
+		if hasErrorCode(err, errNoStoragePool) {
+			return false, nil
+		}
+		return false, fmt.Errorf("could not get storage pool: %w", err)
+	}
+
+	_, err = v.libvirt.StorageVolLookupByName(sp, imageName)
+	if err != nil {
+		if hasErrorCode(err, errNoStorageVol) {
+			return false, nil
+		}
+		return false, fmt.Errorf("could not get backing image volume: %w", err)
+	}
+
+	return true, nil
+}
+
 // VMRun starts a VM.
 func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig) error {
 	vmConfig, err := CheckVMConfig(vmConfig)

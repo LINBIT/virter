@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os/user"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
+	"github.com/LINBIT/virter/pkg/registry"
 )
 
 // currentUidGid returns the user id and group id of the current user, parsed
@@ -64,6 +66,25 @@ func currentUserConsoleFile(filename string) (*virter.VMConsoleFile, error) {
 		OwnerUID: currentUser,
 		OwnerGID: currentGroup,
 	}, nil
+}
+
+func pullIfNotExists(v *virter.Virter, imageName string) error {
+	exists, err := v.ImageExists(imageName)
+	if err != nil {
+		return fmt.Errorf("could not determine whether or not image %v exists: %w",
+			imageName, err)
+	}
+	if !exists {
+		log.Printf("Image %v not available locally, pulling", imageName)
+		e := pullImage(v, imageName, "")
+		if errors.Is(e, registry.ErrNotFound) {
+			return fmt.Errorf("Could not find image %v", imageName)
+		} else if e != nil {
+			return fmt.Errorf("Error pulling image %v: %w", imageName, e)
+		}
+	}
+
+	return nil
 }
 
 func vmRunCommand() *cobra.Command {
@@ -125,6 +146,12 @@ func vmRunCommand() *cobra.Command {
 				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 				ConsoleFile:   console,
 			}
+
+			err = pullIfNotExists(v, c.ImageName)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			err = v.VMRun(SSHClientBuilder{}, c)
 			if err != nil {
 				log.Fatal(err)

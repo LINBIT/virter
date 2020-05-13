@@ -1,15 +1,50 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/LINBIT/virter/internal/virter"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
 )
+
+func pullImage(v *virter.Virter, imageName, url string) error {
+	reg := loadRegistry()
+	if url == "" {
+		var err error
+		url, err = reg.Lookup(imageName)
+		if err != nil {
+			return err
+		}
+	}
+
+	client := &http.Client{}
+
+	var total int64 = 0
+	p := mpb.New()
+	bar := p.AddBar(total,
+		mpb.AppendDecorators(
+			decor.CountersKibiByte("% .2f / % .2f"),
+		),
+	)
+
+	err := v.ImagePull(
+		client,
+		BarReaderProxy{bar},
+		url,
+		imageName)
+	if err != nil {
+		return fmt.Errorf("failed to pull image: %w", err)
+	}
+
+	p.Wait()
+	return nil
+}
 
 func imagePullCommand() *cobra.Command {
 	var url string
@@ -23,39 +58,15 @@ URL for the specified name from the local image registry will be
 used.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			reg := loadRegistry()
-			imageName := args[0]
-			if url == "" {
-				var err error
-				url, err = reg.Lookup(imageName)
-				if err != nil {
-					log.Fatalf("Error pulling image: %v", err)
-				}
-			}
-
 			v, err := VirterConnect()
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer v.Disconnect()
 
-			client := &http.Client{}
-
-			var total int64 = 0
-			p := mpb.New()
-			bar := p.AddBar(total,
-				mpb.AppendDecorators(
-					decor.CountersKibiByte("% .2f / % .2f"),
-				),
-			)
-
-			err = v.ImagePull(
-				client,
-				BarReaderProxy{bar},
-				url,
-				imageName)
+			err = pullImage(v, args[0], url)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("Error pulling image: %v", err)
 			}
 		},
 	}

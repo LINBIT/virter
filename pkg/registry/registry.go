@@ -1,11 +1,16 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	ErrNotFound = errors.New("not found")
 )
 
 type imageEntry struct {
@@ -57,7 +62,7 @@ func (r *ImageRegistry) Lookup(imageName string) (string, error) {
 	}
 	entry, ok := r.entries[imageName]
 	if !ok {
-		return "", fmt.Errorf("image %v not found in registry", imageName)
+		return "", fmt.Errorf("could not look up image %v in registry: %w", imageName, ErrNotFound)
 	}
 
 	return entry.URL, nil

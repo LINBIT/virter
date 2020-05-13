@@ -98,6 +98,11 @@ step, and then committing the resulting volume.`,
 				ProvisionConfig:       provisionConfig,
 			}
 
+			err = pullIfNotExists(v, vmConfig.ImageName)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			err = v.ImageBuild(ctx, tools, vmConfig, buildConfig)
 			if err != nil {
 				log.Fatal(err)

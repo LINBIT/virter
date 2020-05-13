@@ -12,8 +12,9 @@ import (
 type errorNumber int32
 
 const (
-	errNoDomain     errorNumber = 42
-	errNoStorageVol errorNumber = 50
+	errNoDomain      errorNumber = 42
+	errNoStoragePool errorNumber = 49
+	errNoStorageVol  errorNumber = 50
 )
 
 func hasErrorCode(err error, code errorNumber) bool {
