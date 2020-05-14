@@ -159,7 +159,7 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	log.Print("Start VM")
 	err = v.libvirt.DomainCreate(d)
 	if err != nil {
-		return nil, fmt.Errorf("could create create (start) domain: %w", err)
+		return nil, fmt.Errorf("could not create (start) domain: %w", err)
 	}
 
 	return ip, nil
