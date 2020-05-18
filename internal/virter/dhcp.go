@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 
+	libvirt "github.com/digitalocean/go-libvirt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
 
@@ -256,7 +256,7 @@ func (v *Virter) GetFreeID() (uint, error) {
 	}
 
 	// build a map of already used ID's
-	usedIds := map[uint]bool{}
+	usedIds := make(map[uint]bool, len(hosts))
 	for _, host := range hosts {
 		id, err := ipToID(*ipNet, net.ParseIP(host.IP))
 		if err != nil {
@@ -270,8 +270,7 @@ func (v *Virter) GetFreeID() (uint, error) {
 	availableHosts := uint((1 << (32 - maskSize)) - 2)
 
 	// we start from top of avialable host id's and check if they are already used and find one
-	var i uint = availableHosts
-	for ; i > 0; i-- {
+	for i := availableHosts; i > 0; i-- {
 		_, exists := usedIds[i]
 		if !exists {
 			return i, nil
