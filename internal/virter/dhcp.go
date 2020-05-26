@@ -230,9 +230,10 @@ func cidr(mask net.IP) uint {
 	return uint(sz)
 }
 
-// GetFreeID searches for an unused ID and returns the first it can find
+// getVMID returns wantedID if it is not 0 and free.
+// If wantedID is 0 getVMID searches for an unused ID and returns the first it can find
 // For searching it uses the set libvirt network and already reserverd DHCP entries
-func (v *Virter) GetFreeID() (uint, error) {
+func (v *Virter) getVMID(wantedID uint) (uint, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return 0, fmt.Errorf("could not get network: %w", err)
@@ -264,6 +265,16 @@ func (v *Virter) GetFreeID() (uint, error) {
 		}
 		usedIds[id] = true
 	}
+
+	if wantedID != 0 { // one was already set
+		if used := usedIds[wantedID]; used {
+			return 0, fmt.Errorf("preset ID '%d' already used", wantedID)
+		}
+		// not used, we can hand it back
+		return wantedID, nil
+	}
+
+	// try to find a free one
 
 	// from the netmask the number of avialable hosts
 	maskSize, _ := ipNet.Mask.Size()

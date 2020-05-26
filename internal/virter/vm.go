@@ -38,12 +38,52 @@ func (v *Virter) ImageExists(imageName string) (bool, error) {
 	return true, nil
 }
 
+func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
+	vmName := vmConfig.Name
+	imgs := []string{
+		vmName,
+		ciDataVolumeName(vmName),
+		scratchVolumeName(vmName),
+	}
+
+	for _, img := range imgs {
+		if exists, err := v.ImageExists(img); exists || err != nil {
+			return exists, err
+		}
+	}
+	return false, nil
+}
+
 // VMRun starts a VM.
 func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig) error {
+	// checks
 	vmConfig, err := CheckVMConfig(vmConfig)
 	if err != nil {
 		return err
 	}
+
+	vmName := vmConfig.Name
+	_, err = v.libvirt.DomainLookupByName(vmName)
+	if !hasErrorCode(err, errNoDomain) {
+		if err != nil {
+			return fmt.Errorf("could not get domain: %w", err)
+		}
+		return fmt.Errorf("domain '%s' already defined", vmName)
+	}
+
+	if exists, err := v.anyImageExists(vmConfig); err != nil {
+		return err
+	} else if exists {
+		return fmt.Errorf("one of the images already exists")
+	}
+
+	id, err := v.getVMID(vmConfig.ID)
+	if err != nil {
+		return err
+	}
+	vmConfig.ID = id
+	// end checks
+
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
@@ -128,14 +168,6 @@ func scratchVolumeName(vmName string) string {
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
-	if vmConfig.ID == 0 {
-		id, err := v.GetFreeID()
-		if err != nil {
-			return nil, err
-		}
-		vmConfig.ID = id
-	}
-
 	mac := qemuMAC(vmConfig.ID)
 	xml, err := v.vmXML(sp.Name, vmConfig, mac)
 	if err != nil {
