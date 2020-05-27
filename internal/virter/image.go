@@ -72,6 +72,7 @@ type ImageBuildConfig struct {
 	SSHPrivateKey         []byte
 	ShutdownTimeout       time.Duration
 	ProvisionConfig       ProvisionConfig
+	ResetMachineID        bool
 }
 
 // ImageBuild builds an image by running a VM and provisioning it
@@ -84,6 +85,17 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 
 	vmNames := []string{vmConfig.Name}
 	sshPrivateKey := buildConfig.SSHPrivateKey
+
+	if buildConfig.ResetMachineID {
+		// starting the VM creates a machine-id
+		// we want these IDs to be unique, so reset to empty
+		resetMachineID := ProvisionStep{
+			Shell: &ProvisionShellStep{
+				Script: "truncate -c -s 0 /etc/machine-id",
+			},
+		}
+		buildConfig.ProvisionConfig.Steps = append(buildConfig.ProvisionConfig.Steps, resetMachineID)
+	}
 
 	for _, s := range buildConfig.ProvisionConfig.Steps {
 		if s.Docker != nil {

@@ -96,6 +96,7 @@ step, and then committing the resulting volume.`,
 				SSHPrivateKey:         privateKey,
 				ShutdownTimeout:       shutdownTimeout,
 				ProvisionConfig:       provisionConfig,
+				ResetMachineID:        true,
 			}
 
 			err = pullIfNotExists(v, vmConfig.ImageName)
