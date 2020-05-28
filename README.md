@@ -17,7 +17,7 @@ First install and set up [libvirt](https://libvirt.org/index.html). Then:
 git clone https://github.com/LINBIT/virter
 cd virter
 go build .
-./virter image pull centos-7
+./virter image pull centos-7 # also would be auto-pulled in next step
 ./virter vm run --name centos-7-hello --id 100 --wait-ssh centos-7
 ./virter vm ssh centos-7-hello
 ./virter vm rm centos-7-hello
