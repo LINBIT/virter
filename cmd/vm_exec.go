@@ -70,6 +70,7 @@ func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
 func execDocker(v *virter.Virter, s *virter.ProvisionDockerStep, vmNames []string) error {
 	ctx, cancel := dockerContext()
 	defer cancel()
+	registerSignals(ctx, cancel)
 
 	docker, err := dockerConnect()
 	if err != nil {

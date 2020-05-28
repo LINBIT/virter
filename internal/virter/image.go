@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/LINBIT/virter/pkg/netcopy"
+	log "github.com/sirupsen/logrus"
 )
 
 // HTTPClient contains required HTTP methods.
@@ -75,16 +76,10 @@ type ImageBuildConfig struct {
 	ResetMachineID        bool
 }
 
-// ImageBuild builds an image by running a VM and provisioning it
-func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
-	// VMRun is responsible to call CheckVMConfig here!
-	err := v.VMRun(tools.ShellClientBuilder, vmConfig)
-	if err != nil {
-		return err
-	}
-
+func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
 	vmNames := []string{vmConfig.Name}
 	sshPrivateKey := buildConfig.SSHPrivateKey
+	var err error
 
 	if buildConfig.ResetMachineID {
 		// starting the VM creates a machine-id
@@ -117,6 +112,29 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 
 	err = v.VMCommit(tools.AfterNotifier, vmConfig.Name, true, buildConfig.ShutdownTimeout)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ImageBuild builds an image by running a VM and provisioning it
+func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
+	// VMRun is responsible to call CheckVMConfig here!
+	// TODO(): currently we can not know why VM run failed, so we don't clean up in this stage,
+	//         it could have been an existing VM, we don't want to delete it.
+	err := v.VMRun(tools.ShellClientBuilder, vmConfig)
+	if err != nil {
+		return err
+	}
+
+	// from here on it is safe to rm the VM if something fails
+	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, buildConfig)
+	if err != nil {
+		log.Warn("could not build image, deleting VM")
+		if rmErr := v.VMRm(vmConfig.Name); rmErr != nil {
+			return fmt.Errorf("could not delete VM: %v, after build failed: %w", rmErr, err)
+		}
 		return err
 	}
 

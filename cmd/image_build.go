@@ -29,6 +29,7 @@ step, and then committing the resulting volume.`,
 
 			ctx, cancel := dockerContext()
 			defer cancel()
+			registerSignals(ctx, cancel)
 
 			v, err := VirterConnect()
 			if err != nil {

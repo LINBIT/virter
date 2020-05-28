@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -20,6 +21,7 @@ import (
 type DockerClient interface {
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
 	ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error
+	ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error
 	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error)
 	ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error)
 }
@@ -61,8 +63,13 @@ func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig D
 		return fmt.Errorf("could not start container: %w", err)
 	}
 
+	// dockerStreamLogs is ctx safe (i.e., errs out in copy if ctx cancled)
 	err = dockerStreamLogs(ctx, docker, resp.ID)
-	if err != nil {
+	if err != nil { // something weird happened here, most likely context canceled
+		td := 200 * time.Millisecond // this horse is already dead...
+		if stopErr := docker.ContainerStop(context.Background(), resp.ID, &td); stopErr != nil {
+			return fmt.Errorf("could not stop container: %v, after log streaming failed: %w", stopErr, err)
+		}
 		return err
 	}
 
