@@ -10,9 +10,22 @@ import (
 	"github.com/LINBIT/virter/pkg/registry"
 	homedir "github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 const upstreamRegistryURL = "https://linbit.github.io/virter/images.toml"
+
+func registryCommand() *cobra.Command {
+	registryCmd := &cobra.Command{
+		Use:   "registry",
+		Short: "Image registry related subcommands",
+		Long:  `Image registry related subcommands.`,
+	}
+
+	registryCmd.AddCommand(registryUpdateCommand())
+
+	return registryCmd
+}
 
 func defaultRegistryPath() string {
 	dataHome := os.Getenv("XDG_DATA_HOME")
