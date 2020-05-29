@@ -11,16 +11,27 @@ projects which cannot use containers due to kernel dependencies, such as
 
 ## Quick Start
 
-First install and set up [libvirt](https://libvirt.org/index.html). Then:
+First install and set up [libvirt](https://libvirt.org/index.html). Then
+download one of the [releases](https://github.com/LINBIT/virter/releases).
+Virter is packaged as a single binary, so just put that into `/usr/local/bin` and
+you are ready to use virter:
+
+```
+virter image pull centos-7 # also would be auto-pulled in next step
+virter vm run --name centos-7-hello --id 100 --wait-ssh centos-7
+virter vm ssh centos-7-hello
+virter vm rm centos-7-hello
+```
+
+## Building from source
+
+If you want to test the latest unstable version of virter,you can build the
+git version from sources:
 
 ```
 git clone https://github.com/LINBIT/virter
 cd virter
 go build .
-./virter image pull centos-7 # also would be auto-pulled in next step
-./virter vm run --name centos-7-hello --id 100 --wait-ssh centos-7
-./virter vm ssh centos-7-hello
-./virter vm rm centos-7-hello
 ```
 
 ## Installation Details
