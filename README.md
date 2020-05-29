@@ -25,7 +25,7 @@ virter vm rm centos-7-hello
 
 ## Building from source
 
-If you want to test the latest unstable version of virter,you can build the
+If you want to test the latest unstable version of virter, you can build the
 git version from sources:
 
 ```
