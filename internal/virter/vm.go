@@ -43,7 +43,10 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	imgs := []string{
 		vmName,
 		ciDataVolumeName(vmName),
-		scratchVolumeName(vmName),
+	}
+
+	for _, d := range vmConfig.Disks {
+		imgs = append(imgs, diskVolumeName(vmName, d.GetName()))
 	}
 
 	for _, img := range imgs {
@@ -101,10 +104,12 @@ func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig)
 		return err
 	}
 
-	log.Print("Create scratch volume")
-	err = v.createScratchVolume(sp, vmConfig)
-	if err != nil {
-		return err
+	for _, d := range vmConfig.Disks {
+		log.Printf("Create volume '%s'", d.GetName())
+		err = v.createDiskVolume(sp, vmConfig.Name, d)
+		if err != nil {
+			return err
+		}
 	}
 
 	ip, err := v.createVM(sp, vmConfig)
@@ -149,8 +154,8 @@ func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error
 	return nil
 }
 
-func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
-	xml, err := v.scratchVolumeXML(scratchVolumeName(vmConfig.Name))
+func (v *Virter) createDiskVolume(sp libvirt.StoragePool, vmName string, disk Disk) error {
+	xml, err := v.diskVolumeXML(diskVolumeName(vmName, disk.GetName()), disk.GetSizeKiB(), disk.GetFormat())
 	if err != nil {
 		return err
 	}
@@ -163,8 +168,8 @@ func (v *Virter) createScratchVolume(sp libvirt.StoragePool, vmConfig VMConfig) 
 	return nil
 }
 
-func scratchVolumeName(vmName string) string {
-	return vmName + "-scratch"
+func diskVolumeName(vmName string, diskName string) string {
+	return vmName + "-" + diskName
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
@@ -262,6 +267,11 @@ func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
 			return fmt.Errorf("could not get domain: %w", err)
 		}
 
+		disks, err := v.getDisksOfDomain(domain)
+		if err != nil {
+			return err
+		}
+
 		err = v.rmSnapshots(domain)
 		if err != nil {
 			return err
@@ -297,16 +307,17 @@ func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
 				return fmt.Errorf("could not undefine domain: %w", err)
 			}
 		}
-	}
 
-	err = v.rmVolume(sp, scratchVolumeName(vmName), "scratch")
-	if err != nil {
-		return err
-	}
-
-	err = v.rmVolume(sp, ciDataVolumeName(vmName), "cloud-init")
-	if err != nil {
-		return err
+		for _, disk := range disks {
+			if disk == vmName {
+				// do not delete boot volume
+				continue
+			}
+			err = v.rmVolume(sp, disk, "disk")
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

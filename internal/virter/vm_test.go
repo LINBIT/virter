@@ -10,6 +10,7 @@ import (
 	"time"
 
 	libvirt "github.com/digitalocean/go-libvirt"
+	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -67,7 +68,6 @@ func TestVMRun(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Empty(t, l.vols[vmName].content)
-	assert.Empty(t, l.vols[scratchVolumeName].content)
 
 	host := l.network.description.IPs[0].DHCP.Hosts[0]
 	assert.Equal(t, "52:54:00:00:00:2a", host.MAC)
@@ -83,7 +83,6 @@ func TestVMRun(t *testing.T) {
 const (
 	ciDataVolume     = "ciDataVolume"
 	bootVolume       = "bootVolume"
-	scratchVolume    = "scratchVolume"
 	domainPersistent = "domainPersistent"
 	domainCreated    = "domainCreated"
 )
@@ -91,53 +90,51 @@ const (
 var vmRmTests = []map[string]bool{
 	{},
 	{
-		ciDataVolume: true,
-	},
-	{
-		ciDataVolume: true,
-		bootVolume:   true,
+		ciDataVolume:  true,
+		domainCreated: true,
 	},
 	{
 		ciDataVolume:  true,
 		bootVolume:    true,
-		scratchVolume: true,
+		domainCreated: true,
 	},
 	{
 		ciDataVolume:  true,
 		bootVolume:    true,
-		scratchVolume: true,
+		domainCreated: true,
+	},
+	{
+		ciDataVolume:  true,
+		bootVolume:    true,
 		domainCreated: true,
 	},
 	{
 		ciDataVolume:     true,
 		bootVolume:       true,
-		scratchVolume:    true,
 		domainPersistent: true,
 	},
 	{
 		ciDataVolume:     true,
 		bootVolume:       true,
-		scratchVolume:    true,
 		domainPersistent: true,
 		domainCreated:    true,
 	},
 }
 
+func addDisk(l *FakeLibvirtConnection, vmName string, volumeName string) {
+	disks := l.domains[vmName].description.Devices.Disks
+	l.domains[vmName].description.Devices.Disks = append(disks, libvirtxml.DomainDisk{
+		Source: &libvirtxml.DomainDiskSource{
+			Volume: &libvirtxml.DomainDiskSourceVolume{
+				Volume: ciDataVolumeName,
+			},
+		},
+	})
+}
+
 func TestVMRm(t *testing.T) {
 	for _, r := range vmRmTests {
 		l := newFakeLibvirtConnection()
-
-		if r[scratchVolume] {
-			l.vols[scratchVolumeName] = &FakeLibvirtStorageVol{}
-		}
-
-		if r[bootVolume] {
-			l.vols[vmName] = &FakeLibvirtStorageVol{}
-		}
-
-		if r[ciDataVolume] {
-			l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
-		}
 
 		if r[domainCreated] || r[domainPersistent] {
 			domain := newFakeLibvirtDomain(vmMAC)
@@ -146,6 +143,15 @@ func TestVMRm(t *testing.T) {
 			l.domains[vmName] = domain
 
 			fakeNetworkAddHost(l.network, vmMAC, vmIP)
+		}
+
+		if r[bootVolume] {
+			l.vols[vmName] = &FakeLibvirtStorageVol{}
+		}
+
+		if r[ciDataVolume] {
+			l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
+			addDisk(l, vmName, ciDataVolumeName)
 		}
 
 		v := virter.New(l, poolName, networkName)
@@ -195,14 +201,14 @@ func TestVMCommit(t *testing.T) {
 
 		l := newFakeLibvirtConnection()
 
-		l.vols[scratchVolumeName] = &FakeLibvirtStorageVol{}
-		l.vols[vmName] = &FakeLibvirtStorageVol{}
-		l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
-
 		domain := newFakeLibvirtDomain(vmMAC)
 		domain.persistent = true
 		domain.active = r[commitDomainActive]
 		l.domains[vmName] = domain
+
+		l.vols[vmName] = &FakeLibvirtStorageVol{}
+		l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
+		addDisk(l, vmName, ciDataVolumeName)
 
 		fakeNetworkAddHost(l.network, vmMAC, vmIP)
 
@@ -348,15 +354,14 @@ func mockAfter(an *mocks.AfterNotifier, timeout <-chan time.Time) {
 }
 
 const (
-	vmName            = "some-vm"
-	vmID              = 42
-	vmMAC             = "01:23:45:67:89:ab"
-	vmIP              = "192.168.122.42"
-	ciDataVolumeName  = vmName + "-cidata"
-	scratchVolumeName = vmName + "-scratch"
-	sshPublicKey      = "some-key"
-	shutdownTimeout   = time.Second
-	dockerImageName   = "some-docker-image"
+	vmName           = "some-vm"
+	vmID             = 42
+	vmMAC            = "01:23:45:67:89:ab"
+	vmIP             = "192.168.122.42"
+	ciDataVolumeName = vmName + "-cidata"
+	sshPublicKey     = "some-key"
+	shutdownTimeout  = time.Second
+	dockerImageName  = "some-docker-image"
 )
 
 // A parsable private key is required; this is not authorized anywhere

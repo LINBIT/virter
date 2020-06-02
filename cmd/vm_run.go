@@ -17,6 +17,17 @@ import (
 	"github.com/LINBIT/virter/pkg/registry"
 )
 
+var sizeUnits = func() map[string]int64 {
+	units := unit.DefaultUnits
+	units["KiB"] = units["K"]
+	units["MiB"] = units["M"]
+	units["GiB"] = units["G"]
+	units["TiB"] = units["T"]
+	units["PiB"] = units["P"]
+	units["EiB"] = units["E"]
+	return units
+}()
+
 // currentUidGid returns the user id and group id of the current user, parsed
 // as an uint32. An error is returned if the retrieval of the user or parsing
 // of the IDs fails.
@@ -99,6 +110,9 @@ func vmRunCommand() *cobra.Command {
 
 	var consoleFile string
 
+	var diskStrings []string
+	var disks []virter.Disk
+
 	runCmd := &cobra.Command{
 		Use:   "run image",
 		Short: "Start a virtual machine with a given image",
@@ -106,6 +120,15 @@ func vmRunCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
+
+			for _, s := range diskStrings {
+				var d DiskArg
+				err := d.Set(s)
+				if err != nil {
+					log.Fatalf("Invalid disk: %v", err)
+				}
+				disks = append(disks, &d)
+			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			v, err := VirterConnect()
@@ -145,6 +168,7 @@ func vmRunCommand() *cobra.Command {
 				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
 				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 				ConsoleFile:   console,
+				Disks:         disks,
 			}
 
 			err = pullIfNotExists(v, c.ImageName)
@@ -163,18 +187,19 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	runCmd.MarkFlagRequired("id")
 	runCmd.Flags().BoolVarP(&waitSSH, "wait-ssh", "w", false, "whether to wait for SSH port (default false)")
-	units := unit.DefaultUnits
-	units["KiB"] = units["K"]
-	units["MiB"] = units["M"]
-	units["GiB"] = units["G"]
-	units["TiB"] = units["T"]
-	units["PiB"] = units["P"]
-	units["EiB"] = units["E"]
-	u := unit.MustNewUnit(units)
-	mem = u.MustNewValue(1*units["G"], unit.None)
+	u := unit.MustNewUnit(sizeUnits)
+	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	runCmd.Flags().StringVarP(&consoleFile, "console", "c", "", "File to redirect the VM's console output to")
+
+	// Unfortunately, pflag cannot accept arrays of custom Values (yet?).
+	// See https://github.com/spf13/pflag/issues/260
+	// For us, this means that we have to read the disks as strings first,
+	// and then manually marshal them to Disks.
+	// If this ever gets implemented in pflag , we will be able to solve this
+	// in a much smoother way.
+	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio". Can be specified multiple times`)
 
 	return runCmd
 }

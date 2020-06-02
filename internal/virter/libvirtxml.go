@@ -3,11 +3,109 @@ package virter
 import (
 	"fmt"
 
+	"github.com/LINBIT/virter/pkg/driveletter"
+	libvirt "github.com/digitalocean/go-libvirt"
 	lx "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 )
 
+type VMDiskDevice string
+
+const (
+	VMDiskDeviceDisk  = "disk"
+	VMDiskDeviceCDROM = "cdrom"
+)
+
+var busToDevPrefix = map[string]string{
+	"ide":    "hd",
+	"scsi":   "sd",
+	"virtio": "vd",
+}
+
+var approvedDiskFormats = map[string]bool{
+	// only support raw and qcow2 for now...
+	"qcow2": true,
+	"raw":   true,
+}
+
+type VMDisk struct {
+	device     VMDiskDevice
+	poolName   string
+	volumeName string
+	bus        string
+	format     string
+}
+
+func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
+	devCounts := map[string]*driveletter.DriveLetter{}
+
+	var result []lx.DomainDisk
+	for _, d := range vmDisks {
+		driver := map[VMDiskDevice]lx.DomainDiskDriver{
+			VMDiskDeviceDisk: lx.DomainDiskDriver{
+				Name:    "qemu",
+				Discard: "unmap",
+				Type:    d.format,
+			},
+			VMDiskDeviceCDROM: lx.DomainDiskDriver{
+				Name: "qemu",
+				Type: d.format,
+			},
+		}[d.device]
+
+		count, ok := devCounts[d.bus]
+		if !ok {
+			count = driveletter.New()
+		}
+
+		devPrefix, ok := busToDevPrefix[d.bus]
+		if !ok {
+			return nil, fmt.Errorf("on disk '%s': invalid bus type '%s'",
+				d.volumeName, d.bus)
+		}
+		devLetter := count.String()
+
+		count.Inc()
+		devCounts[d.bus] = count
+
+		disk := lx.DomainDisk{
+			Device: string(d.device),
+			Driver: &driver,
+			Source: &lx.DomainDiskSource{
+				Volume: &lx.DomainDiskSourceVolume{
+					Pool:   d.poolName,
+					Volume: d.volumeName,
+				},
+			},
+			Target: &lx.DomainDiskTarget{
+				Dev: devPrefix + devLetter,
+				Bus: d.bus,
+			},
+		}
+
+		result = append(result, disk)
+	}
+
+	return result, nil
+}
+
 func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error) {
+	vmDisks := []VMDisk{
+		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: vm.Name, bus: "virtio", format: "qcow2"},
+		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: ciDataVolumeName(vm.Name), bus: "ide", format: "raw"},
+	}
+	for _, d := range vm.Disks {
+		disk := VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: diskVolumeName(vm.Name, d.GetName()), bus: d.GetBus(), format: d.GetFormat()}
+		vmDisks = append(vmDisks, disk)
+	}
+
+	log.Debugf("input are these vmdisks: %+v", vmDisks)
+	disks, err := vmDisksToLibvirtDisks(vmDisks)
+	if err != nil {
+		return "", fmt.Errorf("failed to build libvirt disks: %w", err)
+	}
+	log.Debugf("output are these disks: %+v", disks)
+
 	domain := &lx.Domain{
 		Type: "kvm",
 		Name: vm.Name,
@@ -51,11 +149,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 			SuspendToDisk: &lx.DomainPMPolicy{Enabled: "no"},
 		},
 		Devices: &lx.DomainDeviceList{
-			Disks: []lx.DomainDisk{
-				libvirtDisk(poolName, vm.Name, "virtio", "vda"),
-				libvirtCDROM(poolName, ciDataVolumeName(vm.Name), "ide", "hda"),
-				libvirtDisk(poolName, scratchVolumeName(vm.Name), "scsi", "sda"),
-			},
+			Disks: disks,
 			Controllers: []lx.DomainController{
 				lx.DomainController{
 					Type:  "scsi",
@@ -125,12 +219,12 @@ func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
 	return volume.Marshal()
 }
 
-func (v *Virter) scratchVolumeXML(name string) (string, error) {
+func (v *Virter) diskVolumeXML(name string, sizeKiB uint64, format string) (string, error) {
 	volume := &lx.StorageVolume{
 		Name:     name,
-		Capacity: &lx.StorageVolumeSize{Value: 2, Unit: "GiB"},
+		Capacity: &lx.StorageVolumeSize{Value: sizeKiB, Unit: "KiB"},
 		Target: &lx.StorageVolumeTarget{
-			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
+			Format: &lx.StorageVolumeTargetFormat{Type: format},
 		},
 	}
 	return volume.Marshal()
@@ -181,43 +275,33 @@ func libvirtConsole(file *VMConsoleFile) lx.DomainConsole {
 	}
 }
 
-func libvirtDisk(pool, volume, bus, dev string) lx.DomainDisk {
-	return lx.DomainDisk{
-		Device: "disk",
-		Driver: &lx.DomainDiskDriver{
-			Name:    "qemu",
-			Type:    "qcow2",
-			Discard: "unmap",
-		},
-		Source: &lx.DomainDiskSource{
-			Volume: &lx.DomainDiskSourceVolume{
-				Pool:   pool,
-				Volume: volume,
-			},
-		},
-		Target: &lx.DomainDiskTarget{
-			Dev: dev,
-			Bus: bus,
-		},
+func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {
+	xml, err := v.libvirt.DomainGetXMLDesc(domain, 0)
+	if err != nil {
+		return nil, fmt.Errorf("could not get domain XML: %w", err)
 	}
-}
 
-func libvirtCDROM(pool, volume, bus, dev string) lx.DomainDisk {
-	return lx.DomainDisk{
-		Device: "cdrom",
-		Driver: &lx.DomainDiskDriver{
-			Name: "qemu",
-			Type: "raw",
-		},
-		Source: &lx.DomainDiskSource{
-			Volume: &lx.DomainDiskSourceVolume{
-				Pool:   pool,
-				Volume: volume,
-			},
-		},
-		Target: &lx.DomainDiskTarget{
-			Dev: dev,
-			Bus: bus,
-		},
+	domcfg := &lx.Domain{}
+	err = domcfg.Unmarshal(xml)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
 	}
+
+	var result []string
+	if domcfg.Devices == nil {
+		log.Debugf("Domain '%s' has no <devices> section, returning no results", domcfg.Name)
+		return result, nil
+	}
+
+	for i, disk := range domcfg.Devices.Disks {
+		if disk.Source == nil || disk.Source.Volume == nil {
+			log.Debugf("Skipping disk without valid <source> section (#%d of domain '%s')",
+				i, domcfg.Name)
+		}
+		result = append(result, disk.Source.Volume.Volume)
+	}
+
+	log.Debugf("found these disks for domain '%s': %v", domcfg.Name, result)
+
+	return result, nil
 }

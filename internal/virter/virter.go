@@ -60,6 +60,13 @@ func (v *Virter) Disconnect() error {
 	return v.libvirt.Disconnect()
 }
 
+type Disk interface {
+	GetName() string
+	GetSizeKiB() uint64
+	GetFormat() string
+	GetBus() string
+}
+
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
 	ImageName     string
@@ -73,12 +80,26 @@ type VMConfig struct {
 	SSHPingCount  int
 	SSHPingPeriod time.Duration
 	ConsoleFile   *VMConsoleFile
+	Disks         []Disk
 }
 
 type VMConsoleFile struct {
 	Path     string
 	OwnerUID uint32
 	OwnerGID uint32
+}
+
+func checkDisks(vmConfig VMConfig) error {
+	for _, d := range vmConfig.Disks {
+		if _, ok := busToDevPrefix[d.GetBus()]; !ok {
+			return fmt.Errorf("cannot attach disk '%s' with unknown bus type '%s'", d.GetName(), d.GetBus())
+		}
+		if !approvedDiskFormats[d.GetFormat()] {
+			return fmt.Errorf("cannot attach disk '%s' with unknown format '%s'", d.GetName(), d.GetFormat())
+		}
+	}
+
+	return nil
 }
 
 // CheckVMConfig takes a VMConfig, does basic checks, and returns it back.
@@ -91,6 +112,8 @@ func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
 		return vmConfig, fmt.Errorf("cannot start a VM with 0 (virtual) CPUs")
 	} else if vmConfig.ID == 1 {
 		return vmConfig, fmt.Errorf("cannot start a VM with reserved ID (i.e., IP) 'x.y.z.%d'", vmConfig.ID)
+	} else if err := checkDisks(vmConfig); err != nil {
+		return vmConfig, fmt.Errorf("cannot start VM: %w", err)
 	}
 
 	return vmConfig, nil
