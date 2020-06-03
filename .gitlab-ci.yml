@@ -27,7 +27,7 @@ test:
   script:
     - GOPATH=$(pwd)/.mygo go get github.com/vektra/mockery/.../
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
-    - GOPATH=$(pwd)/.mygo go test -coverprofile .testCoverage.txt ./internal/virter/
+    - GOPATH=$(pwd)/.mygo go test -coverprofile .testCoverage.txt ./...
     - GOPATH=$(pwd)/.mygo go tool cover -func=.testCoverage.txt
 
 lint:
