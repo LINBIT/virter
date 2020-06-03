@@ -16,39 +16,38 @@ It can also be applied to one or multiple already running VMs:
 $ virter vm exec -p provisioning.toml centos-1 centos-2 centos-3
 ```
 
+## Provisioning types
+
 The following provisioning types are supported.
 
-## `docker`
+### `docker`
 A `docker` provisioning step allows specifying a Docker image to run provisioning steps in. This image will be executed on the host, so it will need to connect to the target VM and run its provisioning commands over SSH (or use a provisioning tool such as Ansible).
 
-### Configuration Options
 The Docker provisioning step can be parameterized using the following configuration options:
-* `image` is the Docker image used to provision the VM. It follows the standard Docker format of `<repository>/<image>:<tag>`.
-* `env` is a map of environment variables to be passed to the Docker container, in `KEY=value` format.
+* `image` is the Docker image used to provision the VM. It follows the standard Docker format of `<repository>/<image>:<tag>`. This is a Go template.
+* `env` is a map of environment variables to be passed to the Docker container, in `KEY=value` format. The values are Go templates.
 
   Note that Virter already passes two environment variables by default:
   * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
   * `SSH_PRIVATE_KEY` is the SSH private key Virter uses to connect to the machine as `root`.
 
-## Shell
+### Shell
 The `shell` provisioning step allows running arbitrary commands on the target VM over SSH. This is easier to use than the `docker` step, but also less flexible.
 
-### Configuration Options
 The `shell` provisioning step accepts the following parameters:
 * `script` is a string containing the command(s) to be run.
   It can be either a single line string to run only a single command, or a multi-line string (as defined by toml), in which case every line of the string will be considered a separate command to run.
-* `env` is a map of environment variables to be set in the target VM, in `KEY=value` format.
+* `env` is a map of environment variables to be set in the target VM, in `KEY=value` format. The values are Go templates.
 
-## rsync
+### rsync
 
 The `rsync` provisioning step can be used to distribute files from the host to the guest machines using the `rsync` utility.
 
 **NOTE**: This step requires that the `rsync` program is installed both on the host and on the guest machine. The user is responsible for making sure that this requirement is met.
 
-### Configuration Options
-
+The `rsync` provisioning step accepts the following parameters:
 * `source` is as a glob pattern of files on the host machine.
-  It will first be expanded by Go's [os.ExpandEnv](https://golang.org/pkg/os/#ExpandEnv) and
+  It will first be expanded as a Go template and
   then interpreted according to the rules of Go's [filepath.Match](https://golang.org/pkg/path/filepath/#Match)
   function, so refer to the Go documentation for details.
 * `dest` is the path on the guest machine(s) where the files should be copied to.
@@ -59,16 +58,30 @@ The glob-expanded `source` list of files and the `dest` path are passed verbatim
 
 There are also global options which can be set for all provisioning steps in a file.
 
-* `env` is a map of environment variables in `KEY=value` format. These will be set in all provisioning steps that support `env` by themselves.
+* `env` is a map of environment variables in `KEY=value` format. These will be set in all provisioning steps that support `env` by themselves. The values are Go templates.
+
+## Template values
+
+As documented for the various provisioning types above, many of the values in a provisioning file are interpreted as
+[Go templates](https://golang.org/pkg/text/template/).
+
+The data provided to these templates is the `[values]` section in the provisioning file. These values can be set or overridden with `--set`. For instance:
+```
+$ virter vm exec my-vm -p examples/hello-world/hello-world.toml --set values.Image=my-image-name
+```
 
 ## Example
 ```
+[values]
+Image = "virter-hello-text"
+
 [env]
 foo = "rck"
 
 [[steps]]
 [steps.docker]
-image = "virter-hello-text:latest"
+# Go templating can be used for many values
+image = "{{.Image}}"
 [steps.docker.env]
 TEXT = "foo"
 VAR_BAR = "hi"

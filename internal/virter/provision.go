@@ -1,8 +1,11 @@
 package virter
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"text/template"
 
 	"github.com/BurntSushi/toml"
 	"github.com/helm/helm/pkg/strvals"
@@ -36,8 +39,9 @@ type ProvisionStep struct {
 
 // ProvisionConfig holds the configuration of the whole provisioning
 type ProvisionConfig struct {
-	Env   map[string]string `toml:"env"`
-	Steps []ProvisionStep   `toml:"steps"`
+	Values map[string]string `toml:"values"`
+	Env    map[string]string `toml:"env"`
+	Steps  []ProvisionStep   `toml:"steps"`
 }
 
 // NeedsDocker checks if there is a provision step that requires a docker client
@@ -77,8 +81,8 @@ func EnvmapToSlice(envMap map[string]string) []string {
 
 // ProvisionOption sumarizes all the options used for generating the final ProvisionConfig
 type ProvisionOption struct {
-	FilePath string
-	Values   []string
+	FilePath  string
+	Overrides []string
 }
 
 // NewProvisionConfig returns a ProvisionConfig from a ProvisionOption
@@ -116,11 +120,27 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 		return pc, err
 	}
 
-	for _, s := range pc.Steps {
+	for i, s := range pc.Steps {
 		if s.Docker != nil {
 			s.Docker.Env = mergeEnv(&pc.Env, &s.Docker.Env)
+
+			if s.Docker.Image, err = executeTemplate(s.Docker.Image, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute template for docker.image for step %d: %w", i, err)
+			}
+
+			if err := executeTemplates(s.Docker.Env, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute template for docker.env for step %d: %w", i, err)
+			}
 		} else if s.Shell != nil {
 			s.Shell.Env = mergeEnv(&pc.Env, &s.Shell.Env)
+
+			if err := executeTemplates(s.Shell.Env, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute template for shell.env for step %d: %w", i, err)
+			}
+		} else if s.Rsync != nil {
+			if s.Rsync.Source, err = executeTemplate(s.Rsync.Source, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute template for rsync.source for step %d: %w", i, err)
+			}
 		}
 	}
 
@@ -130,11 +150,37 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 func genValueMap(provOpt ProvisionOption) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
-	for _, value := range provOpt.Values {
+	for _, value := range provOpt.Overrides {
 		if err := strvals.ParseInto(value, base); err != nil {
 			return base, err
 		}
 	}
 
 	return base, nil
+}
+
+func executeTemplates(templates map[string]string, templateData map[string]string) error {
+	for k, v := range templates {
+		result, err := executeTemplate(v, templateData)
+		if err != nil {
+			return err
+		}
+		templates[k] = result
+	}
+	return nil
+}
+
+func executeTemplate(templateText string, templateData map[string]string) (string, error) {
+	tmpl, err := template.New("").Option("missingkey=error").Parse(templateText)
+	if err != nil {
+		return "", err
+	}
+
+	var b bytes.Buffer
+	err = tmpl.Execute(&b, templateData)
+	if err != nil {
+		return "", err
+	}
+
+	return b.String(), nil
 }

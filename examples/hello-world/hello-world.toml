@@ -1,0 +1,6 @@
+[values]
+Image = "virter-hello-world"
+
+[[steps]]
+[steps.docker]
+image = "{{.Image}}"

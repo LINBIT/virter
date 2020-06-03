@@ -4,16 +4,17 @@ import (
 	"context"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/netcopy"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
 
 func vmExecCommand() *cobra.Command {
 	var provisionFile string
-	var provisionValues []string
+	var provisionOverrides []string
 
 	execCmd := &cobra.Command{
 		Use:   "exec vm_name [vm_name...]",
@@ -22,8 +23,8 @@ func vmExecCommand() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			provOpt := virter.ProvisionOption{
-				FilePath: provisionFile,
-				Values:   provisionValues,
+				FilePath:  provisionFile,
+				Overrides: provisionOverrides,
 			}
 			if err := execProvision(provOpt, args); err != nil {
 				log.Fatal(err)
@@ -32,7 +33,7 @@ func vmExecCommand() *cobra.Command {
 	}
 
 	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
-	execCmd.Flags().StringSliceVarP(&provisionValues, "set", "s", []string{}, "set/override provisioning steps")
+	execCmd.Flags().StringSliceVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 
 	return execCmd
 }

@@ -13,7 +13,7 @@ import (
 func imageBuildCommand() *cobra.Command {
 	var vmID uint
 	var provisionFile string
-	var provisionValues []string
+	var provisionOverrides []string
 
 	var vcpus uint
 
@@ -74,8 +74,8 @@ step, and then committing the resulting volume.`,
 			}
 
 			provOpt := virter.ProvisionOption{
-				FilePath: provisionFile,
-				Values:   provisionValues,
+				FilePath:  provisionFile,
+				Overrides: provisionOverrides,
 			}
 
 			provisionConfig, err := virter.NewProvisionConfig(provOpt)
@@ -113,7 +113,7 @@ step, and then committing the resulting volume.`,
 	}
 
 	buildCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
-	buildCmd.Flags().StringSliceVarP(&provisionValues, "set", "s", []string{}, "set/override provisioning steps")
+	buildCmd.Flags().StringSliceVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 

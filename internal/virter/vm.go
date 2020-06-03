@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -545,7 +544,7 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 }
 
 func (v *Virter) VMExecRsync(ctx context.Context, copier NetworkCopier, vmNames []string, rsyncStep *ProvisionRsyncStep) error {
-	files, err := filepath.Glob(os.ExpandEnv(rsyncStep.Source))
+	files, err := filepath.Glob(rsyncStep.Source)
 	if err != nil {
 		return fmt.Errorf("failed to parse glob pattern: %w", err)
 	}
