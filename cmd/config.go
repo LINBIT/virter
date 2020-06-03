@@ -72,6 +72,12 @@ virter_public_key_path = "{{ get "auth.virter_public_key_path" }}"
 # If both files exist, they will be used to connect to all VMs started by virter.
 # Default value: "{{ get "auth.virter_private_key_path" }}"
 virter_private_key_path = "{{ get "auth.virter_private_key_path" }}"
+
+# user_public_key can be used to define additional public keys to inject into
+# the VM. If non-empty, the contents of this string will be added to the root
+# user's authorized keys inside the VM.
+# Default value: "{{ get "auth.user_public_key" }}"
+user_public_key = "{{ get "auth.user_public_key" }}"
 `
 
 // initConfig reads in config file and ENV variables if set.
@@ -98,6 +104,7 @@ func initConfig() {
 		// When using the default config file location, make that also the default key location
 		viper.SetDefault("auth.virter_public_key_path", filepath.Join(p, "id_rsa.pub"))
 		viper.SetDefault("auth.virter_private_key_path", filepath.Join(p, "id_rsa"))
+		viper.SetDefault("auth.user_public_key", "")
 	}
 
 	// If a config file is found, read it in.
