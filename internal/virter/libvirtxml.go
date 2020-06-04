@@ -297,6 +297,7 @@ func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {
 		if disk.Source == nil || disk.Source.Volume == nil {
 			log.Debugf("Skipping disk without valid <source> section (#%d of domain '%s')",
 				i, domcfg.Name)
+			continue
 		}
 		result = append(result, disk.Source.Volume.Volume)
 	}
