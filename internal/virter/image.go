@@ -13,7 +13,7 @@ import (
 
 // HTTPClient contains required HTTP methods.
 type HTTPClient interface {
-	Get(url string) (resp *http.Response, err error)
+	Do(req *http.Request) (resp *http.Response, err error)
 }
 
 // ReaderProxy wraps reading from a Reader with a known total size.
@@ -23,13 +23,17 @@ type ReaderProxy interface {
 }
 
 // ImagePull pulls an image from a URL into libvirt.
-func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url string, name string) error {
+func (v *Virter) ImagePull(ctx context.Context, client HTTPClient, readerProxy ReaderProxy, url, name string) error {
 	xml, err := v.imageVolumeXML(name)
 	if err != nil {
 		return err
 	}
 
-	response, err := client.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to get from %v: %w", url, err)
 	}
@@ -53,7 +57,11 @@ func (v *Virter) ImagePull(client HTTPClient, readerProxy ReaderProxy, url strin
 
 	err = v.libvirt.StorageVolUpload(sv, proxyResponse, 0, 0, 0)
 	if err != nil {
-		return fmt.Errorf("failed to transfer data from URL to libvirt: %w", err)
+		err = fmt.Errorf("failed to transfer data from URL to libvirt: %w", err)
+		if rmErr := v.rmVolume(sp, name, name); rmErr != nil {
+			err = fmt.Errorf("could not remove image: %v, after transfer failed: %w", rmErr, err)
+		}
+		return err
 	}
 
 	return nil

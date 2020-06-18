@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,7 +34,12 @@ func pullImage(v *virter.Virter, imageName, url string) error {
 		),
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	registerSignals(ctx, cancel)
+
 	err := v.ImagePull(
+		ctx,
 		client,
 		BarReaderProxy{bar},
 		url,

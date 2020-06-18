@@ -20,13 +20,14 @@ import (
 
 func TestImagePull(t *testing.T) {
 	client := new(mocks.HTTPClient)
-	mockGet(client, http.StatusOK)
+	mockDo(client, http.StatusOK)
 
 	l := newFakeLibvirtConnection()
 
 	v := virter.New(l, poolName, networkName)
 
-	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
+	ctx := context.Background()
+	err := v.ImagePull(ctx, client, nopReaderProxy{}, imageURL, imageName)
 	assert.NoError(t, err)
 
 	client.AssertExpectations(t)
@@ -37,13 +38,14 @@ func TestImagePull(t *testing.T) {
 
 func TestImagePullBadStatus(t *testing.T) {
 	client := new(mocks.HTTPClient)
-	mockGet(client, http.StatusNotFound)
+	mockDo(client, http.StatusNotFound)
 
 	l := newFakeLibvirtConnection()
 
 	v := virter.New(l, poolName, networkName)
 
-	err := v.ImagePull(client, nopReaderProxy{}, imageURL, imageName)
+	ctx := context.Background()
+	err := v.ImagePull(ctx, client, nopReaderProxy{}, imageURL, imageName)
 	assert.Error(t, err)
 
 	client.AssertExpectations(t)
@@ -51,13 +53,14 @@ func TestImagePullBadStatus(t *testing.T) {
 	assert.Empty(t, l.vols)
 }
 
-func mockGet(client *mocks.HTTPClient, statusCode int) {
+func mockDo(client *mocks.HTTPClient, statusCode int) {
 	response := &http.Response{
 		StatusCode: statusCode,
 		Status:     fmt.Sprintf("Status: %v", statusCode),
 		Body:       ioutil.NopCloser(bytes.NewReader([]byte(imageContent))),
 	}
-	client.On("Get", imageURL).Return(response, nil)
+	req, _ := http.NewRequest("GET", imageURL, nil)
+	client.On("Do", req).Return(response, nil)
 }
 
 type nopReaderProxy struct {
