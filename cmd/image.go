@@ -14,6 +14,7 @@ func imageCommand() *cobra.Command {
 	imageCmd.AddCommand(imageBuildCommand())
 	imageCmd.AddCommand(imagePullCommand())
 	imageCmd.AddCommand(imageLsCommand())
+	imageCmd.AddCommand(imageRmCommand())
 
 	return imageCmd
 }

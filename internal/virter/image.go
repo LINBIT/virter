@@ -67,6 +67,16 @@ func (v *Virter) ImagePull(ctx context.Context, client HTTPClient, readerProxy R
 	return nil
 }
 
+// ImageRm removes an image from libvirt.
+func (v *Virter) ImageRm(ctx context.Context, name string) error {
+	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
+	if err != nil {
+		return fmt.Errorf("could not get storage pool: %w", err)
+	}
+
+	return v.rmVolume(sp, name, name)
+}
+
 // ImageBuildTools includes the dependencies for building an image
 type ImageBuildTools struct {
 	ShellClientBuilder ShellClientBuilder
