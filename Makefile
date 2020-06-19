@@ -1,5 +1,5 @@
 LATESTTAG=$(shell git describe --abbrev=0 --tags | tr -d 'v')
-GITHASH=$(shell git describe --abbrev=0 --always)
+GITHASH=$(shell git rev-parse HEAD)
 
 all: virter
 
