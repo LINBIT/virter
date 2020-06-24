@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/rck/unit"
 	"github.com/spf13/cobra"
@@ -106,6 +107,7 @@ func pullIfNotExists(v *virter.Virter, imageName string) error {
 func vmRunCommand() *cobra.Command {
 	var vmName string
 	var vmID uint
+	var count uint
 	var waitSSH bool
 
 	var mem *unit.Value
@@ -143,9 +145,6 @@ func vmRunCommand() *cobra.Command {
 			defer v.Disconnect()
 
 			imageName := args[0]
-			if vmName == "" {
-				vmName = fmt.Sprintf("%s-%d", imageName, vmID)
-			}
 
 			publicKeys, err := loadPublicKeys()
 			if err != nil {
@@ -161,28 +160,53 @@ func vmRunCommand() *cobra.Command {
 			if err != nil {
 				log.Fatalf("Error while configuring console: %v", err)
 			}
-			c := virter.VMConfig{
-				ImageName:     imageName,
-				Name:          vmName,
-				MemoryKiB:     memKiB,
-				VCPUs:         vcpus,
-				ID:            vmID,
-				SSHPublicKeys: publicKeys,
-				SSHPrivateKey: privateKey,
-				WaitSSH:       waitSSH,
-				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
-				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
-				ConsoleDir:    console,
-				Disks:         disks,
-			}
 
-			err = pullIfNotExists(v, c.ImageName)
+			err = pullIfNotExists(v, imageName)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			err = v.VMRun(SSHClientBuilder{}, c)
-			if err != nil {
+			var g errgroup.Group
+			var i uint
+			for i = 0; i < count; i++ {
+				id := vmID + i
+				g.Go(func() error {
+					var thisVMName string
+					if vmName == "" {
+						// if the name is not set, use image name + id
+						thisVMName = fmt.Sprintf("%s-%d", imageName, id)
+					} else if !cmd.Flags().Changed("count") {
+						// if it is set, use the supplied name if
+						// --count is the default (1)
+						thisVMName = vmName
+					} else {
+						// if the count is set explicitly, use the
+						// supplied name and the id
+						thisVMName = fmt.Sprintf("%s-%d", vmName, id)
+					}
+					c := virter.VMConfig{
+						ImageName:     imageName,
+						Name:          thisVMName,
+						MemoryKiB:     memKiB,
+						VCPUs:         vcpus,
+						ID:            id,
+						SSHPublicKeys: publicKeys,
+						SSHPrivateKey: privateKey,
+						WaitSSH:       waitSSH,
+						SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
+						SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
+						ConsoleDir:    console,
+						Disks:         disks,
+					}
+
+					err = v.VMRun(SSHClientBuilder{}, c)
+					if err != nil {
+						return fmt.Errorf("Failed to start VM %d: %w", id, err)
+					}
+					return nil
+				})
+			}
+			if err := g.Wait(); err != nil {
 				log.Fatal(err)
 			}
 		},
@@ -191,6 +215,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of new VM")
 	runCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	runCmd.MarkFlagRequired("id")
+	runCmd.Flags().UintVar(&count, "count", 1, "Number of VMs to start")
 	runCmd.Flags().BoolVarP(&waitSSH, "wait-ssh", "w", false, "whether to wait for SSH port (default false)")
 	u := unit.MustNewUnit(sizeUnits)
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
