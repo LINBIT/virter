@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -54,26 +55,30 @@ func currentUidGid() (uint32, uint32, error) {
 	return uint32(uid), uint32(gid), nil
 }
 
-func currentUserConsoleFile(filename string) (*virter.VMConsoleFile, error) {
-	if filename == "" {
+func currentUserConsoleDir(path string) (*virter.VMConsoleDir, error) {
+	if path == "" {
 		return nil, nil
 	}
 	currentUser, currentGroup, err := currentUidGid()
 	if err != nil {
 		log.Warnf("Failed to determine current user: %v", err)
-		log.Warnf("Creating console logfile as root")
+		log.Warnf("Creating console log directory as root")
 		currentUser, currentGroup = 0, 0
 	}
 
 	// libvirt doesn't like relative paths
-	path, err := filepath.Abs(filename)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine absolute path for console file '%v': %w",
-			filename, err)
+		return nil, fmt.Errorf("failed to determine absolute path for console directory '%v': %w",
+			path, err)
 	}
 
-	return &virter.VMConsoleFile{
-		Path:     path,
+	if err := os.MkdirAll(absPath, 0700); err != nil {
+		return nil, fmt.Errorf("failed to create console directory at '%v': %w", absPath, err)
+	}
+
+	return &virter.VMConsoleDir{
+		Path:     absPath,
 		OwnerUID: currentUser,
 		OwnerGID: currentGroup,
 	}, nil
@@ -108,7 +113,7 @@ func vmRunCommand() *cobra.Command {
 
 	var vcpus uint
 
-	var consoleFile string
+	var consoleDir string
 
 	var diskStrings []string
 	var disks []virter.Disk
@@ -152,7 +157,7 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
-			console, err := currentUserConsoleFile(consoleFile)
+			console, err := currentUserConsoleDir(consoleDir)
 			if err != nil {
 				log.Fatalf("Error while configuring console: %v", err)
 			}
@@ -167,7 +172,7 @@ func vmRunCommand() *cobra.Command {
 				WaitSSH:       waitSSH,
 				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
 				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
-				ConsoleFile:   console,
+				ConsoleDir:    console,
 				Disks:         disks,
 			}
 
@@ -191,7 +196,7 @@ func vmRunCommand() *cobra.Command {
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
-	runCmd.Flags().StringVarP(&consoleFile, "console", "c", "", "File to redirect the VM's console output to")
+	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 
 	// Unfortunately, pflag cannot accept arrays of custom Values (yet?).
 	// See https://github.com/spf13/pflag/issues/260

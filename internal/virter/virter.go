@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 	"text/template"
 	"time"
 
@@ -79,14 +80,18 @@ type VMConfig struct {
 	WaitSSH       bool
 	SSHPingCount  int
 	SSHPingPeriod time.Duration
-	ConsoleFile   *VMConsoleFile
+	ConsoleDir    *VMConsoleDir
 	Disks         []Disk
 }
 
-type VMConsoleFile struct {
+type VMConsoleDir struct {
 	Path     string
 	OwnerUID uint32
 	OwnerGID uint32
+}
+
+func (v *VMConfig) ConsoleLogPath() string {
+	return filepath.Join(v.ConsoleDir.Path, v.Name+".log")
 }
 
 func checkDisks(vmConfig VMConfig) error {

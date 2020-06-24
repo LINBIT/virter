@@ -173,7 +173,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 				},
 			},
 			Consoles: []lx.DomainConsole{
-				libvirtConsole(vm.ConsoleFile),
+				libvirtConsole(vm),
 			},
 			Videos: []lx.DomainVideo{
 				lx.DomainVideo{
@@ -241,25 +241,27 @@ func (v *Virter) imageVolumeXML(name string) (string, error) {
 	return volume.Marshal()
 }
 
-func libvirtConsole(file *VMConsoleFile) lx.DomainConsole {
+func libvirtConsole(vm VMConfig) lx.DomainConsole {
 	var source *lx.DomainChardevSource
-	// no file -> just return a regular PTY console
-	if file == nil {
+	// no dir -> just return a regular PTY console
+	if vm.ConsoleDir == nil {
 		source = &lx.DomainChardevSource{
 			Pty: &lx.DomainChardevSourcePty{},
 		}
 	} else {
-		log.Debugf("Logging VM console output to %s", file.Path)
+		path := vm.ConsoleLogPath()
+		log.Debugf("Logging VM console output to %s", path)
 
 		source = &lx.DomainChardevSource{
 			File: &lx.DomainChardevSourceFile{
-				Path:   file.Path,
+				Path:   path,
 				Append: "off",
 				SecLabel: []lx.DomainDeviceSecLabel{
 					lx.DomainDeviceSecLabel{
 						Model: "dac",
-						Label: fmt.Sprintf("+%d:+%d", file.OwnerUID,
-							file.OwnerGID),
+						Label: fmt.Sprintf("+%d:+%d",
+							vm.ConsoleDir.OwnerUID,
+							vm.ConsoleDir.OwnerGID),
 					},
 				},
 			},
