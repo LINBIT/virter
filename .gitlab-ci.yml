@@ -25,10 +25,14 @@ test:
     paths:
       - .mygo/pkg/mod
   script:
+    - GOPATH=$(pwd)/.mygo go install github.com/jstemmer/go-junit-report
     - GOPATH=$(pwd)/.mygo go get github.com/vektra/mockery/.../
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
-    - GOPATH=$(pwd)/.mygo go test -coverprofile .testCoverage.txt ./...
+    - GOPATH=$(pwd)/.mygo go test -v -coverprofile .testCoverage.txt ./... 2>&1 | $(pwd)/.mygo/bin/go-junit-report -set-exit-code > test.xml
     - GOPATH=$(pwd)/.mygo go tool cover -func=.testCoverage.txt
+  artifacts:
+    reports:
+      junit: test.xml
 
 lint:
   stage: test
@@ -45,8 +49,12 @@ lint:
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
     - golangci-lint version
     - echo "Linting new code relative to branch $CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-    - golangci-lint run --new-from-rev="remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --out-format="line-number"
+    - golangci-lint run --new-from-rev="remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --out-format="junit-xml" > lint.xml
   allow_failure: true
+  artifacts:
+    reports:
+      junit:
+        - lint.xml
 
 deploy:
   stage: deploy
