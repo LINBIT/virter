@@ -120,6 +120,9 @@ func vmRunCommand() *cobra.Command {
 	var diskStrings []string
 	var disks []virter.Disk
 
+	var provisionFile string
+	var provisionOverrides []string
+
 	runCmd := &cobra.Command{
 		Use:   "run image",
 		Short: "Start a virtual machine with a given image",
@@ -166,9 +169,19 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
+			// if we want to run some provisioning steps later,
+			// it doesn't make sense not to wait for SSH.
+			if provisionFile != "" {
+				waitSSH = true
+			}
+
 			var g errgroup.Group
 			var i uint
+
+			// save the VM names in case we want to provision later
+			vmNames := make([]string, count)
 			for i = 0; i < count; i++ {
+				i := i
 				id := vmID + i
 				g.Go(func() error {
 					var thisVMName string
@@ -184,6 +197,7 @@ func vmRunCommand() *cobra.Command {
 						// supplied name and the id
 						thisVMName = fmt.Sprintf("%s-%d", vmName, id)
 					}
+					vmNames[i] = thisVMName
 					c := virter.VMConfig{
 						ImageName:     imageName,
 						Name:          thisVMName,
@@ -209,6 +223,16 @@ func vmRunCommand() *cobra.Command {
 			if err := g.Wait(); err != nil {
 				log.Fatal(err)
 			}
+
+			if provisionFile != "" {
+				provOpt := virter.ProvisionOption{
+					FilePath:  provisionFile,
+					Overrides: provisionOverrides,
+				}
+				if err := execProvision(provOpt, vmNames); err != nil {
+					log.Fatal(err)
+				}
+			}
 		},
 	}
 
@@ -230,6 +254,8 @@ func vmRunCommand() *cobra.Command {
 	// If this ever gets implemented in pflag , we will be able to solve this
 	// in a much smoother way.
 	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio". Can be specified multiple times`)
+	runCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
+	runCmd.Flags().StringSliceVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 
 	return runCmd
 }
