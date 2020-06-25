@@ -47,7 +47,7 @@ func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer v.Disconnect()
+	defer v.ForceDisconnect()
 
 	for _, s := range pc.Steps {
 		if s.Docker != nil {

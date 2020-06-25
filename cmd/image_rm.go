@@ -18,7 +18,7 @@ func imageRmCommand() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer v.Disconnect()
+			defer v.ForceDisconnect()
 
 			err = v.ImageRm(context.Background(), args[0])
 			if err != nil {

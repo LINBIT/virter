@@ -23,7 +23,7 @@ the virtual machine name.`,
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer v.Disconnect()
+			defer v.ForceDisconnect()
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 

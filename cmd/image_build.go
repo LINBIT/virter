@@ -35,7 +35,7 @@ step, and then committing the resulting volume.`,
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer v.Disconnect()
+			defer v.ForceDisconnect()
 
 			publicKeys, err := loadPublicKeys()
 			if err != nil {

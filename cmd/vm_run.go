@@ -145,7 +145,7 @@ func vmRunCommand() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer v.Disconnect()
+			defer v.ForceDisconnect()
 
 			imageName := args[0]
 

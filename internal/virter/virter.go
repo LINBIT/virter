@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
 	"text/template"
 	"time"
 
-	libvirt "github.com/digitalocean/go-libvirt"
+	"github.com/digitalocean/go-libvirt"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -59,6 +60,19 @@ func New(libvirtConnection LibvirtConnection,
 // Disconnect disconnects virter's connection to libvirt
 func (v *Virter) Disconnect() error {
 	return v.libvirt.Disconnect()
+}
+
+// ForceDisconnect disconnects virter's connection to libvirt
+//
+// It behaves like Disconnect(), except it does not return an error.
+// If an error would be returned, the error will be logged and the program will terminate.
+// Note: this is useful for `defer` statements
+func (v *Virter) ForceDisconnect() {
+	err := v.Disconnect()
+
+	if err != nil {
+		log.Fatalf("failed to disconnect from libvirt: %v", err)
+	}
 }
 
 type Disk interface {
@@ -142,13 +156,6 @@ type ShellClient interface {
 // AfterNotifier wait for a duration to elapse
 type AfterNotifier interface {
 	After(d time.Duration) <-chan time.Time
-}
-
-// NetworkCopier copies files over the network
-type NetworkCopier interface {
-	// Copy transfers a list of files (source) from the local machine to
-	// a target directory (destination) on a remote host (host).
-	Copy(host string, source []string, destination string) error
 }
 
 func renderTemplate(name, content string, data interface{}) (string, error) {

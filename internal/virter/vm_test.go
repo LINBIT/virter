@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
-	libvirt "github.com/digitalocean/go-libvirt"
+	"github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/internal/virter/mocks"
+	"github.com/LINBIT/virter/pkg/netcopy"
 )
 
 func TestCheckVMConfig(t *testing.T) {
@@ -298,10 +299,10 @@ func TestVMExecRsync(t *testing.T) {
 	}
 
 	copier := new(mocks.NetworkCopier)
-	copier.On("Copy", "192.168.122.42", []string{
-		filepath.Join(dir, "file1.txt"),
-		filepath.Join(dir, "file2.txt"),
-	}, "/tmp").Return(nil)
+	copier.On("Copy", mock.Anything, []netcopy.HostPath{
+		{Path: filepath.Join(dir, "file1.txt")},
+		{Path: filepath.Join(dir, "file2.txt")},
+	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
 
 	err = v.VMExecRsync(context.Background(), copier, []string{vmName}, step)
 	assert.NoError(t, err)
@@ -311,11 +312,11 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier2 := new(mocks.NetworkCopier)
-	copierCall := copier2.On("Copy", "192.168.122.42", mock.AnythingOfType("[]string"), "/tmp").Return(nil)
+	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
 	copierCall.RunFn = func(args mock.Arguments) {
-		files := args[1].([]string)
-		for _, f := range files {
-			assert.True(t, strings.HasPrefix(f, os.Getenv("HOME")))
+		paths := args[1].([]netcopy.HostPath)
+		for _, f := range paths {
+			assert.True(t, strings.HasPrefix(f.Path, os.Getenv("HOME")))
 		}
 	}
 	err = v.VMExecRsync(context.Background(), copier2, []string{vmName}, step)
@@ -326,8 +327,51 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier3 := new(mocks.NetworkCopier)
-	copier3.AssertNotCalled(t, "Copy")
+	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
 	err = v.VMExecRsync(context.Background(), copier3, []string{vmName}, step)
+	assert.NoError(t, err)
+
+	step = &virter.ProvisionRsyncStep{
+		Source: filepath.Join(dir, "*.txt"),
+		Dest:   "/tmp",
+	}
+	copier4 := new(mocks.NetworkCopier)
+	copier4.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
+	err = v.VMExecRsync(context.Background(), copier3, []string{"NoVm"}, step)
+	assert.Error(t, err)
+}
+
+func TestVMExecCopy(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmMAC)
+	domain.persistent = true
+	domain.active = true
+	l.domains[vmName] = domain
+
+	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+
+	v := virter.New(l, poolName, networkName)
+
+	dir, err := createFakeDirectory()
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	copier := new(mocks.NetworkCopier)
+	copier.On("Copy", mock.Anything, []netcopy.HostPath{
+		{Path: filepath.Join(dir, "file1.txt")},
+	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
+	copier.On("Copy", mock.Anything, []netcopy.HostPath{
+		{Path: "/tmp", Host: "192.168.122.42"},
+	}, netcopy.HostPath{Path: filepath.Join(dir, "file1.txt")}).Return(nil)
+
+	existingRemotePath := vmName + ":/tmp"
+	existingLocalPathPath := filepath.Join(dir, "file1.txt")
+
+	err = v.VMExecCopy(context.Background(), copier, []string{existingLocalPathPath}, existingRemotePath)
+	assert.NoError(t, err)
+
+	err = v.VMExecCopy(context.Background(), copier, []string{existingRemotePath}, existingLocalPathPath)
 	assert.NoError(t, err)
 }
 

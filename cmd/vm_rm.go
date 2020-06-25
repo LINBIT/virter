@@ -33,7 +33,7 @@ func vmRmCommand() *cobra.Command {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer v.Disconnect()
+			defer v.ForceDisconnect()
 
 			err = rmMultiple(v, args)
 			if err != nil {

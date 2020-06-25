@@ -3,6 +3,7 @@ package virter
 import (
 	"context"
 	"fmt"
+	"github.com/LINBIT/virter/pkg/netcopy"
 	"net"
 	"path/filepath"
 	"sync"
@@ -14,6 +15,7 @@ import (
 
 	sshclient "github.com/LINBIT/gosshclient"
 	"github.com/LINBIT/virter/pkg/actualtime"
+
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
@@ -435,6 +437,38 @@ func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Du
 	return nil
 }
 
+func (v *Virter) getIP(vmName string, network *libvirt.Network) (string, error) {
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return "", fmt.Errorf("could not get domain '%s': %w", vmName, err)
+	}
+
+	active, err := v.libvirt.DomainIsActive(domain)
+	if err != nil {
+		return "", fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
+	}
+
+	if active == 0 {
+		return "", fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
+	}
+
+	if network == nil {
+		lookup, err := v.libvirt.NetworkLookupByName(v.networkName)
+		if err != nil {
+			return "", fmt.Errorf("could not get network: %w", err)
+		}
+
+		network = &lookup
+	}
+
+	ip, err := v.findVMIP(*network, domain)
+	if err != nil {
+		return "", fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
+	}
+
+	return ip, nil
+}
+
 func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 	var ips []string
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
@@ -443,25 +477,10 @@ func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 	}
 
 	for _, vmName := range vmNames {
-		domain, err := v.libvirt.DomainLookupByName(vmName)
+		ip, err := v.getIP(vmName, &network)
 		if err != nil {
-			return ips, fmt.Errorf("could not get domain '%s': %w", vmName, err)
+			return nil, err
 		}
-
-		active, err := v.libvirt.DomainIsActive(domain)
-		if err != nil {
-			return ips, fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
-		}
-
-		if active == 0 {
-			return ips, fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
-		}
-
-		ip, err := v.findVMIP(network, domain)
-		if err != nil {
-			return ips, fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
-		}
-
 		ips = append(ips, ip)
 	}
 	return ips, nil
@@ -543,31 +562,49 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 	return g.Wait()
 }
 
-func (v *Virter) VMExecRsync(ctx context.Context, copier NetworkCopier, vmNames []string, rsyncStep *ProvisionRsyncStep) error {
+func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, vmNames []string, rsyncStep *ProvisionRsyncStep) error {
 	files, err := filepath.Glob(rsyncStep.Source)
 	if err != nil {
 		return fmt.Errorf("failed to parse glob pattern: %w", err)
 	}
 
-	ips, err := v.getIPs(vmNames)
-	if err != nil {
-		return err
-	}
-
-	if len(files) == 0 {
-		log.Warnf("rsync source '%s' did not match any files, skipping copy step", rsyncStep.Source)
-		return nil
-	}
-
-	var g errgroup.Group
-	for _, ip := range ips {
-		ip := ip
-		log.Printf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, ip)
+	g, ctx := errgroup.WithContext(ctx)
+	for _, vmName := range vmNames {
+		vmName := vmName
+		log.Printf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, vmNames)
 		g.Go(func() error {
-			return copier.Copy(ip, files, rsyncStep.Dest)
+			dest := fmt.Sprintf("%s:%s", vmName, rsyncStep.Dest)
+			return v.VMExecCopy(ctx, copier, files, dest)
 		})
 	}
 	return g.Wait()
+}
+
+func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, sourceSpecs []string, destSpec string) error {
+	sources := make([]netcopy.HostPath, len(sourceSpecs))
+	for i, srcSpec := range sourceSpecs {
+		sources[i] = netcopy.ParseHostPath(srcSpec)
+
+		if !sources[i].Local() {
+			// Replace hostname with ip
+			ip, err := v.getIP(sources[i].Host, nil)
+			if err != nil {
+				return err
+			}
+			sources[i].Host = ip
+		}
+	}
+
+	dest := netcopy.ParseHostPath(destSpec)
+	if !dest.Local() {
+		ip, err := v.getIP(dest.Host, nil)
+		if err != nil {
+			return err
+		}
+		dest.Host = ip
+	}
+
+	return copier.Copy(ctx, sources, dest)
 }
 
 func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env []string) error {

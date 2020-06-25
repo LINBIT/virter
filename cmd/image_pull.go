@@ -68,7 +68,7 @@ used.`,
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer v.Disconnect()
+			defer v.ForceDisconnect()
 
 			err = pullImage(v, args[0], url)
 			if err != nil {
