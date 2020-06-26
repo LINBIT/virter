@@ -43,6 +43,13 @@ func imageSaveCommand() *cobra.Command {
 			}
 			err = v.ImageSave(imageName, dest)
 			if err != nil {
+				if out != "" {
+					log.Debugf("image save failed, removing partial output file %q", out)
+					err := os.Remove(out)
+					if err != nil {
+						log.Errorf("Failed to remove partial output file %q: %v", out, err)
+					}
+				}
 				log.Fatalf("Failed to save image: %v", err)
 			}
 		},
