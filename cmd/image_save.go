@@ -29,9 +29,10 @@ func imageSaveCommand() *cobra.Command {
 
 			var dest io.Writer
 			if out != "" {
-				file, err := os.Create(out)
+				// create file only if it doesn't exist already
+				file, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0664)
 				if err != nil {
-					log.Fatal(err)
+					log.Fatalf("Failed to open output file: %v", err)
 				}
 				dest = file
 				defer file.Close()
