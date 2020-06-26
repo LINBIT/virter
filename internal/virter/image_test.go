@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/LINBIT/virter/internal/virter"
@@ -138,6 +139,30 @@ func TestImageBuild(t *testing.T) {
 	shell.AssertExpectations(t)
 	docker.AssertExpectations(t)
 	an.AssertExpectations(t)
+}
+
+func TestImageSave(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	l.vols[imageName] = &FakeLibvirtStorageVol{
+		description: &libvirtxml.StorageVolume{
+			Name:   imageName,
+			Target: &libvirtxml.StorageVolumeTarget{},
+			Physical: &libvirtxml.StorageVolumeSize{
+				Value: uint64(len(imageContent)),
+			},
+		},
+		content: []byte(imageContent),
+	}
+
+	v := virter.New(l, poolName, networkName)
+
+	var dest bytes.Buffer
+	err := v.ImageSave(imageName, &dest)
+	assert.NoError(t, err)
+
+	assert.Len(t, l.vols, 1)
+	assert.Equal(t, []byte(imageContent), dest.Bytes())
 }
 
 const imageURL = "http://foo.bar"

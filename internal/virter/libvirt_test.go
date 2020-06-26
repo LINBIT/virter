@@ -110,6 +110,56 @@ func (l *FakeLibvirtConnection) StorageVolUpload(Vol libvirt.StorageVol, outStre
 	return nil
 }
 
+func (l *FakeLibvirtConnection) StorageVolGetXMLDesc(Vol libvirt.StorageVol, Flags uint32) (rXML string, err error) {
+	if Vol.Name != imageName {
+		return "", errors.New("unknown volume")
+	}
+
+	xml, err := l.vols[Vol.Name].description.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return xml, nil
+}
+
+func (l *FakeLibvirtConnection) StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, Clonevol libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error) {
+	newDescription := &libvirtxml.StorageVolume{}
+	if err := newDescription.Unmarshal(XML); err != nil {
+		return libvirt.StorageVol{}, fmt.Errorf("invalid storage vol XML: %w", err)
+	}
+
+	oldVol, ok := l.vols[Clonevol.Name]
+	if !ok {
+		panic("nonexistent Clonevol specified")
+	}
+
+	// start off with existing definition, using only name and permissions from new XML
+	description := oldVol.description
+	description.Name = newDescription.Name
+	description.Target.Permissions = newDescription.Target.Permissions
+	l.vols[description.Name] = &FakeLibvirtStorageVol{
+		description: description,
+		content:     oldVol.content,
+	}
+	return libvirt.StorageVol{
+		Name: description.Name,
+	}, nil
+}
+
+func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset uint64, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error) {
+	vol, ok := l.vols[Vol.Name]
+	if !ok {
+		return mockLibvirtError(errNoStorageVol)
+	}
+
+	_, err = inStream.Write(vol.content)
+	if err != nil {
+		return errors.New("error writing upload data")
+	}
+
+	return nil
+}
+
 func (l *FakeLibvirtConnection) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
 	if Name != networkName {
 		return libvirt.Network{}, errors.New("unknown network")

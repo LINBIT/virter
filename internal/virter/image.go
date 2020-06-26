@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/LINBIT/virter/pkg/netcopy"
+	libvirt "github.com/digitalocean/go-libvirt"
+	libvirtxml "github.com/libvirt/libvirt-go-xml"
+	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -154,6 +157,61 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 			return fmt.Errorf("could not delete VM: %v, after build failed: %w", rmErr, err)
 		}
 		return err
+	}
+
+	return nil
+}
+
+func (v *Virter) volDeleteMust(vol libvirt.StorageVol) {
+	err := v.libvirt.StorageVolDelete(vol, 0)
+	if err != nil {
+		log.Errorf("Failed to delete storage volume: %v", err)
+	}
+}
+
+func (v *Virter) ImageSave(name string, to io.Writer) error {
+	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
+	if err != nil {
+		return fmt.Errorf("could not get storage pool: %w", err)
+	}
+
+	vol, err := v.libvirt.StorageVolLookupByName(sp, name)
+	if err != nil {
+		return fmt.Errorf("could not get storage volume: %w", err)
+	}
+
+	oldXML, err := v.libvirt.StorageVolGetXMLDesc(vol, 0)
+	if err != nil {
+		return fmt.Errorf("could not get storage volume XML: %w", err)
+	}
+
+	volcfg := &libvirtxml.StorageVolume{}
+	err = volcfg.Unmarshal(oldXML)
+	if err != nil {
+		return fmt.Errorf("could not unmarshal storage volume XML: %w", err)
+	}
+
+	volcfg.Name = volcfg.Name + "-clone-" + uuid.NewV4().String()
+
+	newXML, err := volcfg.Marshal()
+	if err != nil {
+		return fmt.Errorf("could not marshal storage volume XML: %w", err)
+	}
+
+	newVol, err := v.libvirt.StorageVolCreateXMLFrom(sp, newXML, vol, 0)
+	if err != nil {
+		return fmt.Errorf("could not clone volume: %w", err)
+	}
+	defer v.volDeleteMust(newVol)
+
+	if volcfg.Physical == nil {
+		return fmt.Errorf("invalid volume without physical size")
+	}
+	length := volcfg.Physical.Value
+
+	err = v.libvirt.StorageVolDownload(newVol, to, 0, length, 0)
+	if err != nil {
+		return fmt.Errorf("could not download volume: %w", err)
 	}
 
 	return nil
