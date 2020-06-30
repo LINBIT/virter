@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/rck/unit"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,9 @@ func imageBuildCommand() *cobra.Command {
 	var provisionFile string
 	var provisionOverrides []string
 
+	var mem *unit.Value
+	var memKiB uint64
+
 	var vcpus uint
 
 	buildCmd := &cobra.Command{
@@ -23,6 +27,9 @@ func imageBuildCommand() *cobra.Command {
 		Long: `Build an image by starting a VM, running a provisioning
 step, and then committing the resulting volume.`,
 		Args: cobra.ExactArgs(2),
+		PreRun: func(cmd *cobra.Command, args []string) {
+			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			baseImageName := args[0]
 			newImageName := args[1]
@@ -59,7 +66,7 @@ step, and then committing the resulting volume.`,
 			vmConfig := virter.VMConfig{
 				ImageName:     baseImageName,
 				Name:          newImageName,
-				MemoryKiB:     1048576, // one gigabyte
+				MemoryKiB:     memKiB,
 				VCPUs:         vcpus,
 				ID:            vmID,
 				SSHPublicKeys: publicKeys,
@@ -116,6 +123,9 @@ step, and then committing the resulting volume.`,
 	buildCmd.Flags().StringSliceVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
+	u := unit.MustNewUnit(sizeUnits)
+	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
+	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 
 	return buildCmd
 }
