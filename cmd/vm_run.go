@@ -169,9 +169,12 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
+			// do we want to run provisioning steps?
+			provision := provisionFile != "" || len(provisionOverrides) > 0
+
 			// if we want to run some provisioning steps later,
 			// it doesn't make sense not to wait for SSH.
-			if provisionFile != "" {
+			if provision {
 				waitSSH = true
 			}
 
@@ -224,7 +227,7 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
-			if provisionFile != "" {
+			if provision {
 				provOpt := virter.ProvisionOption{
 					FilePath:  provisionFile,
 					Overrides: provisionOverrides,
