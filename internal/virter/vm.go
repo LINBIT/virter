@@ -551,11 +551,12 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 	}
 
 	var g errgroup.Group
-	for _, ip := range ips {
+	for i, ip := range ips {
 		ip := ip
+		vmName := vmNames[i]
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
 		g.Go(func() error {
-			return runSSHCommand(ctx, &sshConfig, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))
+			return runSSHCommand(ctx, &sshConfig, vmName, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))
 		})
 	}
 
@@ -607,7 +608,7 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 	return copier.Copy(ctx, sources, dest)
 }
 
-func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, ipPort string, script string, env []string) error {
+func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, vmName, ipPort, script string, env []string) error {
 	script, err := sshclient.AddEnv(script, env)
 	if err != nil {
 		return err
@@ -629,8 +630,8 @@ func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, ipPort string,
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go logLines(&wg, "SSH stdout: ", outp)
-	go logLines(&wg, "SSH stderr: ", errp)
+	go logLines(&wg, vmName, false, outp)
+	go logLines(&wg, vmName, true, errp)
 
 	err = sshClient.ExecScript(script)
 	wg.Wait()

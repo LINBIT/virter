@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -32,6 +34,12 @@ type DockerContainerConfig struct {
 	ImageName     string   // the name of the container image
 	Env           []string // the environment (variables) passed to the container
 }
+
+const (
+	colorDefault = colorReset
+	colorRed     = "\u001b[31m"
+	colorReset   = "\u001b[0m"
+)
 
 func dockerRun(ctx context.Context, docker DockerClient, dockerContainerConfig DockerContainerConfig, vmIPs []string, sshPrivateKey []byte) error {
 	// This is roughly equivalent to
@@ -97,8 +105,8 @@ func dockerStreamLogs(ctx context.Context, docker DockerClient, id string) error
 	stdoutReader, stdoutWriter := io.Pipe()
 	stderrReader, stderrWriter := io.Pipe()
 
-	go logLines(&wg, "Docker stdout: ", stdoutReader)
-	go logLines(&wg, "Docker stderr: ", stderrReader)
+	go logLines(&wg, "Docker", false, stdoutReader)
+	go logLines(&wg, "Docker", true, stderrReader)
 
 	_, err = stdcopy.StdCopy(stdoutWriter, stderrWriter, out)
 	if err != nil {
@@ -112,14 +120,34 @@ func dockerStreamLogs(ctx context.Context, docker DockerClient, id string) error
 	return nil
 }
 
-func logLines(wg *sync.WaitGroup, prefix string, r io.Reader) {
+// logStdoutStderr logs a message from a VM which came from either stdout or stderr
+func logStdoutStderr(vmName, message string, stderr bool) {
+	var prefix string
+	var color string
+	if stderr {
+		prefix = "err"
+		color = colorRed
+	} else {
+		prefix = "out"
+		color = colorDefault
+	}
+
+	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+		message = color + message + colorReset
+	}
+
+	log.Printf("%s %s: %s", vmName, prefix, message)
+}
+
+func logLines(wg *sync.WaitGroup, vm string, stderr bool, r io.Reader) {
 	defer wg.Done()
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		log.Printf("%s%s", prefix, strings.TrimRight(scanner.Text(), " \t\r\n"))
+		message := strings.TrimRight(scanner.Text(), " \t\r\n")
+		logStdoutStderr(vm, message, stderr)
 	}
 	if err := scanner.Err(); err != nil {
-		log.Printf("%sError reading: %v", prefix, err)
+		log.Printf("%s: Error reading: %v", vm, err)
 	}
 }
 
