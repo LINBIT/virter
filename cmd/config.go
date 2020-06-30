@@ -109,7 +109,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		log.Print("Using config file: ", viper.ConfigFileUsed())
+		log.Debugf("Using config file: %s", viper.ConfigFileUsed())
 	} else if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		newPath := filepath.Join(configPath(), "virter.toml")
 		log.Print("Config file does not exist, creating default: ", newPath)
