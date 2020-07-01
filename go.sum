@@ -3,8 +3,8 @@ github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 h1:w+iIsaOQNcT7O
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/LINBIT/gosshclient v0.2.1 h1:iUuNOMANXrMS/8VyjzjkEFJgILblEZ6fFfGl5wAs9i0=
-github.com/LINBIT/gosshclient v0.2.1/go.mod h1:keh/sgzk2XsYJEii4vWR6vIamFyxLq5++jVqYVA+ihM=
+github.com/LINBIT/gosshclient v0.3.0 h1:2y0ZX+0+N5q9FsnpoTmkKI3OfSm7fj4/pasLMgpLmZ0=
+github.com/LINBIT/gosshclient v0.3.0/go.mod h1:keh/sgzk2XsYJEii4vWR6vIamFyxLq5++jVqYVA+ihM=
 github.com/Microsoft/go-winio v0.4.14 h1:+hMXMk01us9KgxGb7ftKQt2Xpf5hH/yky+TDA+qxleU=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=

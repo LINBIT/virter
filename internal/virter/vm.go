@@ -3,11 +3,12 @@ package virter
 import (
 	"context"
 	"fmt"
-	"github.com/LINBIT/virter/pkg/netcopy"
 	"net"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/LINBIT/virter/pkg/netcopy"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -15,7 +16,6 @@ import (
 
 	sshclient "github.com/LINBIT/gosshclient"
 	"github.com/LINBIT/virter/pkg/actualtime"
-
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
@@ -555,7 +555,7 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKe
 		ip := ip
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
 		g.Go(func() error {
-			return runSSHCommand(&sshConfig, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))
+			return runSSHCommand(ctx, &sshConfig, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))
 		})
 	}
 
@@ -607,13 +607,13 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 	return copier.Copy(ctx, sources, dest)
 }
 
-func runSSHCommand(config *ssh.ClientConfig, ipPort string, script string, env []string) error {
+func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, ipPort string, script string, env []string) error {
 	script, err := sshclient.AddEnv(script, env)
 	if err != nil {
 		return err
 	}
 	sshClient := sshclient.NewSSHClient(ipPort, *config)
-	if err := sshClient.Dial(); err != nil {
+	if err := sshClient.DialContext(ctx); err != nil {
 		return err
 	}
 	defer sshClient.Close()
