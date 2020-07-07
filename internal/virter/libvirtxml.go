@@ -194,51 +194,34 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 }
 
 func (v *Virter) ciDataVolumeXML(name string) (string, error) {
-	volume := &lx.StorageVolume{
-		Name:     name,
-		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "B"},
-		Target: &lx.StorageVolumeTarget{
-			Format: &lx.StorageVolumeTargetFormat{Type: "raw"},
-		},
-	}
-	return volume.Marshal()
+	return v.diskVolumeXML(name, 0, "B", "raw")
 }
 
 func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
-	volume := &lx.StorageVolume{
-		Name:     name,
-		Capacity: &lx.StorageVolumeSize{Value: 10, Unit: "GiB"},
-		Target: &lx.StorageVolumeTarget{
-			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
-		},
-		BackingStore: &lx.StorageVolumeBackingStore{
-			Path:   backingPath,
-			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
-		},
+	volume := v.diskVolume(name, 10, "GiB", "qcow2")
+	volume.BackingStore = &lx.StorageVolumeBackingStore{
+		Path:   backingPath,
+		Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
 	}
 	return volume.Marshal()
 }
 
-func (v *Virter) diskVolumeXML(name string, sizeKiB uint64, format string) (string, error) {
-	volume := &lx.StorageVolume{
+func (v *Virter) diskVolume(name string, size uint64, unit, format string) *lx.StorageVolume {
+	return &lx.StorageVolume{
 		Name:     name,
-		Capacity: &lx.StorageVolumeSize{Value: sizeKiB, Unit: "KiB"},
+		Capacity: &lx.StorageVolumeSize{Value: size, Unit: unit},
 		Target: &lx.StorageVolumeTarget{
 			Format: &lx.StorageVolumeTargetFormat{Type: format},
 		},
 	}
-	return volume.Marshal()
+}
+
+func (v *Virter) diskVolumeXML(name string, size uint64, unit, format string) (string, error) {
+	return v.diskVolume(name, size, unit, format).Marshal()
 }
 
 func (v *Virter) imageVolumeXML(name string) (string, error) {
-	volume := &lx.StorageVolume{
-		Name:     name,
-		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "B"},
-		Target: &lx.StorageVolumeTarget{
-			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
-		},
-	}
-	return volume.Marshal()
+	return v.diskVolumeXML(name, 0, "B", "qcow2")
 }
 
 func libvirtConsole(vm VMConfig) lx.DomainConsole {

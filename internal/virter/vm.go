@@ -156,7 +156,7 @@ func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error
 }
 
 func (v *Virter) createDiskVolume(sp libvirt.StoragePool, vmName string, disk Disk) error {
-	xml, err := v.diskVolumeXML(diskVolumeName(vmName, disk.GetName()), disk.GetSizeKiB(), disk.GetFormat())
+	xml, err := v.diskVolumeXML(diskVolumeName(vmName, disk.GetName()), disk.GetSizeKiB(), "KiB", disk.GetFormat())
 	if err != nil {
 		return err
 	}
