@@ -197,8 +197,8 @@ func (v *Virter) ciDataVolumeXML(name string) (string, error) {
 	return v.diskVolumeXML(name, 0, "B", "raw")
 }
 
-func (v *Virter) vmVolumeXML(name string, backingPath string) (string, error) {
-	volume := v.diskVolume(name, 10, "GiB", "qcow2")
+func (v *Virter) vmVolumeXML(name string, backingPath string, sizeB uint64) (string, error) {
+	volume := v.diskVolume(name, sizeB, "B", "qcow2")
 	volume.BackingStore = &lx.StorageVolumeBackingStore{
 		Path:   backingPath,
 		Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},

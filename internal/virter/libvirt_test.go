@@ -160,6 +160,15 @@ func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStr
 	return nil
 }
 
+func (l *FakeLibvirtConnection) StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity uint64, rAllocation uint64, err error) {
+	_, ok := l.vols[Vol.Name]
+	if !ok {
+		return 0, 0, 0, mockLibvirtError(errNoStorageVol)
+	}
+
+	return 0, 42, 23, nil
+}
+
 func (l *FakeLibvirtConnection) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
 	if Name != networkName {
 		return libvirt.Network{}, errors.New("unknown network")

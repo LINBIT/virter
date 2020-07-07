@@ -24,6 +24,7 @@ type LibvirtConnection interface {
 	StorageVolGetXMLDesc(Vol libvirt.StorageVol, Flags uint32) (rXML string, err error)
 	StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, Clonevol libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
 	StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset uint64, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error)
+	StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity uint64, rAllocation uint64, err error)
 	NetworkLookupByName(Name string) (rNet libvirt.Network, err error)
 	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
 	NetworkUpdate(Net libvirt.Network, Command uint32, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error)

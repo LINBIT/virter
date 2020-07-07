@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/LINBIT/virter/pkg/netcopy"
+	"github.com/rck/unit"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -142,7 +143,16 @@ func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error
 		return fmt.Errorf("could not get backing image path: %w", err)
 	}
 
-	xml, err := v.vmVolumeXML(vmName, backingPath)
+	_, sizeB, _, err := v.libvirt.StorageVolGetInfo(backingVolume)
+	if err != nil {
+		return fmt.Errorf("could not get backing image info: %w", err)
+	}
+	minSize := uint64(10 * unit.G)
+	if sizeB < minSize {
+		sizeB = minSize
+	}
+
+	xml, err := v.vmVolumeXML(vmName, backingPath, sizeB)
 	if err != nil {
 		return err
 	}
