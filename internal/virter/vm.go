@@ -143,13 +143,16 @@ func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error
 		return fmt.Errorf("could not get backing image path: %w", err)
 	}
 
-	_, sizeB, _, err := v.libvirt.StorageVolGetInfo(backingVolume)
-	if err != nil {
-		return fmt.Errorf("could not get backing image info: %w", err)
-	}
-	minSize := uint64(10 * unit.G)
-	if sizeB < minSize {
-		sizeB = minSize
+	sizeB := vmConfig.BootCapacityKiB * uint64(unit.K) // user defined one, might be 0 for don't care
+	if sizeB == 0 {
+		_, sizeB, _, err = v.libvirt.StorageVolGetInfo(backingVolume)
+		if err != nil {
+			return fmt.Errorf("could not get backing image info: %w", err)
+		}
+		minSize := uint64(10 * unit.G)
+		if sizeB < minSize {
+			sizeB = minSize
+		}
 	}
 
 	xml, err := v.vmVolumeXML(vmName, backingPath, sizeB)

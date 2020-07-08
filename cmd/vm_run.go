@@ -113,6 +113,9 @@ func vmRunCommand() *cobra.Command {
 	var mem *unit.Value
 	var memKiB uint64
 
+	var bootCapacity *unit.Value
+	var bootCapacityKiB uint64
+
 	var vcpus uint
 
 	var consoleDir string
@@ -130,6 +133,7 @@ func vmRunCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
+			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
 
 			for _, s := range diskStrings {
 				var d DiskArg
@@ -202,18 +206,19 @@ func vmRunCommand() *cobra.Command {
 					}
 					vmNames[i] = thisVMName
 					c := virter.VMConfig{
-						ImageName:     imageName,
-						Name:          thisVMName,
-						MemoryKiB:     memKiB,
-						VCPUs:         vcpus,
-						ID:            id,
-						SSHPublicKeys: publicKeys,
-						SSHPrivateKey: privateKey,
-						WaitSSH:       waitSSH,
-						SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
-						SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
-						ConsoleDir:    console,
-						Disks:         disks,
+						ImageName:       imageName,
+						Name:            thisVMName,
+						MemoryKiB:       memKiB,
+						BootCapacityKiB: bootCapacityKiB,
+						VCPUs:           vcpus,
+						ID:              id,
+						SSHPublicKeys:   publicKeys,
+						SSHPrivateKey:   privateKey,
+						WaitSSH:         waitSSH,
+						SSHPingCount:    viper.GetInt("time.ssh_ping_count"),
+						SSHPingPeriod:   viper.GetDuration("time.ssh_ping_period"),
+						ConsoleDir:      console,
+						Disks:           disks,
 					}
 
 					err = v.VMRun(SSHClientBuilder{}, c)
@@ -247,6 +252,8 @@ func vmRunCommand() *cobra.Command {
 	u := unit.MustNewUnit(sizeUnits)
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
+	bootCapacity = u.MustNewValue(0, unit.None)
+	runCmd.Flags().VarP(bootCapacity, "bootcapacity", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 

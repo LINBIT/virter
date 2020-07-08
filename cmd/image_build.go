@@ -19,6 +19,9 @@ func imageBuildCommand() *cobra.Command {
 	var mem *unit.Value
 	var memKiB uint64
 
+	var bootCapacity *unit.Value
+	var bootCapacityKiB uint64
+
 	var vcpus uint
 
 	buildCmd := &cobra.Command{
@@ -29,6 +32,7 @@ step, and then committing the resulting volume.`,
 		Args: cobra.ExactArgs(2),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
+			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			baseImageName := args[0]
@@ -64,16 +68,17 @@ step, and then committing the resulting volume.`,
 			}
 
 			vmConfig := virter.VMConfig{
-				ImageName:     baseImageName,
-				Name:          newImageName,
-				MemoryKiB:     memKiB,
-				VCPUs:         vcpus,
-				ID:            vmID,
-				SSHPublicKeys: publicKeys,
-				SSHPrivateKey: privateKey,
-				WaitSSH:       true,
-				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
-				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
+				ImageName:       baseImageName,
+				Name:            newImageName,
+				MemoryKiB:       memKiB,
+				BootCapacityKiB: bootCapacityKiB,
+				VCPUs:           vcpus,
+				ID:              vmID,
+				SSHPublicKeys:   publicKeys,
+				SSHPrivateKey:   privateKey,
+				WaitSSH:         true,
+				SSHPingCount:    viper.GetInt("time.ssh_ping_count"),
+				SSHPingPeriod:   viper.GetDuration("time.ssh_ping_period"),
 			}
 
 			dockerContainerConfig := virter.DockerContainerConfig{
@@ -126,6 +131,8 @@ step, and then committing the resulting volume.`,
 	u := unit.MustNewUnit(sizeUnits)
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
+	bootCapacity = u.MustNewValue(0, unit.None)
+	buildCmd.Flags().VarP(bootCapacity, "bootcap", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
 
 	return buildCmd
 }

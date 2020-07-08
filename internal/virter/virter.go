@@ -88,18 +88,19 @@ type Disk interface {
 
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
-	ImageName     string
-	Name          string
-	MemoryKiB     uint64
-	VCPUs         uint
-	ID            uint
-	SSHPublicKeys []string
-	SSHPrivateKey []byte
-	WaitSSH       bool
-	SSHPingCount  int
-	SSHPingPeriod time.Duration
-	ConsoleDir    *VMConsoleDir
-	Disks         []Disk
+	ImageName       string
+	Name            string
+	MemoryKiB       uint64
+	BootCapacityKiB uint64
+	VCPUs           uint
+	ID              uint
+	SSHPublicKeys   []string
+	SSHPrivateKey   []byte
+	WaitSSH         bool
+	SSHPingCount    int
+	SSHPingPeriod   time.Duration
+	ConsoleDir      *VMConsoleDir
+	Disks           []Disk
 }
 
 type VMConsoleDir struct {
