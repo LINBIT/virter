@@ -204,12 +204,7 @@ func (v *Virter) ImageSave(name string, to io.Writer) error {
 	}
 	defer v.volDeleteMust(newVol)
 
-	if volcfg.Physical == nil {
-		return fmt.Errorf("invalid volume without physical size")
-	}
-	length := volcfg.Physical.Value
-
-	err = v.libvirt.StorageVolDownload(newVol, to, 0, length, 0)
+	err = v.libvirt.StorageVolDownload(newVol, to, 0, 0, 0)
 	if err != nil {
 		return fmt.Errorf("could not download volume: %w", err)
 	}
