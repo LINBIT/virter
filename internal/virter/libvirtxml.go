@@ -227,24 +227,21 @@ func (v *Virter) imageVolumeXML(name string) (string, error) {
 func libvirtConsole(vm VMConfig) lx.DomainConsole {
 	var source *lx.DomainChardevSource
 	// no dir -> just return a regular PTY console
-	if vm.ConsoleDir == nil {
+	if vm.ConsolePath == "" {
 		source = &lx.DomainChardevSource{
 			Pty: &lx.DomainChardevSourcePty{},
 		}
 	} else {
-		path := vm.ConsoleLogPath()
-		log.Debugf("Logging VM console output to %s", path)
+		log.Debugf("Logging VM console output to %s", vm.ConsolePath)
 
 		source = &lx.DomainChardevSource{
 			File: &lx.DomainChardevSourceFile{
-				Path:   path,
-				Append: "off",
+				Path:   vm.ConsolePath,
+				Append: "on",
 				SecLabel: []lx.DomainDeviceSecLabel{
 					lx.DomainDeviceSecLabel{
-						Model: "dac",
-						Label: fmt.Sprintf("+%d:+%d",
-							vm.ConsoleDir.OwnerUID,
-							vm.ConsoleDir.OwnerGID),
+						Model:   "dac",
+						Relabel: "no",
 					},
 				},
 			},

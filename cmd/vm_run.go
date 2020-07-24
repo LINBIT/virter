@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strconv"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -30,59 +28,39 @@ var sizeUnits = func() map[string]int64 {
 	return units
 }()
 
-// currentUidGid returns the user id and group id of the current user, parsed
-// as an uint32. An error is returned if the retrieval of the user or parsing
-// of the IDs fails.
-func currentUidGid() (uint32, uint32, error) {
-	u, err := user.Current()
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get current user: %w", err)
-	}
-
-	uid, err := strconv.ParseUint(u.Uid, 10, 32)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to convert uid '%s' to number: %w",
-			u.Uid, err)
-	}
-
-	gid, err := strconv.ParseUint(u.Gid, 10, 32)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to convert gid '%s' to number: %w",
-			u.Gid, err)
-	}
-
-	// uid and gid are uint64, but we can safely cast here because we
-	// ensured bitsize = 32 in the ParseUint calls above
-	return uint32(uid), uint32(gid), nil
-}
-
-func currentUserConsoleDir(path string) (*virter.VMConsoleDir, error) {
+func createConsoleDir(path string) (string, error) {
 	if path == "" {
-		return nil, nil
-	}
-	currentUser, currentGroup, err := currentUidGid()
-	if err != nil {
-		log.Warnf("Failed to determine current user: %v", err)
-		log.Warnf("Creating console log directory as root")
-		currentUser, currentGroup = 0, 0
+		return "", nil
 	}
 
 	// libvirt doesn't like relative paths
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine absolute path for console directory '%v': %w",
+		return "", fmt.Errorf("failed to determine absolute path for console directory '%v': %w",
 			path, err)
 	}
 
 	if err := os.MkdirAll(absPath, 0700); err != nil {
-		return nil, fmt.Errorf("failed to create console directory at '%v': %w", absPath, err)
+		return "", fmt.Errorf("failed to create console directory at '%v': %w", absPath, err)
 	}
 
-	return &virter.VMConsoleDir{
-		Path:     absPath,
-		OwnerUID: currentUser,
-		OwnerGID: currentGroup,
-	}, nil
+	return absPath, nil
+}
+
+func createConsoleFile(consoleDir, vmName string) (string, error) {
+	if consoleDir == "" {
+		return "", nil
+	}
+
+	consolePath := filepath.Join(consoleDir, vmName+".log")
+
+	file, err := os.Create(consolePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create console file at '%v': %w", consolePath, err)
+	}
+	file.Close()
+
+	return consolePath, nil
 }
 
 func pullIfNotExists(v *virter.Virter, imageName string) error {
@@ -163,9 +141,9 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
-			console, err := currentUserConsoleDir(consoleDir)
+			consoleDir, err = createConsoleDir(consoleDir)
 			if err != nil {
-				log.Fatalf("Error while configuring console: %v", err)
+				log.Fatalf("Error while creating console directory: %v", err)
 			}
 
 			err = pullIfNotExists(v, imageName)
@@ -205,6 +183,12 @@ func vmRunCommand() *cobra.Command {
 						thisVMName = fmt.Sprintf("%s-%d", vmName, id)
 					}
 					vmNames[i] = thisVMName
+
+					consolePath, err := createConsoleFile(consoleDir, thisVMName)
+					if err != nil {
+						log.Fatalf("Error while creating console file: %v", err)
+					}
+
 					c := virter.VMConfig{
 						ImageName:       imageName,
 						Name:            thisVMName,
@@ -217,7 +201,7 @@ func vmRunCommand() *cobra.Command {
 						WaitSSH:         waitSSH,
 						SSHPingCount:    viper.GetInt("time.ssh_ping_count"),
 						SSHPingPeriod:   viper.GetDuration("time.ssh_ping_period"),
-						ConsoleDir:      console,
+						ConsolePath:     consolePath,
 						Disks:           disks,
 					}
 
