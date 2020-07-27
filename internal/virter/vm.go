@@ -626,8 +626,13 @@ func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, vmName, ipPort
 	if err != nil {
 		return err
 	}
-	sshClient := sshclient.NewSSHClient(ipPort, *config)
-	if err := sshClient.DialContext(ctx); err != nil {
+
+	// Retry connection until the context is cancelled. We expect to have
+	// already formed a successful SSH connection before we do any
+	// provisioning over SSH. This is a workaround for VMs that make SSH
+	// available but then temporarily stop it again.
+	sshClient, err := connectSSHRetry(ctx, config, ipPort)
+	if err != nil {
 		return err
 	}
 	defer sshClient.Close()
@@ -650,6 +655,23 @@ func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, vmName, ipPort
 	wg.Wait()
 
 	return err
+}
+
+func connectSSHRetry(ctx context.Context, config *ssh.ClientConfig, ipPort string) (*sshclient.SSHClient, error) {
+	var sshClient *sshclient.SSHClient
+	for sshClient == nil {
+		sshClient = sshclient.NewSSHClient(ipPort, *config)
+		if err := sshClient.DialContext(ctx); err != nil {
+			select {
+			case <-ctx.Done():
+				return nil, err
+			case <-time.After(time.Second):
+			}
+			log.Warnf("Retrying SSH connection due to failure: %v", err)
+			sshClient = nil
+		}
+	}
+	return sshClient, nil
 }
 
 func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (string, error) {
