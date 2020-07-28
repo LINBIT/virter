@@ -264,6 +264,11 @@ func (l *FakeLibvirtConnection) DomainDefineXML(XML string) (rDom libvirt.Domain
 	if err := description.Unmarshal(XML); err != nil {
 		return libvirt.Domain{}, fmt.Errorf("invalid domain XML: %w", err)
 	}
+	if description.Devices.Interfaces[0].MAC == nil {
+		description.Devices.Interfaces[0].MAC = &libvirtxml.DomainInterfaceMAC{
+			Address: "00:11:22:33:44:55",
+		}
+	}
 	l.domains[description.Name] = &FakeLibvirtDomain{
 		description: description,
 		persistent:  true,

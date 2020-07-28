@@ -71,7 +71,6 @@ func TestVMRun(t *testing.T) {
 	assert.Empty(t, l.vols[vmName].content)
 
 	host := l.network.description.IPs[0].DHCP.Hosts[0]
-	assert.Equal(t, "52:54:00:00:00:2a", host.MAC)
 	assert.Equal(t, "192.168.122.42", host.IP)
 
 	domain := l.domains[vmName]

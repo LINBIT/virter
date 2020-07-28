@@ -89,7 +89,7 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
 	return result, nil
 }
 
-func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error) {
+func (v *Virter) vmXML(poolName string, vm VMConfig) (string, error) {
 	vmDisks := []VMDisk{
 		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: vm.Name, bus: "virtio", format: "qcow2"},
 		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: ciDataVolumeName(vm.Name), bus: "ide", format: "raw"},
@@ -158,9 +158,6 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 			},
 			Interfaces: []lx.DomainInterface{
 				lx.DomainInterface{
-					MAC: &lx.DomainInterfaceMAC{
-						Address: mac,
-					},
 					Source: &lx.DomainInterfaceSource{
 						Network: &lx.DomainInterfaceSourceNetwork{
 							Network: v.networkName,
