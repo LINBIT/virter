@@ -60,6 +60,33 @@ If you require DNS resolution from your VMs to return correct FQDNs, add the
 
 By default, virter uses the libvirt network named `default`.
 
+### DHCP Leases
+
+Libvirt produces some weird behavior when MAC or IP addresses are reused while
+there is still an active DHCP lease for them. This can result in a new VM
+getting assigned a random IP instead of the IP corresponding to its ID.
+
+To work around this, virter tries to execute the `dhcp_release` utility in
+order to release the DHCP lease from libvirt's DHCP server when a VM is
+removed. This utility has to be run by the root user, so virter executes
+it using `sudo`.
+
+If execution fails (for example because the utility is not installed or the
+sudo rules are not set up correctly), the error is ignored by virter.
+
+So, to make virter work more reliably, especially when you are running lots
+of VMs in a short amount of time, you should install the `dhcp_release` utility
+(usually packaged as `dnsmasq-utils`). Additionally, you should make sure that
+your user can run `dhcp_release` as root, for example by using a sudo rule like
+this:
+
+```
+%libvirt ALL=(ALL) NOPASSWD: /usr/bin/dhcp_release
+```
+
+This allows all users in the group libvirt to run the `dhcp_release` utility
+without being prompted for a password.
+
 ## Usage
 
 For usage just run `virter help`.
