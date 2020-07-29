@@ -3,6 +3,7 @@ package virter
 import (
 	"fmt"
 	"net"
+	"os/exec"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 	log "github.com/sirupsen/logrus"
@@ -146,6 +147,11 @@ func (v *Virter) rmDHCPEntry(domain libvirt.Domain) error {
 		}
 	}
 
+	err = v.tryReleaseDHCP(mac, ips, network)
+	if err != nil {
+		log.Debugf("Could not release DHCP lease: %v", err)
+	}
+
 	return nil
 }
 
@@ -282,4 +288,31 @@ func (v *Virter) getVMID(wantedID uint) (uint, error) {
 	}
 
 	return 0, fmt.Errorf("could not find unused VM id")
+}
+
+func (v *Virter) tryReleaseDHCP(mac string, addrs []string, network libvirt.Network) error {
+	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	if err != nil {
+		return err
+	}
+
+	if networkDescription.Bridge == nil {
+		return fmt.Errorf("network %q is not a bridge, cannot release dhcp", networkDescription.Name)
+	}
+	iface := networkDescription.Bridge.Name
+
+	for _, addr := range addrs {
+		log.Debugf("Releasing DHCP lease from %v to %v", mac, addr)
+		cmd := exec.Command("sudo", "--non-interactive", "dhcp_release", iface, addr, mac)
+		_, err = cmd.Output()
+		if err != nil {
+			if e, ok := err.(*exec.ExitError); ok {
+				log.Debugf("dhcp_release stderr:\n%s", string(e.Stderr))
+			}
+
+			return fmt.Errorf("failed to run dhcp_release: %w", err)
+		}
+	}
+
+	return nil
 }
