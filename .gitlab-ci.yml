@@ -25,6 +25,7 @@ test:
     paths:
       - .mygo/pkg/mod
   script:
+    - GOPATH=$(pwd)/.mygo go version
     - GOPATH=$(pwd)/.mygo go install github.com/jstemmer/go-junit-report
     - GOPATH=$(pwd)/.mygo go get github.com/vektra/mockery/.../
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
