@@ -6,6 +6,8 @@
 // system.
 package driveletter
 
+import "fmt"
+
 // DriveLetter represents a unix drive letter. This is typically the last
 // character in a device file like /dev/sda (though it can also be multiple
 // characters).
@@ -27,7 +29,7 @@ func (d *DriveLetter) String() string {
 	num := d.num
 	var dev string
 	for num > 0 {
-		dev = string((num-1)%26+'a') + dev
+		dev = fmt.Sprintf("%c%s", (num-1)%26+'a', dev)
 		num = (num - 1) / 26
 	}
 	return dev
