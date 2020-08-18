@@ -24,6 +24,8 @@ func imageBuildCommand() *cobra.Command {
 
 	var vcpus uint
 
+	var consoleDir string
+
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
 		Short: "Build an image",
@@ -59,6 +61,16 @@ step, and then committing the resulting volume.`,
 				log.Fatal(err)
 			}
 
+			consoleDir, err = createConsoleDir(consoleDir)
+			if err != nil {
+				log.Fatalf("Error while creating console directory: %v", err)
+			}
+
+			consolePath, err := createConsoleFile(consoleDir, newImageName)
+			if err != nil {
+				log.Fatalf("Error while creating console file: %v", err)
+			}
+
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
 			// DockerClient will be set later if needed
@@ -79,6 +91,7 @@ step, and then committing the resulting volume.`,
 				WaitSSH:         true,
 				SSHPingCount:    viper.GetInt("time.ssh_ping_count"),
 				SSHPingPeriod:   viper.GetDuration("time.ssh_ping_period"),
+				ConsolePath:     consolePath,
 			}
 
 			dockerContainerConfig := virter.DockerContainerConfig{
@@ -119,7 +132,7 @@ step, and then committing the resulting volume.`,
 
 			err = v.ImageBuild(ctx, tools, vmConfig, buildConfig)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("Failed to build image: %v", err)
 			}
 		},
 	}
@@ -133,6 +146,7 @@ step, and then committing the resulting volume.`,
 	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 	bootCapacity = u.MustNewValue(0, unit.None)
 	buildCmd.Flags().VarP(bootCapacity, "bootcap", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
+	buildCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 
 	return buildCmd
 }
