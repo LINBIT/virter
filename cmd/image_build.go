@@ -25,6 +25,7 @@ func imageBuildCommand() *cobra.Command {
 	var vcpus uint
 
 	var consoleDir string
+	var resetMachineID bool
 
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
@@ -122,7 +123,7 @@ step, and then committing the resulting volume.`,
 				SSHPrivateKey:         privateKey,
 				ShutdownTimeout:       shutdownTimeout,
 				ProvisionConfig:       provisionConfig,
-				ResetMachineID:        true,
+				ResetMachineID:        resetMachineID,
 			}
 
 			err = pullIfNotExists(v, vmConfig.ImageName)
@@ -147,6 +148,7 @@ step, and then committing the resulting volume.`,
 	bootCapacity = u.MustNewValue(0, unit.None)
 	buildCmd.Flags().VarP(bootCapacity, "bootcap", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
 	buildCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
+	buildCmd.Flags().BoolVar(&resetMachineID, "reset-machine-id", true, "Whether or not to clear the /etc/machine-id file after provisioning")
 
 	return buildCmd
 }
