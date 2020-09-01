@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/LINBIT/containerapi"
 	"github.com/rck/unit"
 	log "github.com/sirupsen/logrus"
 
@@ -41,7 +42,7 @@ step, and then committing the resulting volume.`,
 			baseImageName := args[0]
 			newImageName := args[1]
 
-			dctx, dcancel := dockerContext()
+			dctx, dcancel := containerContext()
 			defer dcancel()
 			ctx, cancel := onInterruptWrap(dctx)
 			defer cancel()
@@ -75,7 +76,7 @@ step, and then committing the resulting volume.`,
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
-			// DockerClient will be set later if needed
+			// ContainerProvider will be set later if needed
 			tools := virter.ImageBuildTools{
 				ShellClientBuilder: SSHClientBuilder{},
 				AfterNotifier:      actualtime.ActualTime{},
@@ -96,9 +97,7 @@ step, and then committing the resulting volume.`,
 				ConsolePath:     consolePath,
 			}
 
-			dockerContainerConfig := virter.DockerContainerConfig{
-				ContainerName: "virter-build-" + newImageName,
-			}
+			containerName := "virter-build-" + newImageName
 
 			provOpt := virter.ProvisionOption{
 				FilePath:  provisionFile,
@@ -109,22 +108,22 @@ step, and then committing the resulting volume.`,
 			if err != nil {
 				log.Fatal(err)
 			}
-			if provisionConfig.NeedsDocker() {
-				docker, err := dockerConnect()
+			if provisionConfig.NeedsContainers() {
+				containerProvider, err := containerapi.NewProvider(ctx, containerProvider())
 				if err != nil {
 					log.Fatal(err)
 				}
-				defer docker.Close()
-				tools.DockerClient = docker
+				defer containerProvider.Close()
+				tools.ContainerProvider = containerProvider
 			}
 
 			buildConfig := virter.ImageBuildConfig{
-				DockerContainerConfig: dockerContainerConfig,
-				SSHPrivateKeyPath:     privateKeyPath,
-				SSHPrivateKey:         privateKey,
-				ShutdownTimeout:       shutdownTimeout,
-				ProvisionConfig:       provisionConfig,
-				ResetMachineID:        resetMachineID,
+				ContainerName:     containerName,
+				SSHPrivateKeyPath: privateKeyPath,
+				SSHPrivateKey:     privateKey,
+				ShutdownTimeout:   shutdownTimeout,
+				ProvisionConfig:   provisionConfig,
+				ResetMachineID:    resetMachineID,
 			}
 
 			err = pullIfNotExists(v, vmConfig.ImageName)

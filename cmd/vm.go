@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
@@ -31,18 +30,13 @@ func vmCommand() *cobra.Command {
 	return vmCmd
 }
 
-func dockerConnect() (*client.Client, error) {
-	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("could not connect to Docker %w", err)
-	}
-
-	return docker, nil
+func containerProvider() string {
+	return viper.GetString("container.provider")
 }
 
-func dockerContext() (context.Context, context.CancelFunc) {
-	dockerTimeout := viper.GetDuration("time.docker_timeout")
-	return context.WithTimeout(context.Background(), dockerTimeout)
+func containerContext() (context.Context, context.CancelFunc) {
+	containerTimeout := viper.GetDuration("time.container_timeout")
+	return context.WithTimeout(context.Background(), containerTimeout)
 }
 
 // SSHClientBuilder builds SSH shell clients

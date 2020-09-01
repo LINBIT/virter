@@ -6,6 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/LINBIT/containerapi"
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/netcopy"
 
@@ -69,29 +70,25 @@ func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
 }
 
 func execDocker(v *virter.Virter, s *virter.ProvisionDockerStep, vmNames []string) error {
-	dctx, dcancel := dockerContext()
+	dctx, dcancel := containerContext()
 	defer dcancel()
 	ctx, cancel := onInterruptWrap(dctx)
 	defer cancel()
 
-	docker, err := dockerConnect()
+	containerProvider, err := containerapi.NewProvider(ctx, containerProvider())
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer docker.Close()
+	defer containerProvider.Close()
 
 	privateKey, err := loadPrivateKey()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dockerContainerConfig := virter.DockerContainerConfig{
-		ContainerName: "virter-" + strings.Join(vmNames, "-"),
-		ImageName:     s.Image,
-		Env:           virter.EnvmapToSlice(s.Env),
-	}
+	containerCfg := containerapi.NewContainerConfig("virter-" + strings.Join(vmNames, "-"), s.Image, s.Env)
 
-	return v.VMExecDocker(ctx, docker, vmNames, dockerContainerConfig, privateKey)
+	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, privateKey)
 }
 
 func execShell(v *virter.Virter, s *virter.ProvisionShellStep, vmNames []string) error {

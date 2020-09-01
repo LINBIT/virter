@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/LINBIT/containerapi"
+
 	"github.com/LINBIT/virter/pkg/netcopy"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/rck/unit"
@@ -513,13 +515,13 @@ func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 }
 
 // VMExecDocker runs a docker container against some VMs.
-func (v *Virter) VMExecDocker(ctx context.Context, docker DockerClient, vmNames []string, dockerContainerConfig DockerContainerConfig, sshPrivateKey []byte) error {
+func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, sshPrivateKey []byte) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
 
-	return dockerRun(ctx, docker, dockerContainerConfig, ips, sshPrivateKey)
+	return containerRun(ctx, containerProvider, containerCfg, ips, sshPrivateKey)
 }
 
 func getSSHClientConfig(sshPrivateKey []byte) (ssh.ClientConfig, error) {

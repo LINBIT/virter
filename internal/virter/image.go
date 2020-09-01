@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/LINBIT/containerapi"
+
 	"github.com/LINBIT/virter/pkg/netcopy"
 	libvirt "github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
@@ -83,18 +85,18 @@ func (v *Virter) ImageRm(ctx context.Context, name string) error {
 // ImageBuildTools includes the dependencies for building an image
 type ImageBuildTools struct {
 	ShellClientBuilder ShellClientBuilder
-	DockerClient       DockerClient
+	ContainerProvider  containerapi.ContainerProvider
 	AfterNotifier      AfterNotifier
 }
 
 // ImageBuildConfig contains the configuration for building an image
 type ImageBuildConfig struct {
-	DockerContainerConfig DockerContainerConfig
-	SSHPrivateKeyPath     string
-	SSHPrivateKey         []byte
-	ShutdownTimeout       time.Duration
-	ProvisionConfig       ProvisionConfig
-	ResetMachineID        bool
+	ContainerName     string
+	SSHPrivateKeyPath string
+	SSHPrivateKey     []byte
+	ShutdownTimeout   time.Duration
+	ProvisionConfig   ProvisionConfig
+	ResetMachineID    bool
 }
 
 func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
@@ -115,10 +117,8 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 
 	for _, s := range buildConfig.ProvisionConfig.Steps {
 		if s.Docker != nil {
-			dockerContainerConfig := buildConfig.DockerContainerConfig
-			dockerContainerConfig.ImageName = s.Docker.Image
-			dockerContainerConfig.Env = EnvmapToSlice(s.Docker.Env)
-			err = v.VMExecDocker(ctx, tools.DockerClient, vmNames, dockerContainerConfig, sshPrivateKey)
+			containerCfg := containerapi.NewContainerConfig(buildConfig.ContainerName, s.Docker.Image, s.Docker.Env)
+			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, sshPrivateKey)
 		} else if s.Shell != nil {
 			err = v.VMExecShell(ctx, vmNames, sshPrivateKey, s.Shell)
 		} else if s.Rsync != nil {

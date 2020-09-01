@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LINBIT/containerapi"
+
 	"github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
@@ -264,13 +266,12 @@ func TestVMExecDocker(t *testing.T) {
 
 	fakeNetworkAddHost(l.network, vmMAC, vmIP)
 
-	docker := new(mocks.DockerClient)
-	mockDockerRun(docker)
+	docker := mockContainerProvider()
 
 	v := virter.New(l, poolName, networkName)
 
-	dockercfg := virter.DockerContainerConfig{ImageName: dockerImageName}
-	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, dockercfg, []byte(sshPrivateKey))
+	containerCfg := containerapi.NewContainerConfig("test", dockerImageName, nil)
+	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, containerCfg, []byte(sshPrivateKey))
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)

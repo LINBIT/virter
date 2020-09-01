@@ -47,12 +47,12 @@ ssh_ping_period = "{{ get "time.ssh_ping_period" }}"
 # Default value: "{{ get "time.shutdown_timeout" }}"
 shutdown_timeout = "{{ get "time.shutdown_timeout" }}"
 
-# docker_timeout is how long virter will wait for a Docker provisioning step to
+# container_timeout is how long virter will wait for a container provisioning step to
 # complete.
-# If a Docker provisioning step exceeds this timeout, it will be aborted and an
+# If a container provisioning step exceeds this timeout, it will be aborted and an
 # error will be produced.
-# Default value: "{{ get "time.docker_timeout" }}"
-docker_timeout = "{{ get "time.docker_timeout" }}"
+# Default value: "{{ get "time.container_timeout" }}"
+container_timeout = "{{ get "time.container_timeout" }}"
 
 [auth]
 # virter_public_key_path is where virter should place its generated public key.
@@ -78,6 +78,10 @@ virter_private_key_path = "{{ get "auth.virter_private_key_path" }}"
 # user's authorized keys inside the VM.
 # Default value: "{{ get "auth.user_public_key" }}"
 user_public_key = "{{ get "auth.user_public_key" }}"
+
+[container]
+# provider is the container engine used. Can be either podman or docker.
+provider = "{{ get "container.provider" }}"
 `
 
 // initConfig reads in config file and ENV variables if set.
@@ -87,7 +91,8 @@ func initConfig() {
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
-	viper.SetDefault("time.docker_timeout", 30*time.Minute)
+	viper.SetDefault("time.container_timeout", 30*time.Minute)
+	viper.SetDefault("container.provider", "docker")
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {

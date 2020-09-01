@@ -44,8 +44,8 @@ type ProvisionConfig struct {
 	Steps  []ProvisionStep   `toml:"steps"`
 }
 
-// NeedsDocker checks if there is a provision step that requires a docker client
-func (p *ProvisionConfig) NeedsDocker() bool {
+// NeedsContainers checks if there is a provision step that requires a docker client
+func (p *ProvisionConfig) NeedsContainers() bool {
 	for _, s := range p.Steps {
 		if s.Docker != nil {
 			return true

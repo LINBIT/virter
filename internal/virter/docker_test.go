@@ -2,36 +2,65 @@ package virter_test
 
 import (
 	"bytes"
+	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"testing"
+	"time"
 
-	"github.com/stretchr/testify/mock"
-
-	"github.com/docker/docker/api/types/container"
-
-	"github.com/LINBIT/virter/internal/virter/mocks"
+	"github.com/LINBIT/containerapi"
+	"github.com/stretchr/testify/assert"
 )
 
-//go:generate mockery -name=DockerClient
-
-func mockDockerRun(docker *mocks.DockerClient) {
-	id := "some-container-id"
-
-	createBody := container.ContainerCreateCreatedBody{ID: id}
-	docker.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(createBody, nil)
-
-	docker.On("ContainerStart", mock.Anything, id, mock.Anything).Return(nil)
-
-	var out bytes.Buffer
-	docker.On("ContainerLogs", mock.Anything, id, mock.Anything).Return(ioutil.NopCloser(&out), nil)
-
-	statusCh := make(chan container.ContainerWaitOKBody, 1)
-	statusCh <- container.ContainerWaitOKBody{}
-	errCh := make(chan error)
-	mockContainerWait(docker, id, statusCh, errCh)
+type MockContainerProvider struct {
+	createCalled bool
+	startCalled  bool
+	logsCalled   bool
+	waitCalled   bool
 }
 
-// mockContainerWait wraps the ContainerWait mocking so that the channels have
-// the correct "<-chan" type instead of "chan"
-func mockContainerWait(docker *mocks.DockerClient, id string, statusCh <-chan container.ContainerWaitOKBody, errCh <-chan error) {
-	docker.On("ContainerWait", mock.Anything, id, container.WaitConditionRemoved).Return(statusCh, errCh)
+const mockContainerId = "some-container-id"
+
+func (c *MockContainerProvider) Create(ctx context.Context, cfg *containerapi.ContainerConfig) (string, error) {
+	c.createCalled = true
+	return mockContainerId, nil
+}
+
+func (c *MockContainerProvider) Start(ctx context.Context, containerID string) error {
+	c.startCalled = true
+	return nil
+}
+
+func (c *MockContainerProvider) Stop(ctx context.Context, containerID string, timeout *time.Duration) error {
+	return fmt.Errorf("called Stop on mock container")
+}
+
+func (c *MockContainerProvider) Wait(ctx context.Context, containerID string) (<-chan int64, <-chan error) {
+	c.waitCalled = true
+	statusChan := make(chan int64, 1)
+	statusChan <- 0
+	errChan := make(chan error)
+	return statusChan, errChan
+}
+
+func (c *MockContainerProvider) Logs(ctx context.Context, containerID string) (io.ReadCloser, io.ReadCloser, error) {
+	c.logsCalled = true
+	var out bytes.Buffer
+	return ioutil.NopCloser(&out), ioutil.NopCloser(&out), nil
+}
+
+func (c *MockContainerProvider) Close() error {
+	return nil
+}
+
+func (c *MockContainerProvider) AssertExpectations(t *testing.T) {
+	assert.True(t, c.createCalled)
+	assert.True(t, c.startCalled)
+	assert.True(t, c.waitCalled)
+	assert.True(t, c.logsCalled)
+}
+
+func mockContainerProvider() *MockContainerProvider {
+	return &MockContainerProvider{}
 }

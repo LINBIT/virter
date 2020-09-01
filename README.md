@@ -39,11 +39,25 @@ go build .
 Virter requires:
 
 * A running libvirt daemon on the host where it is run
+* A container runtime. Currently, Virter supports `docker` and `podman`.
 
 Configuration is read by default from `~/.config/virter/virter.toml`.
 
 When starting virter for the first time, a default configuration file will be
 generated, including documentation about the various flags.
+
+### Container runtime
+
+Select the container runtime by setting `container.provider` to either `docker` or `podman`.
+
+#### podman
+
+Virter communicates with `podman` via it's REST-API. Make sure the API socket is available.
+
+This may be done by:
+
+* Starting podman via systemd: `systemctl --user start podman.socket` (use `systemctl --user enable --now podman.socket` to make this permanent)
+* Start podman manually: `podman system service`
 
 ### Network domain
 

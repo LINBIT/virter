@@ -94,7 +94,6 @@ foo="rck"
 			}
 		}
 	}
-
 }
 
 func envEqual(env, expected []string) bool {

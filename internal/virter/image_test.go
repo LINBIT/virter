@@ -79,8 +79,7 @@ func TestImageBuild(t *testing.T) {
 	shell.On("Dial").Return(nil)
 	shell.On("Close").Return(nil)
 
-	docker := new(mocks.DockerClient)
-	mockDockerRun(docker)
+	docker := mockContainerProvider()
 
 	an := new(mocks.AfterNotifier)
 	mockAfter(an, make(chan time.Time))
@@ -94,7 +93,7 @@ func TestImageBuild(t *testing.T) {
 
 	tools := virter.ImageBuildTools{
 		ShellClientBuilder: MockShellClientBuilder{shell},
-		DockerClient:       docker,
+		ContainerProvider:  docker,
 		AfterNotifier:      an,
 	}
 
@@ -121,12 +120,11 @@ func TestImageBuild(t *testing.T) {
 		},
 	}
 
-	dockercfg := virter.DockerContainerConfig{}
 	buildConfig := virter.ImageBuildConfig{
-		DockerContainerConfig: dockercfg,
-		SSHPrivateKey:         []byte(sshPrivateKey),
-		ShutdownTimeout:       shutdownTimeout,
-		ProvisionConfig:       provisionConfig,
+		ContainerName:   "virter-test",
+		SSHPrivateKey:   []byte(sshPrivateKey),
+		ShutdownTimeout: shutdownTimeout,
+		ProvisionConfig: provisionConfig,
 	}
 
 	err := v.ImageBuild(context.Background(), tools, vmConfig, buildConfig)

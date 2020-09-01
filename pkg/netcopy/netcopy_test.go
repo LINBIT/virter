@@ -1,8 +1,9 @@
 package netcopy_test
 
 import (
-	"github.com/LINBIT/virter/pkg/netcopy"
 	"testing"
+
+	"github.com/LINBIT/virter/pkg/netcopy"
 )
 
 func TestParseHostPath(t *testing.T) {
