@@ -34,9 +34,8 @@ func pullImage(v *virter.Virter, imageName, url string) error {
 		),
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := onInterruptWrap(context.Background())
 	defer cancel()
-	registerSignals(ctx, cancel)
 
 	err := v.ImagePull(
 		ctx,

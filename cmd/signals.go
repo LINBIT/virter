@@ -2,22 +2,11 @@ package cmd
 
 import (
 	"context"
-	"os"
-	"os/signal"
+	"syscall"
 
-	"golang.org/x/sys/unix"
+	"github.com/sethvargo/go-signalcontext"
 )
 
-func registerSignals(ctx context.Context, cancel context.CancelFunc) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, unix.SIGTERM)
-	go func() {
-		select {
-		case <-c:
-			signal.Stop(c)
-			cancel()
-		case <-ctx.Done():
-			signal.Stop(c)
-		}
-	}()
+func onInterruptWrap(ctx context.Context) (context.Context, context.CancelFunc) {
+	return signalcontext.Wrap(ctx, syscall.SIGINT, syscall.SIGTERM)
 }

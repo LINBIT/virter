@@ -41,9 +41,10 @@ step, and then committing the resulting volume.`,
 			baseImageName := args[0]
 			newImageName := args[1]
 
-			ctx, cancel := dockerContext()
+			dctx, dcancel := dockerContext()
+			defer dcancel()
+			ctx, cancel := onInterruptWrap(dctx)
 			defer cancel()
-			registerSignals(ctx, cancel)
 
 			v, err := VirterConnect()
 			if err != nil {
