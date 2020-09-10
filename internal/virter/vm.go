@@ -386,17 +386,17 @@ func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string, debugName s
 	return nil
 }
 
-// VMCommit commits a VM to an image. If shutdown is true, a goroutine to watch
-// for events will be started. This goroutine will only terminate when the
-// libvirt connection is closed, so take care of leaking goroutines.
-func (v *Virter) VMCommit(afterNotifier AfterNotifier, vmName string, shutdown bool, shutdownTimeout time.Duration) error {
+// VMCommit commits a VM to an image. If shutdown is true, the VM is shut down
+// before committing. If shutdown is false, the caller is responsible for
+// ensuring that the VM is not running.
+func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName string, shutdown bool, shutdownTimeout time.Duration) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
 
 	if shutdown {
-		err = v.vmShutdown(afterNotifier, shutdownTimeout, domain)
+		err = v.vmShutdown(ctx, afterNotifier, shutdownTimeout, domain)
 		if err != nil {
 			return err
 		}
@@ -424,14 +424,11 @@ func (v *Virter) VMCommit(afterNotifier AfterNotifier, vmName string, shutdown b
 	return nil
 }
 
-func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Duration, domain libvirt.Domain) error {
-	events, err := v.libvirt.LifecycleEvents()
-	if err != nil {
-		return fmt.Errorf("could not start waiting for events: %w", err)
-	}
-
-	// Check whether domain is active after starting event stream
-	// to ensure that the shutdown event is not missed.
+// vmShutdown sends a command to libvirt to shut down a domain. It then waits for
+// the domain to no longer be active, or until shutdownTimeout has elapsed.
+// Note that we don't use libvirt's LifetimeEvents here, because its event
+// receiving loop sometimes causes a deadlock for us.
+func (v *Virter) vmShutdown(ctx context.Context, afterNotifier AfterNotifier, shutdownTimeout time.Duration, domain libvirt.Domain) error {
 	active, err := v.libvirt.DomainIsActive(domain)
 	if err != nil {
 		return fmt.Errorf("could not check if domain is active: %w", err)
@@ -450,15 +447,20 @@ func (v *Virter) vmShutdown(afterNotifier AfterNotifier, shutdownTimeout time.Du
 
 	timeout := afterNotifier.After(shutdownTimeout)
 
+	tick := time.NewTicker(500 * time.Millisecond)
+	defer tick.Stop()
 	for active != 0 {
 		select {
-		case event := <-events:
-			if event.Dom.ID == domain.ID && event.Event == int32(libvirt.DomainEventStopped) {
-				log.Printf("VM stopped")
-				active = 0
-			}
+		case <-ctx.Done():
+			return fmt.Errorf("error while waiting for domain to stop: %v", ctx.Err())
 		case <-timeout:
 			return fmt.Errorf("timed out waiting for domain to stop")
+		case <-tick.C:
+			log.Debugf("Polling for VM shutdown")
+			active, err = v.libvirt.DomainIsActive(domain)
+			if err != nil {
+				log.Warnf("Error while polling for VM shutdown: could not check if domain %q is active: %v", domain.Name, err)
+			}
 		}
 	}
 

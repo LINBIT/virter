@@ -131,7 +131,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 		}
 	}
 
-	err = v.VMCommit(tools.AfterNotifier, vmConfig.Name, true, buildConfig.ShutdownTimeout)
+	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, true, buildConfig.ShutdownTimeout)
 	if err != nil {
 		return err
 	}

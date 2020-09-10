@@ -11,7 +11,6 @@ import (
 
 	"github.com/LINBIT/containerapi"
 
-	"github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -218,12 +217,10 @@ func TestVMCommit(t *testing.T) {
 
 		if r[commitShutdown] {
 			if r[commitShutdownTimeout] {
-				l.lifecycleEvents = make(chan libvirt.DomainEventLifecycleMsg)
 				timeout := make(chan time.Time, 1)
 				timeout <- time.Unix(0, 0)
 				mockAfter(an, timeout)
 			} else {
-				l.lifecycleEvents = makeShutdownEvents()
 				mockAfter(an, make(chan time.Time))
 			}
 
@@ -231,7 +228,7 @@ func TestVMCommit(t *testing.T) {
 
 		v := virter.New(l, poolName, networkName)
 
-		err := v.VMCommit(an, vmName, r[commitShutdown], shutdownTimeout)
+		err := v.VMCommit(context.Background(), an, vmName, r[commitShutdown], shutdownTimeout)
 		if expectOk {
 			assert.NoError(t, err)
 
@@ -244,16 +241,6 @@ func TestVMCommit(t *testing.T) {
 
 		an.AssertExpectations(t)
 	}
-}
-
-func makeShutdownEvents() chan libvirt.DomainEventLifecycleMsg {
-	events := make(chan libvirt.DomainEventLifecycleMsg, 1)
-	events <- libvirt.DomainEventLifecycleMsg{
-		Dom:    libvirt.Domain{Name: vmName},
-		Event:  int32(libvirt.DomainEventStopped),
-		Detail: int32(libvirt.DomainEventStoppedShutdown),
-	}
-	return events
 }
 
 func TestVMExecDocker(t *testing.T) {

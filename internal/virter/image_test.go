@@ -87,7 +87,6 @@ func TestImageBuild(t *testing.T) {
 	l := newFakeLibvirtConnection()
 
 	l.vols[imageName] = &FakeLibvirtStorageVol{}
-	l.lifecycleEvents = makeShutdownEvents()
 
 	v := virter.New(l, poolName, networkName)
 

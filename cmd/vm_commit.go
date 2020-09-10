@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -27,7 +29,9 @@ the virtual machine name.`,
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
-			err = v.VMCommit(actualtime.ActualTime{}, args[0], shutdown, shutdownTimeout)
+			ctx, cancel := onInterruptWrap(context.Background())
+			defer cancel()
+			err = v.VMCommit(ctx, actualtime.ActualTime{}, args[0], shutdown, shutdownTimeout)
 			if err != nil {
 				log.Fatal(err)
 			}
