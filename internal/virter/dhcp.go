@@ -76,6 +76,13 @@ func ipToID(ipnet net.IPNet, ip net.IP) (uint, error) {
 	return v - sv, nil
 }
 
+func qemuMAC(id uint) string {
+	id0 := byte((id >> 16) & 0xFF)
+	id1 := byte((id >> 8) & 0xFF)
+	id2 := byte(id & 0xFF)
+	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", id0, id1, id2)
+}
+
 func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {
 	ipNet := net.IPNet{}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/LINBIT/containerapi"
 
 	"github.com/LINBIT/virter/pkg/netcopy"
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/rck/unit"
 
 	log "github.com/sirupsen/logrus"
@@ -190,7 +189,8 @@ func diskVolumeName(vmName string, diskName string) string {
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
-	xml, err := v.vmXML(sp.Name, vmConfig)
+	mac := qemuMAC(vmConfig.ID)
+	xml, err := v.vmXML(sp.Name, vmConfig, mac)
 	if err != nil {
 		return nil, err
 	}
@@ -202,19 +202,6 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	if err != nil {
 		return nil, fmt.Errorf("could not define domain: %w", err)
 	}
-
-	domainXML, err := v.libvirt.DomainGetXMLDesc(d, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	domcfg := &libvirtxml.Domain{}
-	err = domcfg.Unmarshal(domainXML)
-	if err != nil {
-		return nil, err
-	}
-
-	mac := domcfg.Devices.Interfaces[0].MAC.Address
 
 	// Add DHCP entry after defining the VM to ensure that it can be
 	// removed when removing the VM, but before starting it to ensure that
