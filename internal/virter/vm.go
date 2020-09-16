@@ -303,7 +303,7 @@ func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
 			return fmt.Errorf("could not check if domain is persistent: %w", err)
 		}
 
-		err = v.rmDHCPEntry(domain)
+		err = v.removeDomainDHCPEntries(domain)
 		if err != nil {
 			return err
 		}

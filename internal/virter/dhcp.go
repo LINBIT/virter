@@ -123,7 +123,28 @@ func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {
 	return ipNet, nil
 }
 
-func (v *Virter) rmDHCPEntry(domain libvirt.Domain) error {
+// RemoveMACDHCPEntries removes DHCP host entries associated with the given
+// MAC address
+func (v *Virter) RemoveMACDHCPEntries(mac string) error {
+	network, err := v.libvirt.NetworkLookupByName(v.networkName)
+	if err != nil {
+		return fmt.Errorf("could not get network: %w", err)
+	}
+
+	ips, err := v.findIPs(network, mac)
+	if err != nil {
+		return err
+	}
+
+	err = v.removeDHCPEntries(network, mac, ips)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *Virter) removeDomainDHCPEntries(domain libvirt.Domain) error {
 	mac, err := v.getMAC(domain)
 	if err != nil {
 		return err
@@ -139,9 +160,23 @@ func (v *Virter) rmDHCPEntry(domain libvirt.Domain) error {
 		return err
 	}
 
+	err = v.removeDHCPEntries(network, mac, ips)
+	if err != nil {
+		return err
+	}
+
+	err = v.tryReleaseDHCP(network, mac, ips)
+	if err != nil {
+		log.Debugf("Could not release DHCP lease: %v", err)
+	}
+
+	return nil
+}
+
+func (v *Virter) removeDHCPEntries(network libvirt.Network, mac string, ips []string) error {
 	for _, ip := range ips {
 		log.Printf("Remove DHCP entry from %v to %v", mac, ip)
-		err = v.libvirt.NetworkUpdate(
+		err := v.libvirt.NetworkUpdate(
 			network,
 			// the following 2 arguments are swapped; see
 			// https://github.com/digitalocean/go-libvirt/issues/87
@@ -153,11 +188,6 @@ func (v *Virter) rmDHCPEntry(domain libvirt.Domain) error {
 		if err != nil {
 			return fmt.Errorf("could not remove DHCP entry: %w", err)
 		}
-	}
-
-	err = v.tryReleaseDHCP(mac, ips, network)
-	if err != nil {
-		log.Debugf("Could not release DHCP lease: %v", err)
 	}
 
 	return nil
@@ -298,7 +328,7 @@ func (v *Virter) GetVMID(wantedID uint) (uint, error) {
 	return 0, fmt.Errorf("could not find unused VM id")
 }
 
-func (v *Virter) tryReleaseDHCP(mac string, addrs []string, network libvirt.Network) error {
+func (v *Virter) tryReleaseDHCP(network libvirt.Network, mac string, addrs []string) error {
 	networkDescription, err := getNetworkDescription(v.libvirt, network)
 	if err != nil {
 		return err
