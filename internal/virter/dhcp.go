@@ -11,11 +11,11 @@ import (
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
 
-// AddDHCPEntry adds a DHCP mapping from a MAC address to an IP generated from
-// the id. The same MAC address should always be paired with a given IP so that
-// DHCP entries do not need to be released between removing a VM and creating
-// another with the same ID.
-func (v *Virter) AddDHCPEntry(mac string, id uint) (net.IP, error) {
+// SetUpIP determines the IP for an ID and optionally adds a DHCP mapping from
+// a MAC address to it. The same MAC address should always be paired with a
+// given IP so that DHCP entries do not need to be released between removing a
+// VM and creating another with the same ID.
+func (v *Virter) SetUpIP(mac string, id uint, addDHCPEntry bool) (net.IP, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return nil, fmt.Errorf("could not get network: %w", err)
@@ -33,18 +33,20 @@ func (v *Virter) AddDHCPEntry(mac string, id uint) (net.IP, error) {
 		return nil, fmt.Errorf("computed IP %v is not in network", ip)
 	}
 
-	log.Printf("Add DHCP entry from %v to %v", mac, ip)
-	err = v.libvirt.NetworkUpdate(
-		network,
-		// the following 2 arguments are swapped; see
-		// https://github.com/digitalocean/go-libvirt/issues/87
-		uint32(libvirt.NetworkSectionIPDhcpHost),
-		uint32(libvirt.NetworkUpdateCommandAddLast),
-		-1,
-		fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
-		libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
-	if err != nil {
-		return nil, fmt.Errorf("could not add DHCP entry: %w", err)
+	if addDHCPEntry {
+		log.Printf("Add DHCP entry from %v to %v", mac, ip)
+		err = v.libvirt.NetworkUpdate(
+			network,
+			// the following 2 arguments are swapped; see
+			// https://github.com/digitalocean/go-libvirt/issues/87
+			uint32(libvirt.NetworkSectionIPDhcpHost),
+			uint32(libvirt.NetworkUpdateCommandAddLast),
+			-1,
+			fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
+			libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
+		if err != nil {
+			return nil, fmt.Errorf("could not add DHCP entry: %w", err)
+		}
 	}
 
 	return ip, nil
@@ -144,10 +146,13 @@ func (v *Virter) RemoveMACDHCPEntries(mac string) error {
 	return nil
 }
 
-func (v *Virter) removeDomainDHCPEntries(domain libvirt.Domain) error {
+func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool) error {
 	mac, err := v.getMAC(domain)
 	if err != nil {
 		return err
+	}
+	if mac == "" {
+		return fmt.Errorf("could not find MAC address of domain")
 	}
 
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
@@ -160,9 +165,11 @@ func (v *Virter) removeDomainDHCPEntries(domain libvirt.Domain) error {
 		return err
 	}
 
-	err = v.removeDHCPEntries(network, mac, ips)
-	if err != nil {
-		return err
+	if removeDHCPEntries {
+		err = v.removeDHCPEntries(network, mac, ips)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = v.tryReleaseDHCP(network, mac, ips)
@@ -193,6 +200,25 @@ func (v *Virter) removeDHCPEntries(network libvirt.Network, mac string, ips []st
 	return nil
 }
 
+func (v *Virter) getDomainForMAC(mac string) (libvirt.Domain, error) {
+	domains, _, err := v.libvirt.ConnectListAllDomains(-1, 0)
+	if err != nil {
+		return libvirt.Domain{}, fmt.Errorf("could not list domains: %w", err)
+	}
+
+	for _, domain := range domains {
+		domainMAC, err := v.getMAC(domain)
+		if err != nil {
+			return libvirt.Domain{}, fmt.Errorf("could not check MAC for domain '%s': %w", domain.Name, err)
+		}
+		if domainMAC == mac {
+			return domain, nil
+		}
+	}
+
+	return libvirt.Domain{}, nil
+}
+
 func (v *Virter) getMAC(domain libvirt.Domain) (string, error) {
 	domainDescription, err := getDomainDescription(v.libvirt, domain)
 	if err != nil {
@@ -203,18 +229,17 @@ func (v *Virter) getMAC(domain libvirt.Domain) (string, error) {
 	if devicesDescription == nil {
 		return "", fmt.Errorf("no devices in domain")
 	}
-	if len(devicesDescription.Interfaces) < 1 {
-		return "", fmt.Errorf("no interface devices in domain")
+
+	for _, interfaceDescription := range devicesDescription.Interfaces {
+		if interfaceDescription.MAC != nil &&
+			interfaceDescription.Source != nil &&
+			interfaceDescription.Source.Network != nil &&
+			interfaceDescription.Source.Network.Network == v.networkName {
+			return interfaceDescription.MAC.Address, nil
+		}
 	}
 
-	interfaceDescription := devicesDescription.Interfaces[0]
-
-	macDescription := interfaceDescription.MAC
-	if macDescription == nil {
-		return "", fmt.Errorf("no MAC in domain interface device")
-	}
-
-	return macDescription.Address, nil
+	return "", nil
 }
 
 // getDHCPHosts returns a array of used dhcp entry hosts
@@ -270,7 +295,7 @@ func cidr(mask net.IP) uint {
 // GetVMID returns wantedID if it is not 0 and free.
 // If wantedID is 0 GetVMID searches for an unused ID and returns the first it can find.
 // For searching it uses the set libvirt network and already reserved DHCP entries.
-func (v *Virter) GetVMID(wantedID uint) (uint, error) {
+func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return 0, fmt.Errorf("could not get network: %w", err)
@@ -303,8 +328,20 @@ func (v *Virter) GetVMID(wantedID uint) (uint, error) {
 		usedIds[id] = true
 	}
 
+	if expectDHCPEntry {
+		if wantedID == 0 {
+			return 0, fmt.Errorf("ID must be set in static DHCP mode")
+		}
+
+		if !usedIds[wantedID] {
+			return 0, fmt.Errorf("DHCP host entry for ID '%d' not found (static DHCP mode)", wantedID)
+		}
+
+		return wantedID, nil
+	}
+
 	if wantedID != 0 { // one was already set
-		if used := usedIds[wantedID]; used {
+		if usedIds[wantedID] {
 			return 0, fmt.Errorf("preset ID '%d' already used", wantedID)
 		}
 		// not used, we can hand it back

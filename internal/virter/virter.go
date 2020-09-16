@@ -14,6 +14,7 @@ import (
 
 // LibvirtConnection contains required libvirt connection methods.
 type LibvirtConnection interface {
+	ConnectListAllDomains(NeedResults int32, Flags libvirt.ConnectListAllDomainsFlags) (rDomains []libvirt.Domain, rRet uint32, err error)
 	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
 	StorageVolCreateXML(Pool libvirt.StoragePool, XML string, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
 	StorageVolDelete(Vol libvirt.StorageVol, Flags libvirt.StorageVolDeleteFlags) (err error)
@@ -92,6 +93,7 @@ type VMConfig struct {
 	BootCapacityKiB uint64
 	VCPUs           uint
 	ID              uint
+	StaticDHCP      bool
 	SSHPublicKeys   []string
 	SSHPrivateKey   []byte
 	WaitSSH         bool

@@ -43,6 +43,14 @@ func (l *FakeLibvirtConnection) Disconnect() error {
 	return nil
 }
 
+func (l *FakeLibvirtConnection) ConnectListAllDomains(NeedResults int32, Flags libvirt.ConnectListAllDomainsFlags) (rDomains []libvirt.Domain, rRet uint32, err error) {
+	domains := []libvirt.Domain{}
+	for _, domain := range l.domains {
+		domains = append(domains, libvirt.Domain{Name: domain.description.Name})
+	}
+	return domains, uint32(len(domains)), nil
+}
+
 func (l *FakeLibvirtConnection) StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error) {
 	if Name != poolName {
 		return libvirt.StoragePool{}, errors.New("unknown pool")
@@ -415,7 +423,9 @@ func newFakeLibvirtDomain(mac string) *FakeLibvirtDomain {
 				Interfaces: []libvirtxml.DomainInterface{
 					libvirtxml.DomainInterface{
 						Source: &libvirtxml.DomainInterfaceSource{
-							Network: &libvirtxml.DomainInterfaceSourceNetwork{},
+							Network: &libvirtxml.DomainInterfaceSourceNetwork{
+								Network: networkName,
+							},
 						},
 						MAC: &libvirtxml.DomainInterfaceMAC{
 							Address: mac,

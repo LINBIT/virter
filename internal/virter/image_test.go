@@ -100,6 +100,7 @@ func TestImageBuild(t *testing.T) {
 		ImageName:     imageName,
 		Name:          vmName,
 		ID:            vmID,
+		StaticDHCP:    false,
 		MemoryKiB:     1024,
 		VCPUs:         1,
 		SSHPublicKeys: []string{sshPublicKey},

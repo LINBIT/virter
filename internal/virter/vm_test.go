@@ -58,6 +58,7 @@ func TestVMRun(t *testing.T) {
 		ImageName:     imageName,
 		Name:          vmName,
 		ID:            vmID,
+		StaticDHCP:    false,
 		VCPUs:         1,
 		MemoryKiB:     1024,
 		SSHPublicKeys: []string{sshPublicKey},
@@ -87,6 +88,7 @@ const (
 	bootVolume       = "bootVolume"
 	domainPersistent = "domainPersistent"
 	domainCreated    = "domainCreated"
+	staticDHCP       = "staticDHCP"
 )
 
 var vmRmTests = []map[string]bool{
@@ -120,6 +122,13 @@ var vmRmTests = []map[string]bool{
 		bootVolume:       true,
 		domainPersistent: true,
 		domainCreated:    true,
+	},
+	{
+		ciDataVolume:     true,
+		bootVolume:       true,
+		domainPersistent: true,
+		domainCreated:    true,
+		staticDHCP:       true,
 	},
 }
 
@@ -158,11 +167,15 @@ func TestVMRm(t *testing.T) {
 
 		v := virter.New(l, poolName, networkName)
 
-		err := v.VMRm(vmName)
+		err := v.VMRm(vmName, r[staticDHCP])
 		assert.NoError(t, err)
 
 		assert.Empty(t, l.vols)
-		assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
+		if r[staticDHCP] {
+			assert.Len(t, l.network.description.IPs[0].DHCP.Hosts, 1)
+		} else {
+			assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
+		}
 		assert.Empty(t, l.domains)
 	}
 }
@@ -229,7 +242,7 @@ func TestVMCommit(t *testing.T) {
 
 		v := virter.New(l, poolName, networkName)
 
-		err := v.VMCommit(context.Background(), an, vmName, r[commitShutdown], shutdownTimeout)
+		err := v.VMCommit(context.Background(), an, vmName, r[commitShutdown], shutdownTimeout, false)
 		if expectOk {
 			assert.NoError(t, err)
 

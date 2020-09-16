@@ -44,7 +44,7 @@ func networkHostRmCommand() *cobra.Command {
 
 	rmCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID which determines the host entry or entries to remove")
 	rmCmd.MarkFlagRequired("id")
-	rmCmd.Flags().UintVar(&count, "count", 1, "Number of IDs to deallocate")
+	rmCmd.Flags().UintVar(&count, "count", 1, "Number of host entries to remove")
 
 	return rmCmd
 }

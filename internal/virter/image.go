@@ -9,11 +9,12 @@ import (
 
 	"github.com/LINBIT/containerapi"
 
-	"github.com/LINBIT/virter/pkg/netcopy"
 	libvirt "github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LINBIT/virter/pkg/netcopy"
 )
 
 // HTTPClient contains required HTTP methods.
@@ -131,7 +132,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 		}
 	}
 
-	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, true, buildConfig.ShutdownTimeout)
+	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, true, buildConfig.ShutdownTimeout, vmConfig.StaticDHCP)
 	if err != nil {
 		return err
 	}
@@ -153,7 +154,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, buildConfig)
 	if err != nil {
 		log.Warn("could not build image, deleting VM")
-		if rmErr := v.VMRm(vmConfig.Name); rmErr != nil {
+		if rmErr := v.VMRm(vmConfig.Name, vmConfig.StaticDHCP); rmErr != nil {
 			return fmt.Errorf("could not delete VM: %v, after build failed: %w", rmErr, err)
 		}
 		return err

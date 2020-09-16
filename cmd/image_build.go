@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	log "github.com/sirupsen/logrus"
+
 	"github.com/LINBIT/containerapi"
 	"github.com/rck/unit"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -89,6 +90,7 @@ step, and then committing the resulting volume.`,
 				BootCapacityKiB: bootCapacityKiB,
 				VCPUs:           vcpus,
 				ID:              vmID,
+				StaticDHCP:      viper.GetBool("libvirt.static_dhcp"),
 				SSHPublicKeys:   publicKeys,
 				SSHPrivateKey:   privateKey,
 				WaitSSH:         true,

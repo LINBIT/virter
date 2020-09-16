@@ -84,11 +84,21 @@ func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig)
 		return fmt.Errorf("one of the images already exists")
 	}
 
-	id, err := v.GetVMID(vmConfig.ID)
+	id, err := v.GetVMID(vmConfig.ID, vmConfig.StaticDHCP)
 	if err != nil {
 		return err
 	}
 	vmConfig.ID = id
+
+	mac := QemuMAC(vmConfig.ID)
+
+	existingDomain, err := v.getDomainForMAC(mac)
+	if err != nil {
+		return err
+	}
+	if existingDomain.Name != "" {
+		return fmt.Errorf("MAC address '%s' already in use by domain '%s'", mac, existingDomain.Name)
+	}
 	// end checks
 
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
@@ -116,7 +126,7 @@ func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig)
 		}
 	}
 
-	ip, err := v.createVM(sp, vmConfig)
+	ip, err := v.createVM(sp, vmConfig, mac)
 	if err != nil {
 		return err
 	}
@@ -188,8 +198,7 @@ func diskVolumeName(vmName string, diskName string) string {
 	return vmName + "-" + diskName
 }
 
-func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
-	mac := QemuMAC(vmConfig.ID)
+func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string) (net.IP, error) {
 	xml, err := v.vmXML(sp.Name, vmConfig, mac)
 	if err != nil {
 		return nil, err
@@ -206,7 +215,7 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	// Add DHCP entry after defining the VM to ensure that it can be
 	// removed when removing the VM, but before starting it to ensure that
 	// it gets the correct IP address
-	ip, err := v.AddDHCPEntry(mac, vmConfig.ID)
+	ip, err := v.SetUpIP(mac, vmConfig.ID, !vmConfig.StaticDHCP)
 	if err != nil {
 		return nil, err
 	}
@@ -257,13 +266,13 @@ func tryDialSSH(shellClientBuilder ShellClientBuilder, hostPort string, sshConfi
 }
 
 // VMRm removes a VM.
-func (v *Virter) VMRm(vmName string) error {
+func (v *Virter) VMRm(vmName string, staticDHCP bool) error {
 	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
 	if err != nil {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	err = v.vmRmExceptBoot(sp, vmName)
+	err = v.vmRmExceptBoot(sp, vmName, !staticDHCP)
 	if err != nil {
 		return err
 	}
@@ -276,7 +285,7 @@ func (v *Virter) VMRm(vmName string) error {
 	return nil
 }
 
-func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
+func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string, removeDHCPEntries bool) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if !hasErrorCode(err, errNoDomain) {
 		if err != nil {
@@ -303,7 +312,7 @@ func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string) error {
 			return fmt.Errorf("could not check if domain is persistent: %w", err)
 		}
 
-		err = v.removeDomainDHCPEntries(domain)
+		err = v.removeDomainDHCP(domain, removeDHCPEntries)
 		if err != nil {
 			return err
 		}
@@ -376,7 +385,7 @@ func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string, debugName s
 // VMCommit commits a VM to an image. If shutdown is true, the VM is shut down
 // before committing. If shutdown is false, the caller is responsible for
 // ensuring that the VM is not running.
-func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName string, shutdown bool, shutdownTimeout time.Duration) error {
+func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName string, shutdown bool, shutdownTimeout time.Duration, staticDHCP bool) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
@@ -403,7 +412,7 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
-	err = v.vmRmExceptBoot(sp, vmName)
+	err = v.vmRmExceptBoot(sp, vmName, !staticDHCP)
 	if err != nil {
 		return err
 	}
@@ -682,6 +691,9 @@ func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (strin
 	mac, err := v.getMAC(domain)
 	if err != nil {
 		return "", err
+	}
+	if mac == "" {
+		return "", fmt.Errorf("could not find MAC address of domain")
 	}
 
 	ips, err := v.findIPs(network, mac)

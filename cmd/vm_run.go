@@ -9,9 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/rck/unit"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/rck/unit"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/registry"
@@ -196,6 +197,7 @@ func vmRunCommand() *cobra.Command {
 						BootCapacityKiB: bootCapacityKiB,
 						VCPUs:           vcpus,
 						ID:              id,
+						StaticDHCP:      viper.GetBool("libvirt.static_dhcp"),
 						SSHPublicKeys:   publicKeys,
 						SSHPrivateKey:   privateKey,
 						WaitSSH:         waitSSH,

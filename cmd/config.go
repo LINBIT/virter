@@ -31,6 +31,15 @@ pool = "{{ get "libvirt.pool" }}"
 # Default value: "{{ get "libvirt.network" }}"
 network = "{{ get "libvirt.network" }}"
 
+# static_dhcp is a boolean flag that determines how virter handles DHCP hosts
+# entries. When false, the hosts entries are added and removed as needed.
+# When true, the hosts entries must be created (with 'virter network host add')
+# before the VM is started. Adding and removing DHCP entries can temporarily
+# disrupt network access from running VMs. With this option, that disruption
+# can be controlled.
+# Default value: "{{ get "libvirt.static_dhcp" }}"
+static_dhcp = "{{ get "libvirt.static_dhcp" }}"
+
 [time]
 # ssh_ping_count is the number of times virter will try to connect to a VM's
 # ssh port after starting it.
@@ -88,6 +97,7 @@ provider = "{{ get "container.provider" }}"
 func initConfig() {
 	viper.SetDefault("libvirt.pool", "default")
 	viper.SetDefault("libvirt.network", "default")
+	viper.SetDefault("libvirt.static_dhcp", false)
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)

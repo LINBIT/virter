@@ -31,7 +31,7 @@ the virtual machine name.`,
 
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
-			err = v.VMCommit(ctx, actualtime.ActualTime{}, args[0], shutdown, shutdownTimeout)
+			err = v.VMCommit(ctx, actualtime.ActualTime{}, args[0], shutdown, shutdownTimeout, viper.GetBool("libvirt.static_dhcp"))
 			if err != nil {
 				log.Fatal(err)
 			}

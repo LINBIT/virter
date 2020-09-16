@@ -3,17 +3,20 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/LINBIT/virter/internal/virter"
 	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/LINBIT/virter/internal/virter"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func rmMultiple(v *virter.Virter, vms []string) error {
+	staticDHCP := viper.GetBool("libvirt.static_dhcp")
 	var errs error
 	for _, vm := range vms {
-		err := v.VMRm(vm)
+		err := v.VMRm(vm, staticDHCP)
 		if err != nil {
 			e := fmt.Errorf("failed to remove VM '%s': %w", vm, err)
 			errs = multierror.Append(errs, e)

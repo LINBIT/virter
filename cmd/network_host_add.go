@@ -33,7 +33,8 @@ func networkHostAddCommand() *cobra.Command {
 			for i = 0; i < count; i++ {
 				id := vmID + i
 
-				_, err := v.GetVMID(id)
+				// Check that the ID is free
+				_, err := v.GetVMID(id, false)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -43,7 +44,7 @@ func networkHostAddCommand() *cobra.Command {
 				id := vmID + i
 
 				mac := virter.QemuMAC(id)
-				_, err := v.AddDHCPEntry(mac, id)
+				_, err := v.SetUpIP(mac, id, true)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -53,7 +54,7 @@ func networkHostAddCommand() *cobra.Command {
 
 	addCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID which determines the MAC and IP addresses to associate")
 	addCmd.MarkFlagRequired("id")
-	addCmd.Flags().UintVar(&count, "count", 1, "Number of IDs to allocate")
+	addCmd.Flags().UintVar(&count, "count", 1, "Number of host entries to add")
 
 	return addCmd
 }
