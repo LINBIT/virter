@@ -92,12 +92,17 @@ func initConfig() {
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
 	viper.SetDefault("time.container_timeout", 30*time.Minute)
+	viper.SetDefault("auth.user_public_key", "")
 	viper.SetDefault("container.provider", "docker")
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
+
+		// When using a custom config file, do not set a default key location
+		viper.SetDefault("auth.virter_public_key_path", "")
+		viper.SetDefault("auth.virter_private_key_path", "")
 	} else {
 		p := configPath()
 		os.MkdirAll(p, 0700)
@@ -109,14 +114,16 @@ func initConfig() {
 		// When using the default config file location, make that also the default key location
 		viper.SetDefault("auth.virter_public_key_path", filepath.Join(p, "id_rsa.pub"))
 		viper.SetDefault("auth.virter_private_key_path", filepath.Join(p, "id_rsa"))
-		viper.SetDefault("auth.user_public_key", "")
 	}
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		log.Debugf("Using config file: %s", viper.ConfigFileUsed())
-	} else if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-		newPath := filepath.Join(configPath(), "virter.toml")
+	} else if isConfigNotFoundError(err) {
+		newPath := cfgFile
+		if newPath == "" {
+			newPath = filepath.Join(configPath(), "virter.toml")
+		}
 		log.Print("Config file does not exist, creating default: ", newPath)
 
 		err := writeDefaultConfig(newPath)
@@ -124,10 +131,24 @@ func initConfig() {
 			log.Warnf("Could not write default config file: %v", err)
 			log.Warnf("Proceeding with default values")
 		}
+	} else {
+		log.Fatalf("Could not read config file: %v", err)
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+}
+
+func isConfigNotFoundError(err error) bool {
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		return true
+	}
+
+	if pathErr, ok := err.(*os.PathError); ok && pathErr.Op == "open" {
+		return true
+	}
+
+	return false
 }
 
 // writeDefaultConfig renders the default config file template and writes it to path.
