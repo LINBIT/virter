@@ -84,7 +84,7 @@ func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig)
 		return fmt.Errorf("one of the images already exists")
 	}
 
-	id, err := v.getVMID(vmConfig.ID)
+	id, err := v.GetVMID(vmConfig.ID)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func diskVolumeName(vmName string, diskName string) string {
 }
 
 func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, error) {
-	mac := qemuMAC(vmConfig.ID)
+	mac := QemuMAC(vmConfig.ID)
 	xml, err := v.vmXML(sp.Name, vmConfig, mac)
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig) (net.IP, er
 	// Add DHCP entry after defining the VM to ensure that it can be
 	// removed when removing the VM, but before starting it to ensure that
 	// it gets the correct IP address
-	ip, err := v.addDHCPEntry(mac, vmConfig.ID)
+	ip, err := v.AddDHCPEntry(mac, vmConfig.ID)
 	if err != nil {
 		return nil, err
 	}

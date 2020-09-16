@@ -46,6 +46,7 @@ and resetting, for a stable test environment.`,
 	rootCmd.AddCommand(versionCommand())
 	rootCmd.AddCommand(imageCommand())
 	rootCmd.AddCommand(vmCommand())
+	rootCmd.AddCommand(networkCommand())
 	rootCmd.AddCommand(registryCommand())
 	return rootCmd
 }

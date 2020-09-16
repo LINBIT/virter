@@ -11,11 +11,11 @@ import (
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
 
-// addDHCPEntry adds a DHCP mapping from a MAC address to an IP generated from
+// AddDHCPEntry adds a DHCP mapping from a MAC address to an IP generated from
 // the id. The same MAC address should always be paired with a given IP so that
 // DHCP entries do not need to be released between removing a VM and creating
 // another with the same ID.
-func (v *Virter) addDHCPEntry(mac string, id uint) (net.IP, error) {
+func (v *Virter) AddDHCPEntry(mac string, id uint) (net.IP, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return nil, fmt.Errorf("could not get network: %w", err)
@@ -76,7 +76,8 @@ func ipToID(ipnet net.IPNet, ip net.IP) (uint, error) {
 	return v - sv, nil
 }
 
-func qemuMAC(id uint) string {
+// QemuMAC calculates a MAC address for a given id
+func QemuMAC(id uint) string {
 	id0 := byte((id >> 16) & 0xFF)
 	id1 := byte((id >> 8) & 0xFF)
 	id2 := byte(id & 0xFF)
@@ -236,10 +237,10 @@ func cidr(mask net.IP) uint {
 	return uint(sz)
 }
 
-// getVMID returns wantedID if it is not 0 and free.
-// If wantedID is 0 getVMID searches for an unused ID and returns the first it can find
-// For searching it uses the set libvirt network and already reserverd DHCP entries
-func (v *Virter) getVMID(wantedID uint) (uint, error) {
+// GetVMID returns wantedID if it is not 0 and free.
+// If wantedID is 0 GetVMID searches for an unused ID and returns the first it can find.
+// For searching it uses the set libvirt network and already reserved DHCP entries.
+func (v *Virter) GetVMID(wantedID uint) (uint, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return 0, fmt.Errorf("could not get network: %w", err)
