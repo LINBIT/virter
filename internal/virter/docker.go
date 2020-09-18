@@ -29,7 +29,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	containerCfg.SetEnv("TARGETS", strings.Join(vmIPs, ","))
 	containerCfg.SetEnv("SSH_PRIVATE_KEY", string(sshPrivateKey))
 
-	resp, err := containerProvider.Create(
+	containerID, err := containerProvider.Create(
 		ctx,
 		containerCfg,
 	)
@@ -37,18 +37,16 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		return fmt.Errorf("could not create container: %w", err)
 	}
 
-	statusCh, errCh := containerProvider.Wait(ctx, resp)
+	statusCh, errCh := containerProvider.Wait(ctx, containerID)
 
-	err = containerProvider.Start(ctx, resp)
+	err = containerProvider.Start(ctx, containerID)
 	if err != nil {
 		return fmt.Errorf("could not start container: %w", err)
 	}
 
-	// streamLogs is ctx safe (i.e., errs out in copy if ctx cancled)
-	err = streamLogs(ctx, containerProvider, resp)
-	if err != nil { // something weird happened here, most likely context canceled
-		td := 200 * time.Millisecond // this horse is already dead...
-		if stopErr := containerProvider.Stop(context.Background(), resp, &td); stopErr != nil {
+	err = streamLogs(ctx, containerProvider, containerID)
+	if err != nil {
+		if stopErr := containerStop(containerProvider, containerID); stopErr != nil {
 			return fmt.Errorf("could not stop container: %v, after log streaming failed: %w", stopErr, err)
 		}
 		return err
@@ -56,9 +54,22 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 
 	err = containerWait(ctx, statusCh, errCh)
 	if err != nil {
+		if stopErr := containerStop(containerProvider, containerID); stopErr != nil {
+			return fmt.Errorf("could not stop container: %v, after wait finished: %w", stopErr, err)
+		}
 		return err
 	}
 
+	return nil
+}
+
+func containerStop(containerProvider containerapi.ContainerProvider, containerID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	td := 200 * time.Millisecond // this horse is already dead...
+	if stopErr := containerProvider.Stop(ctx, containerID, &td); stopErr != nil {
+		return stopErr
+	}
 	return nil
 }
 
@@ -111,8 +122,8 @@ func logLines(wg *sync.WaitGroup, vm string, stderr bool, r io.Reader) {
 
 func containerWait(ctx context.Context, statusCh <-chan int64, errCh <-chan error) error {
 	select {
-	case <- ctx.Done():
-		return fmt.Errorf("timeout waiting for container: %v", ctx.Err())
+	case <-ctx.Done():
+		// end wait
 	case err := <-errCh:
 		return fmt.Errorf("error waiting for container: %w", err)
 	case status := <-statusCh:
@@ -120,5 +131,13 @@ func containerWait(ctx context.Context, statusCh <-chan int64, errCh <-chan erro
 			return fmt.Errorf("container returned non-zero exit code %d", status)
 		}
 	}
+
+	// select is not biased amongst the cases. This means that there may be
+	// a context error even when we terminated the select due to a zero
+	// status on statusCh.
+	if ctx.Err() != nil {
+		return fmt.Errorf("timeout waiting for container: %v", ctx.Err())
+	}
+
 	return nil
 }
