@@ -208,6 +208,9 @@ func (v *Virter) getDomainForMAC(mac string) (libvirt.Domain, error) {
 
 	for _, domain := range domains {
 		domainMAC, err := v.getMAC(domain)
+		if getErr, ok := err.(*LibvirtGetError); ok && getErr.NotFound {
+			continue
+		}
 		if err != nil {
 			return libvirt.Domain{}, fmt.Errorf("could not check MAC for domain '%s': %w", domain.Name, err)
 		}

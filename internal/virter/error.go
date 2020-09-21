@@ -13,6 +13,7 @@ type errorNumber int32
 
 const (
 	errNoDomain     errorNumber = 42
+	errNoNetwork    errorNumber = 43
 	errNoStorageVol errorNumber = 50
 )
 
