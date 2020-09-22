@@ -50,6 +50,14 @@ func (c *MockContainerProvider) Logs(ctx context.Context, containerID string) (i
 	return ioutil.NopCloser(&out), ioutil.NopCloser(&out), nil
 }
 
+func (c *MockContainerProvider) Remove(ctx context.Context, containerID string) error {
+	return nil
+}
+
+func (c *MockContainerProvider) CopyFrom(ctx context.Context, containerId string, source string, dest string) error {
+	return nil
+}
+
 func (c *MockContainerProvider) Close() error {
 	return nil
 }

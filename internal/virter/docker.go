@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/LINBIT/virter/pkg/overtime"
+
 	"github.com/LINBIT/containerapi"
 
 	log "github.com/sirupsen/logrus"
@@ -25,6 +27,8 @@ const (
 func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmIPs []string, sshPrivateKey []byte) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
+	cleanupContext, cleanupCancel := overtime.WithOvertimeContext(ctx, 10 * time.Second)
+	defer cleanupCancel()
 
 	containerCfg.SetEnv("TARGETS", strings.Join(vmIPs, ","))
 	containerCfg.SetEnv("SSH_PRIVATE_KEY", string(sshPrivateKey))
@@ -37,8 +41,24 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		return fmt.Errorf("could not create container: %w", err)
 	}
 
+	defer func() {
+		err := containerProvider.Remove(cleanupContext, containerID)
+		if err != nil {
+			log.WithFields(log.Fields{"err": err, "container": containerID}).Warn("failed to remove container")
+		}
+	}()
+
 	statusCh, errCh := containerProvider.Wait(ctx, containerID)
 
+	// Note: With incredible (bad) luck, you can start a container but cancel the context just in time to not get a
+	// successful response on Start(). Since Stop() is idempotent, we can just defer it before the Start() call.
+	defer func() {
+		killTimeout := 200 * time.Millisecond
+		err := containerProvider.Stop(cleanupContext, containerID, &killTimeout)
+		if err != nil {
+			log.WithFields(log.Fields{"err": err, "container": containerID}).Warn("failed to stop container")
+		}
+	}()
 	err = containerProvider.Start(ctx, containerID)
 	if err != nil {
 		return fmt.Errorf("could not start container: %w", err)
@@ -46,30 +66,14 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 
 	err = streamLogs(ctx, containerProvider, containerID)
 	if err != nil {
-		if stopErr := containerStop(containerProvider, containerID); stopErr != nil {
-			return fmt.Errorf("could not stop container: %v, after log streaming failed: %w", stopErr, err)
-		}
 		return err
 	}
 
-	err = containerWait(ctx, statusCh, errCh)
+	err = containerWait(statusCh, errCh)
 	if err != nil {
-		if stopErr := containerStop(containerProvider, containerID); stopErr != nil {
-			return fmt.Errorf("could not stop container: %v, after wait finished: %w", stopErr, err)
-		}
 		return err
 	}
 
-	return nil
-}
-
-func containerStop(containerProvider containerapi.ContainerProvider, containerID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	td := 200 * time.Millisecond // this horse is already dead...
-	if stopErr := containerProvider.Stop(ctx, containerID, &td); stopErr != nil {
-		return stopErr
-	}
 	return nil
 }
 
@@ -120,24 +124,14 @@ func logLines(wg *sync.WaitGroup, vm string, stderr bool, r io.Reader) {
 	}
 }
 
-func containerWait(ctx context.Context, statusCh <-chan int64, errCh <-chan error) error {
+func containerWait(statusCh <-chan int64, errCh <-chan error) error {
 	select {
-	case <-ctx.Done():
-		// end wait
 	case err := <-errCh:
 		return fmt.Errorf("error waiting for container: %w", err)
 	case status := <-statusCh:
 		if status != 0 {
 			return fmt.Errorf("container returned non-zero exit code %d", status)
 		}
+		return nil
 	}
-
-	// select is not biased amongst the cases. This means that there may be
-	// a context error even when we terminated the select due to a zero
-	// status on statusCh.
-	if ctx.Err() != nil {
-		return fmt.Errorf("timeout waiting for container: %v", ctx.Err())
-	}
-
-	return nil
 }
