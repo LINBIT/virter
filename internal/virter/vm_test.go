@@ -288,7 +288,7 @@ func TestVMExecDocker(t *testing.T) {
 	v := virter.New(l, poolName, networkName)
 
 	containerCfg := containerapi.NewContainerConfig("test", dockerImageName, nil)
-	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, containerCfg, []byte(sshPrivateKey))
+	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, containerCfg, []byte(sshPrivateKey), nil)
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)

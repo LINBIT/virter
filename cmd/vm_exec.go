@@ -86,7 +86,7 @@ func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDocker
 
 	containerCfg := containerapi.NewContainerConfig("virter-"+strings.Join(vmNames, "-"), s.Image, s.Env)
 
-	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, privateKey)
+	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, privateKey, s.Copy)
 }
 
 func execShell(ctx context.Context, v *virter.Virter, s *virter.ProvisionShellStep, vmNames []string) error {

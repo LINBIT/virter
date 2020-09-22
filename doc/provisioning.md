@@ -30,6 +30,7 @@ The Docker provisioning step can be parameterized using the following configurat
   Note that Virter already passes two environment variables by default:
   * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
   * `SSH_PRIVATE_KEY` is the SSH private key Virter uses to connect to the machine as `root`.
+* `copy` can be used to retrieve files from the container after the provisioning has finished. `source` is the file or directory within the container to copy out, and `dest` is the path on the host where the file or directory should be copied to.
 
 ### Shell
 The `shell` provisioning step allows running arbitrary commands on the target VM over SSH. This is easier to use than the `docker` step, but also less flexible.
@@ -85,6 +86,9 @@ image = "{{.Image}}"
 [steps.docker.env]
 TEXT = "foo"
 VAR_BAR = "hi"
+[steps.docker.copy]
+source = "/tmp/somefile"
+dest = "."
 
 [[steps]]
 [steps.shell]

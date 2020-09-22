@@ -14,8 +14,14 @@ import (
 
 // ProvisionDockerStep is a single provisioniong step executed in a docker container
 type ProvisionDockerStep struct {
-	Image string            `toml:"image"`
-	Env   map[string]string `toml:"env"`
+	Image string                   `toml:"image"`
+	Env   map[string]string        `toml:"env"`
+	Copy  *ProvisionDockerCopyStep `toml:"copy"`
+}
+
+type ProvisionDockerCopyStep struct {
+	Source string `toml:"source"`
+	Dest   string `toml:"dest"`
 }
 
 // ProvisionShellStep is a single provisioniong step executed in a shell (via ssh)

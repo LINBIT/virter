@@ -517,13 +517,18 @@ func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 }
 
 // VMExecDocker runs a docker container against some VMs.
-func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, sshPrivateKey []byte) error {
+func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, sshPrivateKey []byte, copyStep *ProvisionDockerCopyStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
 
-	return containerRun(ctx, containerProvider, containerCfg, ips, sshPrivateKey)
+	err = containerRun(ctx, containerProvider, containerCfg, ips, sshPrivateKey, copyStep)
+	if err != nil {
+		return fmt.Errorf("failed to run container provisioning: %w", err)
+	}
+
+	return nil
 }
 
 func getSSHClientConfig(sshPrivateKey []byte) (ssh.ClientConfig, error) {
