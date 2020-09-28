@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -124,6 +125,9 @@ func vmRunCommand() *cobra.Command {
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
+			ctx, cancel := onInterruptWrap(context.Background())
+			defer cancel()
+
 			v, err := VirterConnect()
 			if err != nil {
 				log.Fatal(err)
@@ -199,17 +203,26 @@ func vmRunCommand() *cobra.Command {
 						ID:              id,
 						StaticDHCP:      viper.GetBool("libvirt.static_dhcp"),
 						SSHPublicKeys:   publicKeys,
-						SSHPrivateKey:   privateKey,
-						WaitSSH:         waitSSH,
-						SSHPingCount:    viper.GetInt("time.ssh_ping_count"),
-						SSHPingPeriod:   viper.GetDuration("time.ssh_ping_period"),
 						ConsolePath:     consolePath,
 						Disks:           disks,
 					}
 
-					err = v.VMRun(SSHClientBuilder{}, c)
+					err = v.VMRun(c)
 					if err != nil {
 						return fmt.Errorf("Failed to start VM %d: %w", id, err)
+					}
+
+					if waitSSH {
+						sshPingConfig := virter.SSHPingConfig{
+							SSHPrivateKey: privateKey,
+							SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
+							SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
+						}
+
+						err = v.PingSSH(ctx, SSHClientBuilder{}, thisVMName, sshPingConfig)
+						if err != nil {
+							return fmt.Errorf("Failed to connect to VM %d over SSH: %w", id, err)
+						}
 					}
 					return nil
 				})
@@ -223,7 +236,7 @@ func vmRunCommand() *cobra.Command {
 					FilePath:  provisionFile,
 					Overrides: provisionOverrides,
 				}
-				if err := execProvision(provOpt, vmNames); err != nil {
+				if err := execProvision(ctx, provOpt, vmNames); err != nil {
 					log.Fatal(err)
 				}
 			}

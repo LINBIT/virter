@@ -44,10 +44,6 @@ func TestCheckVMConfig(t *testing.T) {
 }
 
 func TestVMRun(t *testing.T) {
-	shell := new(mocks.ShellClient)
-	shell.On("Dial").Return(nil)
-	shell.On("Close").Return(nil)
-
 	l := newFakeLibvirtConnection()
 
 	l.vols[imageName] = &FakeLibvirtStorageVol{}
@@ -62,12 +58,8 @@ func TestVMRun(t *testing.T) {
 		VCPUs:         1,
 		MemoryKiB:     1024,
 		SSHPublicKeys: []string{sshPublicKey},
-		SSHPrivateKey: []byte(sshPrivateKey),
-		WaitSSH:       true,
-		SSHPingCount:  1,
-		SSHPingPeriod: time.Second, // ignored
 	}
-	err := v.VMRun(MockShellClientBuilder{shell}, c)
+	err := v.VMRun(c)
 	assert.NoError(t, err)
 
 	assert.Empty(t, l.vols[vmName].content)
@@ -79,6 +71,30 @@ func TestVMRun(t *testing.T) {
 	domain := l.domains[vmName]
 	assert.True(t, domain.persistent)
 	assert.True(t, domain.active)
+}
+
+func TestSSHPing(t *testing.T) {
+	shell := new(mocks.ShellClient)
+	shell.On("DialContext", mock.Anything).Return(nil)
+	shell.On("Close").Return(nil)
+
+	sshPingConfig := virter.SSHPingConfig{
+		SSHPrivateKey: []byte(sshPrivateKey),
+		SSHPingCount:  1,
+		SSHPingPeriod: time.Second, // ignored
+	}
+
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmMAC)
+	domain.active = true
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+
+	v := virter.New(l, poolName, networkName)
+
+	err := v.PingSSH(context.Background(), MockShellClientBuilder{shell}, vmName, sshPingConfig)
+	assert.NoError(t, err)
 
 	shell.AssertExpectations(t)
 }

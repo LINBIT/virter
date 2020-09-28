@@ -12,6 +12,7 @@ import (
 
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/internal/virter/mocks"
@@ -76,7 +77,7 @@ func (b nopReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
 
 func TestImageBuild(t *testing.T) {
 	shell := new(mocks.ShellClient)
-	shell.On("Dial").Return(nil)
+	shell.On("DialContext", mock.Anything).Return(nil)
 	shell.On("Close").Return(nil)
 
 	docker := mockContainerProvider()
@@ -104,8 +105,10 @@ func TestImageBuild(t *testing.T) {
 		MemoryKiB:     1024,
 		VCPUs:         1,
 		SSHPublicKeys: []string{sshPublicKey},
+	}
+
+	sshPingConfig := virter.SSHPingConfig{
 		SSHPrivateKey: []byte(sshPrivateKey),
-		WaitSSH:       true,
 		SSHPingCount:  1,
 		SSHPingPeriod: time.Second, // ignored
 	}
@@ -127,7 +130,7 @@ func TestImageBuild(t *testing.T) {
 		ProvisionConfig: provisionConfig,
 	}
 
-	err := v.ImageBuild(context.Background(), tools, vmConfig, buildConfig)
+	err := v.ImageBuild(context.Background(), tools, vmConfig, sshPingConfig, buildConfig)
 	assert.NoError(t, err)
 
 	assert.Len(t, l.vols, 2)

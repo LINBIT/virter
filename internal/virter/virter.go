@@ -2,6 +2,7 @@ package virter
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -95,12 +96,15 @@ type VMConfig struct {
 	ID              uint
 	StaticDHCP      bool
 	SSHPublicKeys   []string
-	SSHPrivateKey   []byte
-	WaitSSH         bool
-	SSHPingCount    int
-	SSHPingPeriod   time.Duration
 	ConsolePath     string
 	Disks           []Disk
+}
+
+// SSHPingConfig contains the configuration for pinging a VM via SSH
+type SSHPingConfig struct {
+	SSHPrivateKey []byte
+	SSHPingCount  int
+	SSHPingPeriod time.Duration
 }
 
 func checkDisks(vmConfig VMConfig) error {
@@ -140,7 +144,7 @@ type ShellClientBuilder interface {
 
 // ShellClient executes shell commands
 type ShellClient interface {
-	Dial() error
+	DialContext(ctx context.Context) error
 	Close() error
 	StdoutPipe() (io.Reader, error)
 	StderrPipe() (io.Reader, error)

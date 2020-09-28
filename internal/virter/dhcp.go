@@ -11,45 +11,43 @@ import (
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
 
-// SetUpIP determines the IP for an ID and optionally adds a DHCP mapping from
-// a MAC address to it. The same MAC address should always be paired with a
-// given IP so that DHCP entries do not need to be released between removing a
-// VM and creating another with the same ID.
-func (v *Virter) SetUpIP(mac string, id uint, addDHCPEntry bool) (net.IP, error) {
+// AddDHCPHost determines the IP for an ID and adds a DHCP mapping from a MAC
+// address to it. The same MAC address should always be paired with a given IP
+// so that DHCP entries do not need to be released between removing a VM and
+// creating another with the same ID.
+func (v *Virter) AddDHCPHost(mac string, id uint) error {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
-		return nil, fmt.Errorf("could not get network: %w", err)
+		return fmt.Errorf("could not get network: %w", err)
 	}
 
 	ipNet, err := v.getIPNet(network)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	networkBaseIP := ipNet.IP.Mask(ipNet.Mask)
 	ip := addToIP(networkBaseIP, id)
 
 	if !ipNet.Contains(ip) {
-		return nil, fmt.Errorf("computed IP %v is not in network", ip)
+		return fmt.Errorf("computed IP %v is not in network", ip)
 	}
 
-	if addDHCPEntry {
-		log.Printf("Add DHCP entry from %v to %v", mac, ip)
-		err = v.libvirt.NetworkUpdate(
-			network,
-			// the following 2 arguments are swapped; see
-			// https://github.com/digitalocean/go-libvirt/issues/87
-			uint32(libvirt.NetworkSectionIPDhcpHost),
-			uint32(libvirt.NetworkUpdateCommandAddLast),
-			-1,
-			fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
-			libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
-		if err != nil {
-			return nil, fmt.Errorf("could not add DHCP entry: %w", err)
-		}
+	log.Printf("Add DHCP entry from %v to %v", mac, ip)
+	err = v.libvirt.NetworkUpdate(
+		network,
+		// the following 2 arguments are swapped; see
+		// https://github.com/digitalocean/go-libvirt/issues/87
+		uint32(libvirt.NetworkSectionIPDhcpHost),
+		uint32(libvirt.NetworkUpdateCommandAddLast),
+		-1,
+		fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
+		libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
+	if err != nil {
+		return fmt.Errorf("could not add DHCP entry: %w", err)
 	}
 
-	return ip, nil
+	return nil
 }
 
 func addToIP(ip net.IP, addend uint) net.IP {

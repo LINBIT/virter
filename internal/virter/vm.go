@@ -62,7 +62,7 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 }
 
 // VMRun starts a VM.
-func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig) error {
+func (v *Virter) VMRun(vmConfig VMConfig) error {
 	// checks
 	vmConfig, err := CheckVMConfig(vmConfig)
 	if err != nil {
@@ -126,16 +126,9 @@ func (v *Virter) VMRun(shellClientBuilder ShellClientBuilder, vmConfig VMConfig)
 		}
 	}
 
-	ip, err := v.createVM(sp, vmConfig, mac)
+	err = v.createVM(sp, vmConfig, mac)
 	if err != nil {
 		return err
-	}
-
-	if vmConfig.WaitSSH {
-		err := pingSSH(shellClientBuilder, vmConfig, ip)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -198,10 +191,10 @@ func diskVolumeName(vmName string, diskName string) string {
 	return vmName + "-" + diskName
 }
 
-func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string) (net.IP, error) {
+func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string) error {
 	xml, err := v.vmXML(sp.Name, vmConfig, mac)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	log.Debugf("Using domain XML: %s", xml)
@@ -209,45 +202,56 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string)
 	log.Print("Define VM")
 	d, err := v.libvirt.DomainDefineXML(xml)
 	if err != nil {
-		return nil, fmt.Errorf("could not define domain: %w", err)
+		return fmt.Errorf("could not define domain: %w", err)
 	}
 
-	// Add DHCP entry after defining the VM to ensure that it can be
-	// removed when removing the VM, but before starting it to ensure that
-	// it gets the correct IP address
-	ip, err := v.SetUpIP(mac, vmConfig.ID, !vmConfig.StaticDHCP)
-	if err != nil {
-		return nil, err
+	if !vmConfig.StaticDHCP {
+		// Add DHCP entry after defining the VM to ensure that it can be
+		// removed when removing the VM, but before starting it to ensure that
+		// it gets the correct IP address
+		err = v.AddDHCPHost(mac, vmConfig.ID)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Print("Start VM")
 	err = v.libvirt.DomainCreate(d)
 	if err != nil {
-		return nil, fmt.Errorf("could not create (start) domain: %w", err)
+		return fmt.Errorf("could not create (start) domain: %w", err)
 	}
 
-	return ip, nil
+	return nil
 }
 
-func pingSSH(shellClientBuilder ShellClientBuilder, vmConfig VMConfig, ip net.IP) error {
-	log.Print("Wait for SSH port to open")
-
-	hostPort := net.JoinHostPort(ip.String(), "ssh")
-
-	sshConfig, err := getSSHClientConfig(vmConfig.SSHPrivateKey)
+// PingSSH repeatedly tries to connect to a VM via SSH until it succeeds
+func (v *Virter) PingSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, pingConfig SSHPingConfig) error {
+	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
 	}
-	sshConfig.Timeout = vmConfig.SSHPingPeriod
+	if len(ips) != 1 {
+		return fmt.Errorf("Expected a single IP")
+	}
+
+	hostPort := net.JoinHostPort(ips[0], "ssh")
+
+	sshConfig, err := getSSHClientConfig(pingConfig.SSHPrivateKey)
+	if err != nil {
+		return err
+	}
+	sshConfig.Timeout = pingConfig.SSHPingPeriod
 
 	sshTry := func() error {
-		return tryDialSSH(shellClientBuilder, hostPort, sshConfig)
+		return tryDialSSH(ctx, shellClientBuilder, hostPort, sshConfig)
 	}
+
+	log.Print("Wait for SSH port to open")
 
 	// Using ActualTime breaks the expectation of the unit tests
 	// that this code does not sleep, but we work around that by
 	// always making the first ping successful in tests
-	if err := (actualtime.ActualTime{}.Ping(vmConfig.SSHPingCount, vmConfig.SSHPingPeriod, sshTry)); err != nil {
+	if err := (actualtime.ActualTime{}.Ping(ctx, pingConfig.SSHPingCount, pingConfig.SSHPingPeriod, sshTry)); err != nil {
 		return fmt.Errorf("unable to connect to SSH port: %w", err)
 	}
 
@@ -255,9 +259,9 @@ func pingSSH(shellClientBuilder ShellClientBuilder, vmConfig VMConfig, ip net.IP
 	return nil
 }
 
-func tryDialSSH(shellClientBuilder ShellClientBuilder, hostPort string, sshConfig ssh.ClientConfig) error {
+func tryDialSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, hostPort string, sshConfig ssh.ClientConfig) error {
 	sshClient := shellClientBuilder.NewShellClient(hostPort, sshConfig)
-	if err := sshClient.Dial(); err != nil {
+	if err := sshClient.DialContext(ctx); err != nil {
 		log.Debugf("SSH dial attempt failed: %v", err)
 		return err
 	}

@@ -44,7 +44,7 @@ func networkHostAddCommand() *cobra.Command {
 				id := vmID + i
 
 				mac := virter.QemuMAC(id)
-				_, err := v.SetUpIP(mac, id, true)
+				err := v.AddDHCPHost(mac, id)
 				if err != nil {
 					log.Fatal(err)
 				}

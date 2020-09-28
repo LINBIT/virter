@@ -92,11 +92,13 @@ step, and then committing the resulting volume.`,
 				ID:              vmID,
 				StaticDHCP:      viper.GetBool("libvirt.static_dhcp"),
 				SSHPublicKeys:   publicKeys,
-				SSHPrivateKey:   privateKey,
-				WaitSSH:         true,
-				SSHPingCount:    viper.GetInt("time.ssh_ping_count"),
-				SSHPingPeriod:   viper.GetDuration("time.ssh_ping_period"),
 				ConsolePath:     consolePath,
+			}
+
+			sshPingConfig := virter.SSHPingConfig{
+				SSHPrivateKey: privateKey,
+				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
+				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 			}
 
 			containerName := "virter-build-" + newImageName
@@ -133,7 +135,7 @@ step, and then committing the resulting volume.`,
 				log.Fatal(err)
 			}
 
-			err = v.ImageBuild(ctx, tools, vmConfig, buildConfig)
+			err = v.ImageBuild(ctx, tools, vmConfig, sshPingConfig, buildConfig)
 			if err != nil {
 				log.Fatalf("Failed to build image: %v", err)
 			}

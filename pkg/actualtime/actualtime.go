@@ -1,6 +1,7 @@
 package actualtime
 
 import (
+	"context"
 	"time"
 )
 
@@ -9,7 +10,7 @@ type ActualTime struct {
 }
 
 // Ping repeats an action at regular intervals
-func (t ActualTime) Ping(count int, period time.Duration, f func() error) error {
+func (t ActualTime) Ping(ctx context.Context, count int, period time.Duration, f func() error) error {
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 
@@ -20,8 +21,13 @@ func (t ActualTime) Ping(count int, period time.Duration, f func() error) error 
 			return nil
 		}
 		if i < count-1 {
-			<-ticker.C
+			select {
+			case <-ticker.C:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
+
 		lastErr = err
 	}
 

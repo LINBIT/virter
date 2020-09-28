@@ -100,10 +100,15 @@ type ImageBuildConfig struct {
 	ResetMachineID    bool
 }
 
-func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
+func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, pingConfig SSHPingConfig, buildConfig ImageBuildConfig) error {
 	vmNames := []string{vmConfig.Name}
 	sshPrivateKey := buildConfig.SSHPrivateKey
 	var err error
+
+	err = v.PingSSH(ctx, tools.ShellClientBuilder, vmConfig.Name, pingConfig)
+	if err != nil {
+		return err
+	}
 
 	if buildConfig.ResetMachineID {
 		// starting the VM creates a machine-id
@@ -141,17 +146,17 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 }
 
 // ImageBuild builds an image by running a VM and provisioning it
-func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, buildConfig ImageBuildConfig) error {
+func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, pingConfig SSHPingConfig, buildConfig ImageBuildConfig) error {
 	// VMRun is responsible to call CheckVMConfig here!
 	// TODO(): currently we can not know why VM run failed, so we don't clean up in this stage,
 	//         it could have been an existing VM, we don't want to delete it.
-	err := v.VMRun(tools.ShellClientBuilder, vmConfig)
+	err := v.VMRun(vmConfig)
 	if err != nil {
 		return err
 	}
 
 	// from here on it is safe to rm the VM if something fails
-	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, buildConfig)
+	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, pingConfig, buildConfig)
 	if err != nil {
 		log.Warn("could not build image, deleting VM")
 		if rmErr := v.VMRm(vmConfig.Name, vmConfig.StaticDHCP); rmErr != nil {
