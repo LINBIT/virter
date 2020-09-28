@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/LINBIT/containerapi"
@@ -43,9 +45,7 @@ step, and then committing the resulting volume.`,
 			baseImageName := args[0]
 			newImageName := args[1]
 
-			dctx, dcancel := containerContext()
-			defer dcancel()
-			ctx, cancel := onInterruptWrap(dctx)
+			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
 
 			v, err := VirterConnect()

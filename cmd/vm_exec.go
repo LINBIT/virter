@@ -70,9 +70,7 @@ func execProvision(provOpt virter.ProvisionOption, vmNames []string) error {
 }
 
 func execDocker(v *virter.Virter, s *virter.ProvisionDockerStep, vmNames []string) error {
-	dctx, dcancel := containerContext()
-	defer dcancel()
-	ctx, cancel := onInterruptWrap(dctx)
+	ctx, cancel := onInterruptWrap(context.Background())
 	defer cancel()
 
 	containerProvider, err := containerapi.NewProvider(ctx, containerProvider())

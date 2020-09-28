@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -32,11 +31,6 @@ func vmCommand() *cobra.Command {
 
 func containerProvider() string {
 	return viper.GetString("container.provider")
-}
-
-func containerContext() (context.Context, context.CancelFunc) {
-	containerTimeout := viper.GetDuration("time.container_timeout")
-	return context.WithTimeout(context.Background(), containerTimeout)
 }
 
 // SSHClientBuilder builds SSH shell clients

@@ -56,13 +56,6 @@ ssh_ping_period = "{{ get "time.ssh_ping_period" }}"
 # Default value: "{{ get "time.shutdown_timeout" }}"
 shutdown_timeout = "{{ get "time.shutdown_timeout" }}"
 
-# container_timeout is how long virter will wait for a container provisioning step to
-# complete.
-# If a container provisioning step exceeds this timeout, it will be aborted and an
-# error will be produced.
-# Default value: "{{ get "time.container_timeout" }}"
-container_timeout = "{{ get "time.container_timeout" }}"
-
 [auth]
 # virter_public_key_path is where virter should place its generated public key.
 # If this file does not exist and the file from virter_private_key_path exists,
@@ -101,7 +94,6 @@ func initConfig() {
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
-	viper.SetDefault("time.container_timeout", 30*time.Minute)
 	viper.SetDefault("auth.user_public_key", "")
 	viper.SetDefault("container.provider", "docker")
 
