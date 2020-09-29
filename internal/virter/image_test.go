@@ -18,7 +18,7 @@ import (
 	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
-//go:generate mockery -name=HTTPClient
+//go:generate mockery --name=HTTPClient
 
 func TestImagePull(t *testing.T) {
 	client := new(mocks.HTTPClient)

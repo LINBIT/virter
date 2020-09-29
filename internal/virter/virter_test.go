@@ -6,9 +6,9 @@ import (
 	"github.com/LINBIT/virter/internal/virter"
 )
 
-//go:generate mockery -name=ShellClient
-//go:generate mockery -name=AfterNotifier
-//go:generate mockery -name=NetworkCopier -dir=../../pkg/netcopy
+//go:generate mockery --name=ShellClient
+//go:generate mockery --name=AfterNotifier
+//go:generate mockery --name=NetworkCopier --dir=../../pkg/netcopy
 
 const poolName = "some-pool"
 const networkName = "some-network"
