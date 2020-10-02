@@ -157,7 +157,7 @@ func genValueMap(provOpt ProvisionOption) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	for _, value := range provOpt.Overrides {
-		if err := strvals.ParseInto(value, base); err != nil {
+		if err := strvals.ParseIntoString(value, base); err != nil {
 			return base, err
 		}
 	}
