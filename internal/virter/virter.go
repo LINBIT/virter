@@ -98,6 +98,7 @@ type VMConfig struct {
 	SSHPublicKeys   []string
 	ConsolePath     string
 	Disks           []Disk
+	GDBPort         uint
 }
 
 // SSHPingConfig contains the configuration for pinging a VM via SSH

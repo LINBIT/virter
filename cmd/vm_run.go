@@ -100,6 +100,8 @@ func vmRunCommand() *cobra.Command {
 
 	var consoleDir string
 
+	var gdbPort uint
+
 	var diskStrings []string
 	var disks []virter.Disk
 
@@ -173,6 +175,10 @@ func vmRunCommand() *cobra.Command {
 			for i = 0; i < count; i++ {
 				i := i
 				id := vmID + i
+				thisGDBPort := gdbPort
+				if cmd.Flags().Changed("count") {
+					thisGDBPort += id
+				}
 				g.Go(func() error {
 					var thisVMName string
 					if vmName == "" {
@@ -205,6 +211,7 @@ func vmRunCommand() *cobra.Command {
 						SSHPublicKeys:   publicKeys,
 						ConsolePath:     consolePath,
 						Disks:           disks,
+						GDBPort:         thisGDBPort,
 					}
 
 					err = v.VMRun(c)
@@ -255,6 +262,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().VarP(bootCapacity, "bootcapacity", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
+	runCmd.Flags().UintVar(&gdbPort, "gdb-port", 0, "Enable gdb remote connection on this port (if --count is used, the ID will be added to this port number)")
 
 	// Unfortunately, pflag cannot accept arrays of custom Values (yet?).
 	// See https://github.com/spf13/pflag/issues/260

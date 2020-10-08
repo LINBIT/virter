@@ -106,6 +106,16 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 	}
 	log.Debugf("output are these disks: %+v", disks)
 
+	var qemuCommandline *lx.DomainQEMUCommandline
+	if vm.GDBPort != 0 {
+		qemuCommandline = &lx.DomainQEMUCommandline{
+			Args: []lx.DomainQEMUCommandlineArg{
+				{Value: "-gdb"},
+				{Value: fmt.Sprintf("tcp::%d", vm.GDBPort)},
+			},
+		}
+	}
+
 	domain := &lx.Domain{
 		Type: "kvm",
 		Name: vm.Name,
@@ -189,6 +199,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 				},
 			},
 		},
+		QEMUCommandline: qemuCommandline,
 	}
 	return domain.Marshal()
 }
