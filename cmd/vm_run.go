@@ -176,7 +176,7 @@ func vmRunCommand() *cobra.Command {
 				i := i
 				id := vmID + i
 				thisGDBPort := gdbPort
-				if cmd.Flags().Changed("count") {
+				if gdbPort != 0 && cmd.Flags().Changed("count") {
 					thisGDBPort += id
 				}
 				g.Go(func() error {
