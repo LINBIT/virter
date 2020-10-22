@@ -137,6 +137,12 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 			if err := executeTemplates(s.Docker.Env, pc.Values); err != nil {
 				return pc, fmt.Errorf("failed to execute template for docker.env for step %d: %w", i, err)
 			}
+
+			if copyStep := s.Docker.Copy; copyStep != nil {
+				if copyStep.Dest, err = executeTemplate(copyStep.Dest, pc.Values); err != nil {
+					return pc, fmt.Errorf("failed to execute template for docker.copy.dest for step %d: %w", i, err)
+				}
+			}
 		} else if s.Shell != nil {
 			s.Shell.Env = mergeEnv(&pc.Env, &s.Shell.Env)
 
