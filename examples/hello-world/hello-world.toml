@@ -4,3 +4,6 @@ Image = "virter-hello-world"
 [[steps]]
 [steps.docker]
 image = "{{.Image}}"
+[steps.docker.copy]
+source = "/entry.sh"
+dest = "/tmp/"

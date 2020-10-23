@@ -15,3 +15,7 @@ virter:
 .PHONY: release
 release:
 	make virter GOOS=linux GOARCH=amd64
+
+.PHONY: examples
+examples:
+	docker build -t virter-hello-world:latest examples/hello-world/
