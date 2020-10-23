@@ -70,19 +70,24 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		return err
 	}
 
-	err = containerWait(statusCh, errCh)
-	if err != nil {
-		return err
-	}
+	waitErr := containerWait(statusCh, errCh)
 
+	// Copy out files from container even if the wait ended in an error.
+	// The files may still be important. For instance, when the wait timed
+	// out or the container terminated with a non-zero exit code. This
+	// generally indicates a failure of the process running in the
+	// container. In these cases, the container itself is still valid.
 	if copyStep != nil {
-		err = containerCopy(ctx, containerProvider, containerID, copyStep)
+		// Use a fresh Context here because ctx may have been canceled
+		copyCtx, copyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer copyCancel()
+		err = containerCopy(copyCtx, containerProvider, containerID, copyStep)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return waitErr
 }
 
 func streamLogs(ctx context.Context, containerProvider containerapi.ContainerProvider, id string) error {
