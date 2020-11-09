@@ -101,6 +101,19 @@ this:
 This allows all users in the group libvirt to run the `dhcp_release` utility
 without being prompted for a password.
 
+### Console logs
+
+The `--console` argument to `virter vm run` causes serial output from the VM to
+be saved to a file. This file is created with the current user as the owner.
+However, it is written to by libvirt, so it needs to located on a filesystem to
+which libvirt can write. NFS mounts generally cannot be used due to
+`root_squash`.
+
+In addition, when the VM generates a lot of output, this can trigger `virtlogd`
+to roll the log file over, which creates a file owned by root (assuming
+`virtlogd` is running as root). To prevent this, increase `max_size` in
+`/etc/libvirt/virtlogd.conf`.
+
 ## Usage
 
 For usage just run `virter help`.
