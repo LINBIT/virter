@@ -14,9 +14,10 @@ import (
 
 // ProvisionDockerStep is a single provisioniong step executed in a docker container
 type ProvisionDockerStep struct {
-	Image string                   `toml:"image"`
-	Env   map[string]string        `toml:"env"`
-	Copy  *ProvisionDockerCopyStep `toml:"copy"`
+	Image   string                   `toml:"image"`
+	Env     map[string]string        `toml:"env"`
+	Command []string                 `toml:"command"`
+	Copy    *ProvisionDockerCopyStep `toml:"copy"`
 }
 
 type ProvisionDockerCopyStep struct {
@@ -134,8 +135,12 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 				return pc, fmt.Errorf("failed to execute template for docker.image for step %d: %w", i, err)
 			}
 
-			if err := executeTemplates(s.Docker.Env, pc.Values); err != nil {
+			if err := executeTemplateMap(s.Docker.Env, pc.Values); err != nil {
 				return pc, fmt.Errorf("failed to execute template for docker.env for step %d: %w", i, err)
+			}
+
+			if err := executeTemplateArray(s.Docker.Command, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute tempalte for docker.command for step %d: %w", i, err)
 			}
 
 			if copyStep := s.Docker.Copy; copyStep != nil {
@@ -146,7 +151,7 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 		} else if s.Shell != nil {
 			s.Shell.Env = mergeEnv(&pc.Env, &s.Shell.Env)
 
-			if err := executeTemplates(s.Shell.Env, pc.Values); err != nil {
+			if err := executeTemplateMap(s.Shell.Env, pc.Values); err != nil {
 				return pc, fmt.Errorf("failed to execute template for shell.env for step %d: %w", i, err)
 			}
 		} else if s.Rsync != nil {
@@ -171,13 +176,24 @@ func genValueMap(provOpt ProvisionOption) (map[string]interface{}, error) {
 	return base, nil
 }
 
-func executeTemplates(templates map[string]string, templateData map[string]string) error {
+func executeTemplateMap(templates map[string]string, templateData map[string]string) error {
 	for k, v := range templates {
 		result, err := executeTemplate(v, templateData)
 		if err != nil {
 			return err
 		}
 		templates[k] = result
+	}
+	return nil
+}
+
+func executeTemplateArray(templates []string, templateData map[string]string) error {
+	for i, t := range templates {
+		result, err := executeTemplate(t, templateData)
+		if err != nil {
+			return err
+		}
+		templates[i] = result
 	}
 	return nil
 }

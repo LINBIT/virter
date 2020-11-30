@@ -122,6 +122,7 @@ func TestNewProvisionConfigTemplate(t *testing.T) {
 [[steps]]
 [steps.docker]
 image = "some-image"
+command = ["exit", "0"]
 [steps.docker.env]
 foo = "bar"
 
@@ -144,6 +145,7 @@ ShellEnv = "default-value"
 [[steps]]
 [steps.docker]
 image = "{{.DockerImage}}"
+command = ["echo", "{{.DockerCommandArg}}"]
 [steps.docker.env]
 foo = "hello {{.DockerEnv}}"
 
@@ -191,6 +193,7 @@ foo = "{{.ShellEnv"
 				ProvisionStep{
 					Docker: &ProvisionDockerStep{
 						Image: "some-image",
+						Command: []string{"exit", "0"},
 						Env:   map[string]string{"foo": "bar"},
 					},
 				},
@@ -214,6 +217,7 @@ foo = "{{.ShellEnv"
 				Overrides: []string{
 					"values.DockerImage=template-image",
 					"values.DockerEnv=template-value",
+					"values.DockerCommandArg=template-arg",
 					"values.RsyncSource=template-source",
 				},
 			},
@@ -221,6 +225,7 @@ foo = "{{.ShellEnv"
 				ProvisionStep{
 					Docker: &ProvisionDockerStep{
 						Image: "template-image",
+						Command: []string{"echo", "template-arg"},
 						Env:   map[string]string{"foo": "hello template-value"},
 					},
 				},

@@ -26,6 +26,7 @@ A `docker` provisioning step allows specifying a Docker image to run provisionin
 The Docker provisioning step can be parameterized using the following configuration options:
 * `image` is the Docker image used to provision the VM. It follows the standard Docker format of `<repository>/<image>:<tag>`. This is a Go template.
 * `env` is a map of environment variables to be passed to the Docker container, in `KEY=value` format. The values are Go templates.
+* `command` is a string array and sets the command to execute in the container (basically `<args>...` in `docker run <image> <args>...`). The items are Go templates.
 
   Note that Virter already passes two environment variables by default:
   * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
