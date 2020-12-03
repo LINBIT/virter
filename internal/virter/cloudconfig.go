@@ -42,7 +42,7 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error)
 
 func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig) error {
 	vmName := vmConfig.Name
-	sshPublicKeys := vmConfig.SSHPublicKeys
+	sshPublicKeys := append(vmConfig.ExtraSSHPublicKeys, string(v.sshkeys.PublicKey()))
 
 	metaData, err := v.metaData(vmName)
 	if err != nil {

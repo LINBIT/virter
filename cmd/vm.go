@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"io/ioutil"
-	"strings"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
@@ -42,16 +38,8 @@ func (SSHClientBuilder) NewShellClient(hostPort string, sshConfig ssh.ClientConf
 	return sshclient.NewSSHClient(hostPort, sshConfig)
 }
 
-func loadPublicKeys() ([]string, error) {
+func extraAuthorizedKeys() ([]string, error) {
 	publicKeys := []string{}
-
-	publicKeyPath := viper.GetString("auth.virter_public_key_path")
-	publicKey, err := ioutil.ReadFile(publicKeyPath)
-	if err != nil {
-		return publicKeys, fmt.Errorf("failed to load public key from %s: %w", publicKeyPath, err)
-	}
-
-	publicKeys = append(publicKeys, strings.TrimSpace(string(publicKey)))
 
 	userPublicKey := viper.GetString("auth.user_public_key")
 	if userPublicKey != "" {
@@ -59,18 +47,4 @@ func loadPublicKeys() ([]string, error) {
 	}
 
 	return publicKeys, nil
-}
-
-func getPrivateKeyPath() string {
-	return viper.GetString("auth.virter_private_key_path")
-}
-
-func loadPrivateKey() ([]byte, error) {
-	privateKeyPath := getPrivateKeyPath()
-	privateKey, err := ioutil.ReadFile(privateKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load private key from '%s': %w", privateKeyPath, err)
-	}
-
-	return privateKey, nil
 }

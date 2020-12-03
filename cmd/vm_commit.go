@@ -21,7 +21,7 @@ func vmCommitCommand() *cobra.Command {
 the virtual machine name.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}

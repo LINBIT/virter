@@ -130,7 +130,7 @@ func vmRunCommand() *cobra.Command {
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
 
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -138,12 +138,7 @@ func vmRunCommand() *cobra.Command {
 
 			imageName := args[0]
 
-			publicKeys, err := loadPublicKeys()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			privateKey, err := loadPrivateKey()
+			extraAuthorizedKeys, err := extraAuthorizedKeys()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -201,17 +196,17 @@ func vmRunCommand() *cobra.Command {
 					}
 
 					c := virter.VMConfig{
-						ImageName:       imageName,
-						Name:            thisVMName,
-						MemoryKiB:       memKiB,
-						BootCapacityKiB: bootCapacityKiB,
-						VCPUs:           vcpus,
-						ID:              id,
-						StaticDHCP:      viper.GetBool("libvirt.static_dhcp"),
-						SSHPublicKeys:   publicKeys,
-						ConsolePath:     consolePath,
-						Disks:           disks,
-						GDBPort:         thisGDBPort,
+						ImageName:          imageName,
+						Name:               thisVMName,
+						MemoryKiB:          memKiB,
+						BootCapacityKiB:    bootCapacityKiB,
+						VCPUs:              vcpus,
+						ID:                 id,
+						StaticDHCP:         viper.GetBool("libvirt.static_dhcp"),
+						ExtraSSHPublicKeys: extraAuthorizedKeys,
+						ConsolePath:        consolePath,
+						Disks:              disks,
+						GDBPort:            thisGDBPort,
 					}
 
 					err = v.VMRun(c)
@@ -221,7 +216,6 @@ func vmRunCommand() *cobra.Command {
 
 					if waitSSH {
 						sshPingConfig := virter.SSHPingConfig{
-							SSHPrivateKey: privateKey,
 							SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
 							SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 						}

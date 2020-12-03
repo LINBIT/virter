@@ -11,6 +11,8 @@ import (
 
 	"github.com/digitalocean/go-libvirt"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/LINBIT/virter/pkg/sshkeys"
 )
 
 // LibvirtConnection contains required libvirt connection methods.
@@ -43,21 +45,25 @@ type LibvirtConnection interface {
 	Disconnect() error
 }
 
+
 // Virter manipulates libvirt for virter.
 type Virter struct {
 	libvirt         LibvirtConnection
 	storagePoolName string
 	networkName     string
+	sshkeys     	sshkeys.KeyStore
 }
 
 // New configures a new Virter.
 func New(libvirtConnection LibvirtConnection,
 	storagePoolName string,
-	networkName string) *Virter {
+	networkName string,
+	store sshkeys.KeyStore) *Virter {
 	return &Virter{
 		libvirt:         libvirtConnection,
 		storagePoolName: storagePoolName,
 		networkName:     networkName,
+		sshkeys:     	 store,
 	}
 }
 
@@ -88,22 +94,21 @@ type Disk interface {
 
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
-	ImageName       string
-	Name            string
-	MemoryKiB       uint64
-	BootCapacityKiB uint64
-	VCPUs           uint
-	ID              uint
-	StaticDHCP      bool
-	SSHPublicKeys   []string
-	ConsolePath     string
-	Disks           []Disk
-	GDBPort         uint
+	ImageName          string
+	Name               string
+	MemoryKiB          uint64
+	BootCapacityKiB    uint64
+	VCPUs              uint
+	ID                 uint
+	StaticDHCP         bool
+	ExtraSSHPublicKeys []string
+	ConsolePath        string
+	Disks              []Disk
+	GDBPort            uint
 }
 
 // SSHPingConfig contains the configuration for pinging a VM via SSH
 type SSHPingConfig struct {
-	SSHPrivateKey []byte
 	SSHPingCount  int
 	SSHPingPeriod time.Duration
 }

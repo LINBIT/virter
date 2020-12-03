@@ -26,7 +26,7 @@ func TestImagePull(t *testing.T) {
 
 	l := newFakeLibvirtConnection()
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	ctx := context.Background()
 	err := v.ImagePull(ctx, client, nopReaderProxy{}, imageURL, imageName)
@@ -44,7 +44,7 @@ func TestImagePullBadStatus(t *testing.T) {
 
 	l := newFakeLibvirtConnection()
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	ctx := context.Background()
 	err := v.ImagePull(ctx, client, nopReaderProxy{}, imageURL, imageName)
@@ -89,7 +89,7 @@ func TestImageBuild(t *testing.T) {
 
 	l.vols[imageName] = &FakeLibvirtStorageVol{}
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	tools := virter.ImageBuildTools{
 		ShellClientBuilder: MockShellClientBuilder{shell},
@@ -98,17 +98,16 @@ func TestImageBuild(t *testing.T) {
 	}
 
 	vmConfig := virter.VMConfig{
-		ImageName:     imageName,
-		Name:          vmName,
-		ID:            vmID,
-		StaticDHCP:    false,
-		MemoryKiB:     1024,
-		VCPUs:         1,
-		SSHPublicKeys: []string{sshPublicKey},
+		ImageName:          imageName,
+		Name:               vmName,
+		ID:                 vmID,
+		StaticDHCP:         false,
+		MemoryKiB:          1024,
+		VCPUs:              1,
+		ExtraSSHPublicKeys: []string{sshPublicKey},
 	}
 
 	sshPingConfig := virter.SSHPingConfig{
-		SSHPrivateKey: []byte(sshPrivateKey),
 		SSHPingCount:  1,
 		SSHPingPeriod: time.Second, // ignored
 	}
@@ -125,7 +124,6 @@ func TestImageBuild(t *testing.T) {
 
 	buildConfig := virter.ImageBuildConfig{
 		ContainerName:   "virter-test",
-		SSHPrivateKey:   []byte(sshPrivateKey),
 		ShutdownTimeout: shutdownTimeout,
 		ProvisionConfig: provisionConfig,
 	}
@@ -156,7 +154,7 @@ func TestImageSave(t *testing.T) {
 		content: []byte(imageContent),
 	}
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	var dest bytes.Buffer
 	err := v.ImageSave(imageName, &dest)

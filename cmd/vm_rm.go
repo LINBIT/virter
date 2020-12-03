@@ -32,7 +32,7 @@ func vmRmCommand() *cobra.Command {
 		Long:  `Remove one or multiple virtual machines including all data.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}

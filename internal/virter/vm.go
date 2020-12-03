@@ -236,11 +236,12 @@ func (v *Virter) PingSSH(ctx context.Context, shellClientBuilder ShellClientBuil
 
 	hostPort := net.JoinHostPort(ips[0], "ssh")
 
-	sshConfig, err := getSSHClientConfig(pingConfig.SSHPrivateKey)
-	if err != nil {
-		return err
+	sshConfig := ssh.ClientConfig{
+		Auth: v.sshkeys.Auth(),
+		Timeout: pingConfig.SSHPingPeriod,
+		User: "root",
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	sshConfig.Timeout = pingConfig.SSHPingPeriod
 
 	sshTry := func() error {
 		return tryDialSSH(ctx, shellClientBuilder, hostPort, sshConfig)
@@ -517,11 +518,13 @@ func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 }
 
 // VMExecDocker runs a docker container against some VMs.
-func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, sshPrivateKey []byte, copyStep *ProvisionDockerCopyStep) error {
+func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
+
+	sshPrivateKey := v.sshkeys.KeyBytes()
 
 	err = containerRun(ctx, containerProvider, containerCfg, ips, sshPrivateKey, copyStep)
 	if err != nil {
@@ -531,25 +534,8 @@ func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerap
 	return nil
 }
 
-func getSSHClientConfig(sshPrivateKey []byte) (ssh.ClientConfig, error) {
-	signer, err := ssh.ParsePrivateKey(sshPrivateKey)
-	if err != nil {
-		return ssh.ClientConfig{}, err
-	}
-
-	config := ssh.ClientConfig{
-		User: "root",
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	return config, nil
-}
-
 // VMSSHSession runs an interactive shell session in a VM
-func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey []byte) error {
+func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -558,9 +544,10 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey 
 		return fmt.Errorf("Expected a single IP")
 	}
 
-	sshConfig, err := getSSHClientConfig(sshPrivateKey)
-	if err != nil {
-		return err
+	sshConfig := ssh.ClientConfig{
+		Auth: v.sshkeys.Auth(),
+		User: "root",
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	hostPort := net.JoinHostPort(ips[0], "22")
@@ -574,15 +561,16 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, sshPrivateKey 
 }
 
 // VMExecShell runs a simple shell command against some VMs.
-func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, sshPrivateKey []byte, shellStep *ProvisionShellStep) error {
+func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *ProvisionShellStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
 
-	sshConfig, err := getSSHClientConfig(sshPrivateKey)
-	if err != nil {
-		return err
+	sshConfig := ssh.ClientConfig{
+		Auth:v.sshkeys.Auth(),
+		User: "root",
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	var g errgroup.Group
@@ -640,7 +628,7 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 		dest.Host = ip
 	}
 
-	return copier.Copy(ctx, sources, dest)
+	return copier.Copy(ctx, sources, dest, v.sshkeys)
 }
 
 func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, vmName, ipPort, script string, env []string) error {

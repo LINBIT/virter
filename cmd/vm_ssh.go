@@ -14,18 +14,13 @@ func vmSSHCommand() *cobra.Command {
 		Long:  `Run an interactive ssh shell in a VM.`,
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer v.ForceDisconnect()
 
-			privateKey, err := loadPrivateKey()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if err := v.VMSSHSession(context.TODO(), args[0], privateKey); err != nil {
+			if err := v.VMSSHSession(context.TODO(), args[0]); err != nil {
 				log.Fatal(err)
 			}
 		},

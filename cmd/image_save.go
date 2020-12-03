@@ -21,7 +21,7 @@ func imageSaveCommand() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			imageName := args[0]
 
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}

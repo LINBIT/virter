@@ -48,16 +48,16 @@ func TestVMRun(t *testing.T) {
 
 	l.vols[imageName] = &FakeLibvirtStorageVol{}
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	c := virter.VMConfig{
-		ImageName:     imageName,
-		Name:          vmName,
-		ID:            vmID,
-		StaticDHCP:    false,
-		VCPUs:         1,
-		MemoryKiB:     1024,
-		SSHPublicKeys: []string{sshPublicKey},
+		ImageName:          imageName,
+		Name:               vmName,
+		ID:                 vmID,
+		StaticDHCP:         false,
+		VCPUs:              1,
+		MemoryKiB:          1024,
+		ExtraSSHPublicKeys: []string{sshPublicKey},
 	}
 	err := v.VMRun(c)
 	assert.NoError(t, err)
@@ -79,7 +79,6 @@ func TestSSHPing(t *testing.T) {
 	shell.On("Close").Return(nil)
 
 	sshPingConfig := virter.SSHPingConfig{
-		SSHPrivateKey: []byte(sshPrivateKey),
 		SSHPingCount:  1,
 		SSHPingPeriod: time.Second, // ignored
 	}
@@ -91,7 +90,7 @@ func TestSSHPing(t *testing.T) {
 	l.domains[vmName] = domain
 	fakeNetworkAddHost(l.network, vmMAC, vmIP)
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	err := v.PingSSH(context.Background(), MockShellClientBuilder{shell}, vmName, sshPingConfig)
 	assert.NoError(t, err)
@@ -181,7 +180,7 @@ func TestVMRm(t *testing.T) {
 			addDisk(l, vmName, ciDataVolumeName)
 		}
 
-		v := virter.New(l, poolName, networkName)
+		v := virter.New(l, poolName, networkName, newMockKeystore())
 
 		err := v.VMRm(vmName, r[staticDHCP])
 		assert.NoError(t, err)
@@ -256,7 +255,7 @@ func TestVMCommit(t *testing.T) {
 
 		}
 
-		v := virter.New(l, poolName, networkName)
+		v := virter.New(l, poolName, networkName, newMockKeystore())
 
 		err := v.VMCommit(context.Background(), an, vmName, r[commitShutdown], shutdownTimeout, false)
 		if expectOk {
@@ -285,10 +284,10 @@ func TestVMExecDocker(t *testing.T) {
 
 	docker := mockContainerProvider()
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	containerCfg := containerapi.NewContainerConfig("test", dockerImageName, nil)
-	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, containerCfg, []byte(sshPrivateKey), nil)
+	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, containerCfg, nil)
 	assert.NoError(t, err)
 
 	docker.AssertExpectations(t)
@@ -304,7 +303,7 @@ func TestVMExecRsync(t *testing.T) {
 
 	fakeNetworkAddHost(l.network, vmMAC, vmIP)
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	dir, err := createFakeDirectory()
 	assert.NoError(t, err)
@@ -319,7 +318,7 @@ func TestVMExecRsync(t *testing.T) {
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: filepath.Join(dir, "file1.txt")},
 		{Path: filepath.Join(dir, "file2.txt")},
-	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
+	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything).Return(nil)
 
 	err = v.VMExecRsync(context.Background(), copier, []string{vmName}, step)
 	assert.NoError(t, err)
@@ -329,7 +328,7 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier2 := new(mocks.NetworkCopier)
-	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
+	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything).Return(nil)
 	copierCall.RunFn = func(args mock.Arguments) {
 		paths := args[1].([]netcopy.HostPath)
 		for _, f := range paths {
@@ -344,7 +343,7 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier3 := new(mocks.NetworkCopier)
-	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
+	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything).Return(nil)
 	err = v.VMExecRsync(context.Background(), copier3, []string{vmName}, step)
 	assert.NoError(t, err)
 
@@ -368,7 +367,7 @@ func TestVMExecCopy(t *testing.T) {
 
 	fakeNetworkAddHost(l.network, vmMAC, vmIP)
 
-	v := virter.New(l, poolName, networkName)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	dir, err := createFakeDirectory()
 	assert.NoError(t, err)
@@ -377,10 +376,10 @@ func TestVMExecCopy(t *testing.T) {
 	copier := new(mocks.NetworkCopier)
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: filepath.Join(dir, "file1.txt")},
-	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}).Return(nil)
+	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything).Return(nil)
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: "/tmp", Host: "192.168.122.42"},
-	}, netcopy.HostPath{Path: filepath.Join(dir, "file1.txt")}).Return(nil)
+	}, netcopy.HostPath{Path: filepath.Join(dir, "file1.txt")}, mock.Anything).Return(nil)
 
 	existingRemotePath := vmName + ":/tmp"
 	existingLocalPathPath := filepath.Join(dir, "file1.txt")
@@ -424,11 +423,3 @@ const (
 	shutdownTimeout  = time.Second
 	dockerImageName  = "some-docker-image"
 )
-
-// A parsable private key is required; this is not authorized anywhere
-const sshPrivateKey = `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIN4gIrqpayWZB21fYRvZ6vMqhXRZVmeDmj2Nxg7YdGOToAoGCCqGSM49
-AwEHoUQDQgAE1h7uFTDldfJM+ca8nW9dlL3zbJRXhV+g5hmm+r3ovTrvI2WA5SvS
-dxX5vs9jCz9HcV6xS/2bFQXXSDxb+NHcug==
------END EC PRIVATE KEY-----
-`

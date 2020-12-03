@@ -16,7 +16,7 @@ func vmCpCommand() *cobra.Command {
 		Long:  `Copy files and directories from and to VM`,
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -25,7 +25,7 @@ func vmCpCommand() *cobra.Command {
 			sourceSpec := args[:len(args)-1]
 			destSpec := args[len(args)-1]
 
-			copier := netcopy.NewRsyncNetworkCopier(getPrivateKeyPath())
+			copier := netcopy.NewRsyncNetworkCopier()
 
 			if err := v.VMExecCopy(context.TODO(), copier, sourceSpec, destSpec); err != nil {
 				log.Fatal(err)

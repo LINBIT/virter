@@ -93,8 +93,6 @@ type ImageBuildTools struct {
 // ImageBuildConfig contains the configuration for building an image
 type ImageBuildConfig struct {
 	ContainerName     string
-	SSHPrivateKeyPath string
-	SSHPrivateKey     []byte
 	ShutdownTimeout   time.Duration
 	ProvisionConfig   ProvisionConfig
 	ResetMachineID    bool
@@ -102,7 +100,6 @@ type ImageBuildConfig struct {
 
 func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, pingConfig SSHPingConfig, buildConfig ImageBuildConfig) error {
 	vmNames := []string{vmConfig.Name}
-	sshPrivateKey := buildConfig.SSHPrivateKey
 	var err error
 
 	err = v.PingSSH(ctx, tools.ShellClientBuilder, vmConfig.Name, pingConfig)
@@ -124,11 +121,11 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 	for _, s := range buildConfig.ProvisionConfig.Steps {
 		if s.Docker != nil {
 			containerCfg := containerapi.NewContainerConfig(buildConfig.ContainerName, s.Docker.Image, s.Docker.Env, containerapi.WithCommand(s.Docker.Command...))
-			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, sshPrivateKey, nil)
+			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, nil)
 		} else if s.Shell != nil {
-			err = v.VMExecShell(ctx, vmNames, sshPrivateKey, s.Shell)
+			err = v.VMExecShell(ctx, vmNames, s.Shell)
 		} else if s.Rsync != nil {
-			copier := netcopy.NewRsyncNetworkCopier(buildConfig.SSHPrivateKeyPath)
+			copier := netcopy.NewRsyncNetworkCopier()
 			err = v.VMExecRsync(ctx, copier, vmNames, s.Rsync)
 		}
 

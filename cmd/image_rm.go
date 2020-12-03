@@ -14,7 +14,7 @@ func imageRmCommand() *cobra.Command {
 		Long:  `Remove an image from a libvirt storage pool.`,
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}

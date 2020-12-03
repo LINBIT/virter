@@ -13,6 +13,8 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/LINBIT/virter/pkg/sshkeys"
 )
 
 // defaultConfigTemplate contains a template for virter's default config file.
@@ -202,7 +204,7 @@ func initSSHFromConfig() {
 		log.Fatal("missing configuration key: auth.virter_private_key_path")
 	}
 
-	err := initSSHKeys(publicPath, privatePath)
+	_, err := sshkeys.NewKeyStore(privatePath, publicPath)
 	if err != nil {
 		log.Fatal(err)
 	}

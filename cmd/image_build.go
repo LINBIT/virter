@@ -48,19 +48,13 @@ step, and then committing the resulting volume.`,
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
 
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer v.ForceDisconnect()
 
-			publicKeys, err := loadPublicKeys()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			privateKeyPath := getPrivateKeyPath()
-			privateKey, err := loadPrivateKey()
+			extraAuthorizedKeys, err := extraAuthorizedKeys()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -84,19 +78,18 @@ step, and then committing the resulting volume.`,
 			}
 
 			vmConfig := virter.VMConfig{
-				ImageName:       baseImageName,
-				Name:            newImageName,
-				MemoryKiB:       memKiB,
-				BootCapacityKiB: bootCapacityKiB,
-				VCPUs:           vcpus,
-				ID:              vmID,
-				StaticDHCP:      viper.GetBool("libvirt.static_dhcp"),
-				SSHPublicKeys:   publicKeys,
-				ConsolePath:     consolePath,
+				ImageName:          baseImageName,
+				Name:               newImageName,
+				MemoryKiB:          memKiB,
+				BootCapacityKiB:    bootCapacityKiB,
+				VCPUs:              vcpus,
+				ID:                 vmID,
+				StaticDHCP:         viper.GetBool("libvirt.static_dhcp"),
+				ExtraSSHPublicKeys: extraAuthorizedKeys,
+				ConsolePath:        consolePath,
 			}
 
 			sshPingConfig := virter.SSHPingConfig{
-				SSHPrivateKey: privateKey,
 				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
 				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
 			}
@@ -123,8 +116,6 @@ step, and then committing the resulting volume.`,
 
 			buildConfig := virter.ImageBuildConfig{
 				ContainerName:     containerName,
-				SSHPrivateKeyPath: privateKeyPath,
-				SSHPrivateKey:     privateKey,
 				ShutdownTimeout:   shutdownTimeout,
 				ProvisionConfig:   provisionConfig,
 				ResetMachineID:    resetMachineID,

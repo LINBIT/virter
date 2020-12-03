@@ -47,7 +47,7 @@ func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames 
 	if err != nil {
 		return err
 	}
-	v, err := VirterConnect()
+	v, err := InitVirter()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,11 +59,12 @@ func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames 
 				return err
 			}
 		} else if s.Shell != nil {
-			if err := execShell(ctx, v, s.Shell, vmNames); err != nil {
+			if err := v.VMExecShell(ctx, vmNames, s.Shell); err != nil {
 				return err
 			}
 		} else if s.Rsync != nil {
-			if err := execRsync(ctx, v, s.Rsync, vmNames); err != nil {
+			copier := netcopy.NewRsyncNetworkCopier()
+			if err := v.VMExecRsync(ctx, copier, vmNames, s.Rsync); err != nil {
 				return err
 			}
 		}
@@ -79,27 +80,7 @@ func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDocker
 	}
 	defer containerProvider.Close()
 
-	privateKey, err := loadPrivateKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	containerCfg := containerapi.NewContainerConfig("virter-"+strings.Join(vmNames, "-"), s.Image, s.Env, containerapi.WithCommand(s.Command...))
 
-	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, privateKey, s.Copy)
-}
-
-func execShell(ctx context.Context, v *virter.Virter, s *virter.ProvisionShellStep, vmNames []string) error {
-	privateKey, err := loadPrivateKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return v.VMExecShell(ctx, vmNames, privateKey, s)
-}
-
-func execRsync(ctx context.Context, v *virter.Virter, s *virter.ProvisionRsyncStep, vmNames []string) error {
-	privateKeyPath := getPrivateKeyPath()
-	copier := netcopy.NewRsyncNetworkCopier(privateKeyPath)
-	return v.VMExecRsync(ctx, copier, vmNames, s)
+	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, s.Copy)
 }

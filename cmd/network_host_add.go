@@ -18,7 +18,7 @@ func networkHostAddCommand() *cobra.Command {
 		Long:  `Add one or more network host entries.`,
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			v, err := VirterConnect()
+			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
 			}

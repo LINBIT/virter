@@ -7,19 +7,19 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LINBIT/virter/pkg/sshkeys"
 )
 
 // NetworkCopier copies files over the network
 type NetworkCopier interface {
-	// CopyTo transfers a list of files (source) to a given directory (destination).
-	// Any one of the paths may be located on the host or remotely
-	Copy(ctx context.Context, source []HostPath, destination HostPath) error
+	// Copy transfers a list of files (source) to a given directory (destination).
+	// Any one of the paths may be located on the host or remotely.
+	Copy(ctx context.Context, source []HostPath, destination HostPath, keyStore sshkeys.KeyStore) error
 }
 
 // The default copier. Uses `rsync` to do the actual work
-type RsyncNetworkCopier struct {
-	sshPrivateKeyPath string
-}
+type RsyncNetworkCopier struct {}
 
 // HostPath stores a path with host information
 type HostPath struct {
@@ -55,13 +55,11 @@ func (h *HostPath) Local() bool {
 	return h.Host == ""
 }
 
-func NewRsyncNetworkCopier(sshPrivateKeyPath string) *RsyncNetworkCopier {
-	return &RsyncNetworkCopier{
-		sshPrivateKeyPath,
-	}
+func NewRsyncNetworkCopier() *RsyncNetworkCopier {
+	return &RsyncNetworkCopier{}
 }
 
-func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest HostPath) error {
+func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest HostPath, keyStore sshkeys.KeyStore) error {
 	if len(sources) == 0 {
 		log.Debugf("got empty sources, nothing to copy. %v -> %v", sources, dest)
 		return nil
@@ -79,7 +77,7 @@ func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest 
 	cmd.Env = []string{
 		// TODO: we are ignoring the SSH host key here. ideally we would
 		// somehow get the host key beforehand and properly verify them.
-		fmt.Sprintf(`RSYNC_RSH=/usr/bin/ssh -i "%s" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`, r.sshPrivateKeyPath),
+		fmt.Sprintf(`RSYNC_RSH=/usr/bin/ssh -i "%s" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`, keyStore.KeyPath()),
 	}
 
 	log.Debugf("executing rsync command:")
