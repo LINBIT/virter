@@ -137,6 +137,7 @@ func initConfig() {
 		log.Fatalf("Could not read config file: %v", err)
 	}
 
+	viper.SetEnvPrefix("virter")
 	viper.AutomaticEnv() // read in environment variables that match
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 }
