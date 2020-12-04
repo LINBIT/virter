@@ -114,6 +114,23 @@ to roll the log file over, which creates a file owned by root (assuming
 `virtlogd` is running as root). To prevent this, increase `max_size` in
 `/etc/libvirt/virtlogd.conf`.
 
+### AppArmor
+
+On some distributions, AppArmor denies access to `/var/lib/libvirt/images` by default.
+This leads to messages in dmesg along the lines of:
+
+```
+[ 4274.237593] audit: type=1400 audit(1598348576.161:102): apparmor="DENIED" operation="open" profile="libvirt-d84ef9d7-a7ad-4388-bd5d-cfc3a3db28a6" name="/var/lib/libvirt/images/centos-8" pid=14918 comm="qemu-system-x86" requested_mask="r" denied_mask="r" fsuid=64055 ouid=64055
+```
+
+This can be circumvented by overriding the AppArmor abstraction for that directory:
+
+```
+echo '/var/lib/libvirt/images/* rwk,' >> /etc/apparmor.d/local/abstractions/libvirt-qemu
+systemctl restart apparmor.service
+systemctl restart libvirtd.service
+```
+
 ## Usage
 
 For usage just run `virter help`.
