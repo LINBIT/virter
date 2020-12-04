@@ -3,6 +3,8 @@ package netcopy
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -15,7 +17,7 @@ import (
 type NetworkCopier interface {
 	// Copy transfers a list of files (source) to a given directory (destination).
 	// Any one of the paths may be located on the host or remotely.
-	Copy(ctx context.Context, source []HostPath, destination HostPath, keyStore sshkeys.KeyStore) error
+	Copy(ctx context.Context, source []HostPath, destination HostPath, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts) error
 }
 
 // The default copier. Uses `rsync` to do the actual work
@@ -59,10 +61,27 @@ func NewRsyncNetworkCopier() *RsyncNetworkCopier {
 	return &RsyncNetworkCopier{}
 }
 
-func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest HostPath, keyStore sshkeys.KeyStore) error {
+func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest HostPath, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts) error {
 	if len(sources) == 0 {
 		log.Debugf("got empty sources, nothing to copy. %v -> %v", sources, dest)
 		return nil
+	}
+
+	knownHostsFile, err := ioutil.TempFile("", "rsync-known-hosts-*")
+	if err != nil {
+		return fmt.Errorf("failed to create known hosts file: %w", err)
+	}
+
+	defer os.Remove(knownHostsFile.Name())
+
+	err = knownHosts.AsKnownHostsFile(knownHostsFile)
+	if err != nil {
+		return fmt.Errorf("failed to write known hosts file: %w", err)
+	}
+
+	err = knownHostsFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close known hosts file: %w", err)
 	}
 
 	args := []string{"--recursive", "--perms", "--times"}
@@ -75,9 +94,7 @@ func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest 
 
 	cmd := exec.CommandContext(ctx, "rsync", args...)
 	cmd.Env = []string{
-		// TODO: we are ignoring the SSH host key here. ideally we would
-		// somehow get the host key beforehand and properly verify them.
-		fmt.Sprintf(`RSYNC_RSH=/usr/bin/ssh -i "%s" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`, keyStore.KeyPath()),
+		fmt.Sprintf(`RSYNC_RSH=/usr/bin/ssh -i "%s" -o UserKnownHostsFile=%s`, keyStore.KeyPath(), knownHostsFile.Name()),
 	}
 
 	log.Debugf("executing rsync command:")

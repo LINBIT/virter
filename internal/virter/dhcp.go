@@ -50,6 +50,28 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 	return nil
 }
 
+func (v *Virter) GetDomainSuffix() (string, error) {
+	network, err := v.libvirt.NetworkLookupByName(v.networkName)
+	if err != nil {
+		return "", fmt.Errorf("could not get network: %w", err)
+	}
+
+	net, err := getNetworkDescription(v.libvirt, network)
+	if err != nil {
+		return "", fmt.Errorf("could not get network xml: %w", err)
+	}
+
+	if net.Domain == nil {
+		return "", fmt.Errorf("network '%s' has no <domain/> configured", v.networkName)
+	}
+
+	if net.Domain.Name == "" {
+		return "", fmt.Errorf("network '%s' has empty name attribute in <domain/>", v.networkName)
+	}
+
+	return net.Domain.Name, nil
+}
+
 func addToIP(ip net.IP, addend uint) net.IP {
 	i := ip.To4()
 	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])

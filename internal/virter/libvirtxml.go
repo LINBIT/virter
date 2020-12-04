@@ -1,6 +1,7 @@
 package virter
 
 import (
+	"encoding/xml"
 	"fmt"
 
 	"github.com/LINBIT/virter/pkg/driveletter"
@@ -89,7 +90,7 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
 	return result, nil
 }
 
-func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error) {
+func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (string, error) {
 	vmDisks := []VMDisk{
 		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: vm.Name, bus: "virtio", format: "qcow2"},
 		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: ciDataVolumeName(vm.Name), bus: "ide", format: "raw"},
@@ -116,9 +117,17 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string) (string, error)
 		}
 	}
 
+	metaXml, err := xml.Marshal(metaWrapper{VMMeta: meta})
+	if err != nil {
+		return "", fmt.Errorf("failed to create metadata xml: %w", err)
+	}
+
 	domain := &lx.Domain{
 		Type: "kvm",
 		Name: vm.Name,
+		Metadata: &lx.DomainMetadata{
+			XML: string(metaXml),
+		},
 		Memory: &lx.DomainMemory{
 			Unit: "KiB",
 			// NOTE: because we cast to uint here, and we always
@@ -266,6 +275,37 @@ func libvirtConsole(vm VMConfig) lx.DomainConsole {
 			Port: &targetPort,
 		},
 	}
+}
+
+type metaWrapper struct {
+	XMLName xml.Name `xml:"https://github.com/LINBIT/virter meta"`
+	*VMMeta
+}
+
+func (v *Virter) getMetaForVM(vmName string) (*VMMeta, error) {
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return nil, fmt.Errorf("could not find domain: '%s': %w", vmName, err)
+	}
+
+	xmldesc, err := v.libvirt.DomainGetXMLDesc(domain, 0)
+	if err != nil {
+		return nil, fmt.Errorf("could not get domain xml '%s': %w", vmName, err)
+	}
+
+	desc := lx.Domain{}
+	err = xml.Unmarshal([]byte(xmldesc), &desc)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode domain xml '%s': %w", vmName, err)
+	}
+
+	meta := metaWrapper{}
+	err = xml.Unmarshal([]byte(desc.Metadata.XML), &meta)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode meta xml: '%s': %w", vmName, err)
+	}
+
+	return meta.VMMeta, nil
 }
 
 func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {

@@ -45,13 +45,12 @@ type LibvirtConnection interface {
 	Disconnect() error
 }
 
-
 // Virter manipulates libvirt for virter.
 type Virter struct {
 	libvirt         LibvirtConnection
 	storagePoolName string
 	networkName     string
-	sshkeys     	sshkeys.KeyStore
+	sshkeys         sshkeys.KeyStore
 }
 
 // New configures a new Virter.
@@ -63,7 +62,7 @@ func New(libvirtConnection LibvirtConnection,
 		libvirt:         libvirtConnection,
 		storagePoolName: storagePoolName,
 		networkName:     networkName,
-		sshkeys:     	 store,
+		sshkeys:         store,
 	}
 }
 
@@ -105,6 +104,11 @@ type VMConfig struct {
 	ConsolePath        string
 	Disks              []Disk
 	GDBPort            uint
+}
+
+// VMMeta is additional metadata stored with each VM
+type VMMeta struct {
+	HostKey string   `xml:"hostkey"`
 }
 
 // SSHPingConfig contains the configuration for pinging a VM via SSH

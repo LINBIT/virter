@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/LINBIT/containerapi v0.3.0
+	github.com/LINBIT/containerapi v0.4.0
 	github.com/LINBIT/gosshclient v0.3.1
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
@@ -12,6 +12,7 @@ require (
 	github.com/helm/helm v2.16.6+incompatible
 	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
 	github.com/kr/pretty v0.2.0
+	github.com/kr/text v0.2.0
 	github.com/libvirt/libvirt-go-xml v6.1.0+incompatible
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0

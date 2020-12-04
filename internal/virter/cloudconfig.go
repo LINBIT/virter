@@ -3,9 +3,10 @@ package virter
 import (
 	"bytes"
 	"fmt"
-
+	"github.com/LINBIT/virter/pkg/sshkeys"
 	libvirt "github.com/digitalocean/go-libvirt"
 	"github.com/kdomanski/iso9660"
+	"github.com/kr/text"
 )
 
 const templateMetaData = `instance-id: {{ .VMName }}
@@ -18,9 +19,14 @@ ssh_authorized_keys:
 {{- range .SSHPublicKeys }}
   - {{ . }}
 {{- end }}
+ssh_keys:
+  rsa_private: |
+{{ .IndentedPrivateKey }}
+  rsa_public: |
+{{ .IndentedPublicKey }}
 preserve_hostname: false
 hostname: {{ .VMName }}
-fqdn: {{ .VMName }}.test
+fqdn: {{ .VMName }}.{{ .DomainSuffix }}
 `
 
 func (v *Virter) metaData(vmName string) (string, error) {
@@ -31,16 +37,27 @@ func (v *Virter) metaData(vmName string) (string, error) {
 	return renderTemplate("meta-data", templateMetaData, templateData)
 }
 
-func (v *Virter) userData(vmName string, sshPublicKeys []string) (string, error) {
+func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys.HostKey) (string, error) {
+	privateKey := text.Indent(hostkey.PrivateKey(), "    ")
+	publicKey := text.Indent(hostkey.PublicKey(), "    ")
+
+	domainSuffix, err := v.GetDomainSuffix()
+	if err != nil {
+		return "", nil
+	}
+
 	templateData := map[string]interface{}{
-		"VMName":        vmName,
-		"SSHPublicKeys": sshPublicKeys,
+		"VMName":              vmName,
+		"DomainSuffix":          domainSuffix,
+		"SSHPublicKeys":       sshPublicKeys,
+		"IndentedPrivateKey":  privateKey,
+		"IndentedPublicKey":   publicKey,
 	}
 
 	return renderTemplate("user-data", templateUserData, templateData)
 }
 
-func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig) error {
+func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig, hostkey sshkeys.HostKey) error {
 	vmName := vmConfig.Name
 	sshPublicKeys := append(vmConfig.ExtraSSHPublicKeys, string(v.sshkeys.PublicKey()))
 
@@ -49,7 +66,7 @@ func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig) error {
 		return err
 	}
 
-	userData, err := v.userData(vmName, sshPublicKeys)
+	userData, err := v.userData(vmName, sshPublicKeys, hostkey)
 	if err != nil {
 		return err
 	}

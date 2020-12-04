@@ -19,6 +19,7 @@ import (
 
 	sshclient "github.com/LINBIT/gosshclient"
 	"github.com/LINBIT/virter/pkg/actualtime"
+	"github.com/LINBIT/virter/pkg/sshkeys"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 )
@@ -106,6 +107,12 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		return fmt.Errorf("could not get storage pool: %w", err)
 	}
 
+	log.Print("Create host key")
+	hostkey, err := sshkeys.NewRSAHostKey()
+	if err != nil {
+		return fmt.Errorf("could not create new host key: %w", err)
+	}
+
 	log.Print("Create boot volume")
 	err = v.createVMVolume(sp, vmConfig)
 	if err != nil {
@@ -113,7 +120,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, vmConfig)
+	err = v.createCIData(sp, vmConfig, hostkey)
 	if err != nil {
 		return err
 	}
@@ -126,7 +133,11 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		}
 	}
 
-	err = v.createVM(sp, vmConfig, mac)
+	meta := &VMMeta{
+		HostKey: hostkey.PublicKey(),
+	}
+
+	err = v.createVM(sp, vmConfig, mac, meta)
 	if err != nil {
 		return err
 	}
@@ -191,8 +202,8 @@ func diskVolumeName(vmName string, diskName string) string {
 	return vmName + "-" + diskName
 }
 
-func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string) error {
-	xml, err := v.vmXML(sp.Name, vmConfig, mac)
+func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string, meta *VMMeta) error {
+	xml, err := v.vmXML(sp.Name, vmConfig, mac, meta)
 	if err != nil {
 		return err
 	}
@@ -236,11 +247,19 @@ func (v *Virter) PingSSH(ctx context.Context, shellClientBuilder ShellClientBuil
 
 	hostPort := net.JoinHostPort(ips[0], "ssh")
 
+	knownHosts, err := v.getKnownHostsFor(vmName)
+	if err != nil {
+		return fmt.Errorf("failed to fetch host keys: %w", err)
+	}
+
+	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
+
 	sshConfig := ssh.ClientConfig{
-		Auth: v.sshkeys.Auth(),
-		Timeout: pingConfig.SSHPingPeriod,
-		User: "root",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth:              v.sshkeys.Auth(),
+		Timeout:           pingConfig.SSHPingPeriod,
+		User:              "root",
+		HostKeyCallback:   hostkeyCheck,
+		HostKeyAlgorithms: supportedAlgos,
 	}
 
 	sshTry := func() error {
@@ -517,6 +536,30 @@ func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 	return ips, nil
 }
 
+func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error) {
+	ips, err := v.getIPs(vmNames)
+	if err != nil {
+		return nil, err
+	}
+
+	domainSuffix, err := v.GetDomainSuffix()
+	if err != nil {
+		return nil, err
+	}
+
+	knownHosts := sshkeys.NewKnownHosts()
+	for i, vmName := range vmNames {
+		meta, err := v.getMetaForVM(vmName)
+		if err != nil {
+			return nil, err
+		}
+
+		knownHosts.AddHost(meta.HostKey, ips[i], vmName, fmt.Sprintf("%s.%s", vmName, domainSuffix))
+	}
+
+	return knownHosts, nil
+}
+
 // VMExecDocker runs a docker container against some VMs.
 func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
 	ips, err := v.getIPs(vmNames)
@@ -524,9 +567,12 @@ func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerap
 		return err
 	}
 
-	sshPrivateKey := v.sshkeys.KeyBytes()
+	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	if err != nil {
+		return err
+	}
 
-	err = containerRun(ctx, containerProvider, containerCfg, ips, sshPrivateKey, copyStep)
+	err = containerRun(ctx, containerProvider, containerCfg, ips, v.sshkeys, knownHosts, copyStep)
 	if err != nil {
 		return fmt.Errorf("failed to run container provisioning: %w", err)
 	}
@@ -544,10 +590,18 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 		return fmt.Errorf("Expected a single IP")
 	}
 
+	knownHosts, err := v.getKnownHostsFor(vmName)
+	if err != nil {
+		return fmt.Errorf("failed to fetch host keys: %w", err)
+	}
+
+	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
+
 	sshConfig := ssh.ClientConfig{
-		Auth: v.sshkeys.Auth(),
-		User: "root",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth:              v.sshkeys.Auth(),
+		User:              "root",
+		HostKeyCallback:   hostkeyCheck,
+		HostKeyAlgorithms: supportedAlgos,
 	}
 
 	hostPort := net.JoinHostPort(ips[0], "22")
@@ -567,10 +621,18 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 		return err
 	}
 
+	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	if err != nil {
+		return err
+	}
+
+	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
+
 	sshConfig := ssh.ClientConfig{
-		Auth:v.sshkeys.Auth(),
-		User: "root",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth:              v.sshkeys.Auth(),
+		User:              "root",
+		HostKeyCallback:   hostkeyCheck,
+		HostKeyAlgorithms: supportedAlgos,
 	}
 
 	var g errgroup.Group
@@ -606,10 +668,12 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, 
 
 func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, sourceSpecs []string, destSpec string) error {
 	sources := make([]netcopy.HostPath, len(sourceSpecs))
+	var vmNames []string
 	for i, srcSpec := range sourceSpecs {
 		sources[i] = netcopy.ParseHostPath(srcSpec)
 
 		if !sources[i].Local() {
+			vmNames = append(vmNames, sources[i].Host)
 			// Replace hostname with ip
 			ip, err := v.getIP(sources[i].Host, nil)
 			if err != nil {
@@ -621,6 +685,7 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 
 	dest := netcopy.ParseHostPath(destSpec)
 	if !dest.Local() {
+		vmNames = append(vmNames, dest.Host)
 		ip, err := v.getIP(dest.Host, nil)
 		if err != nil {
 			return err
@@ -628,7 +693,12 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 		dest.Host = ip
 	}
 
-	return copier.Copy(ctx, sources, dest, v.sshkeys)
+	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	if err != nil {
+		return err
+	}
+
+	return copier.Copy(ctx, sources, dest, v.sshkeys, knownHosts)
 }
 
 func runSSHCommand(ctx context.Context, config *ssh.ClientConfig, vmName, ipPort, script string, env []string) error {

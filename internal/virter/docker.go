@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/LINBIT/virter/pkg/overtime"
+	"github.com/LINBIT/virter/pkg/sshkeys"
 
 	"github.com/LINBIT/containerapi"
 
@@ -25,14 +27,34 @@ const (
 	colorReset   = "\u001b[0m"
 )
 
-func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmIPs []string, sshPrivateKey []byte, copyStep *ProvisionDockerCopyStep) error {
+func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmIPs []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 	cleanupContext, cleanupCancel := overtime.WithOvertimeContext(ctx, 10*time.Second)
 	defer cleanupCancel()
 
+	knownHostsFile, err := ioutil.TempFile("", "virter-container-known-hosts-*")
+	if err != nil {
+		return fmt.Errorf("failed to create known hosts file: %w", err)
+	}
+
+	defer os.Remove(knownHostsFile.Name())
+
+	err = knownHosts.AsKnownHostsFile(knownHostsFile)
+	if err != nil {
+		return fmt.Errorf("failed to write known hosts file: %w", err)
+	}
+
+	err = knownHostsFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close known hosts file: %w", err)
+	}
+
+	containerCfg.AddMount(containerapi.Mount{HostPath: keyStore.KeyPath(), ContainerPath: "/root/.ssh/id_rsa", ReadOnly: true})
+	containerCfg.AddMount(containerapi.Mount{HostPath: knownHostsFile.Name(), ContainerPath: "/root/.ssh/known_hosts"})
+
 	containerCfg.SetEnv("TARGETS", strings.Join(vmIPs, ","))
-	containerCfg.SetEnv("SSH_PRIVATE_KEY", string(sshPrivateKey))
+	containerCfg.SetEnv("SSH_PRIVATE_KEY", string(keyStore.KeyBytes()))
 
 	containerID, err := containerProvider.Create(
 		ctx,

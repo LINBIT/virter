@@ -396,6 +396,7 @@ const (
 func fakeLibvirtNetwork() *FakeLibvirtNetwork {
 	return &FakeLibvirtNetwork{
 		description: &libvirtxml.Network{
+			Domain: &libvirtxml.NetworkDomain{Name: "fake-domain.com"},
 			IPs: []libvirtxml.NetworkIP{
 				libvirtxml.NetworkIP{
 					Address: networkAddress,
@@ -416,9 +417,16 @@ func fakeNetworkAddHost(network *FakeLibvirtNetwork, mac string, ip string) {
 	*hosts = append(*hosts, host)
 }
 
+const fakeVMMeta = `
+<meta xmlns="https://github.com/LINBIT/virter">
+	<hostkey>ssh-rsa abcdef123456789</hostkey>
+</meta>
+`
+
 func newFakeLibvirtDomain(mac string) *FakeLibvirtDomain {
 	return &FakeLibvirtDomain{
 		description: &libvirtxml.Domain{
+			Metadata: &libvirtxml.DomainMetadata{XML: fakeVMMeta},
 			Devices: &libvirtxml.DomainDeviceList{
 				Interfaces: []libvirtxml.DomainInterface{
 					libvirtxml.DomainInterface{
