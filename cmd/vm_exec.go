@@ -76,7 +76,7 @@ func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames 
 func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDockerStep, vmNames []string) error {
 	containerProvider, err := containerapi.NewProvider(ctx, containerProvider())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer containerProvider.Close()
 

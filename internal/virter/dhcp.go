@@ -50,7 +50,23 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 	return nil
 }
 
-func (v *Virter) GetDomainSuffix() (string, error) {
+// Get the libvirt DNS server
+func (v *Virter) getDNSServer() (net.IP, error) {
+	network, err := v.libvirt.NetworkLookupByName(v.networkName)
+	if err != nil {
+		return nil, fmt.Errorf("could not get network: %w", err)
+	}
+
+	ipNet, err := v.getIPNet(network)
+	if err != nil {
+		return nil, fmt.Errorf("could not get network description: %w", err)
+	}
+
+	return ipNet.IP, nil
+}
+
+// get the domain suffix of the libvirt network
+func (v *Virter) getDomainSuffix() (string, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
 		return "", fmt.Errorf("could not get network: %w", err)

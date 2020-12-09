@@ -542,7 +542,7 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 		return nil, err
 	}
 
-	domainSuffix, err := v.GetDomainSuffix()
+	domainSuffix, err := v.getDomainSuffix()
 	if err != nil {
 		return nil, err
 	}
@@ -562,17 +562,25 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 
 // VMExecDocker runs a docker container against some VMs.
 func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
-	ips, err := v.getIPs(vmNames)
-	if err != nil {
-		return err
-	}
-
 	knownHosts, err := v.getKnownHostsFor(vmNames...)
 	if err != nil {
 		return err
 	}
 
-	err = containerRun(ctx, containerProvider, containerCfg, ips, v.sshkeys, knownHosts, copyStep)
+	domain, err := v.getDomainSuffix()
+	if err != nil {
+		return err
+	}
+
+	dnsserver, err := v.getDNSServer()
+	if err != nil {
+		return err
+	}
+
+	containerCfg.AddDNSSearchDomain(domain)
+	containerCfg.AddDNSServer(dnsserver)
+
+	err = containerRun(ctx, containerProvider, containerCfg, vmNames, v.sshkeys, knownHosts, copyStep)
 	if err != nil {
 		return fmt.Errorf("failed to run container provisioning: %w", err)
 	}

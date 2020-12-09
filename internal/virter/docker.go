@@ -27,7 +27,7 @@ const (
 	colorReset   = "\u001b[0m"
 )
 
-func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmIPs []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
+func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 	cleanupContext, cleanupCancel := overtime.WithOvertimeContext(ctx, 10*time.Second)
@@ -53,7 +53,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	containerCfg.AddMount(containerapi.Mount{HostPath: keyStore.KeyPath(), ContainerPath: "/root/.ssh/id_rsa", ReadOnly: true})
 	containerCfg.AddMount(containerapi.Mount{HostPath: knownHostsFile.Name(), ContainerPath: "/root/.ssh/known_hosts"})
 
-	containerCfg.SetEnv("TARGETS", strings.Join(vmIPs, ","))
+	containerCfg.SetEnv("TARGETS", strings.Join(vmNames, ","))
 	containerCfg.SetEnv("SSH_PRIVATE_KEY", string(keyStore.KeyBytes()))
 
 	containerID, err := containerProvider.Create(

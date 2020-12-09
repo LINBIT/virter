@@ -41,7 +41,7 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys
 	privateKey := text.Indent(hostkey.PrivateKey(), "    ")
 	publicKey := text.Indent(hostkey.PublicKey(), "    ")
 
-	domainSuffix, err := v.GetDomainSuffix()
+	domainSuffix, err := v.getDomainSuffix()
 	if err != nil {
 		return "", nil
 	}
