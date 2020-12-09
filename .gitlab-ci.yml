@@ -50,6 +50,7 @@ lint:
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
     - golangci-lint version
     - echo "Linting new code relative to branch $CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - golangci-lint run --new-from-rev="remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --out-format="junit-xml" > lint.xml
   allow_failure: true
   artifacts:
