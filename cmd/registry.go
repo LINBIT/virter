@@ -15,11 +15,14 @@ import (
 
 const upstreamRegistryURL = "https://linbit.github.io/virter/images.toml"
 
+const longRegistryCommandText = `Image registry related subcommands.
+To manipulate the registry config: '%s'`
+
 func registryCommand() *cobra.Command {
 	registryCmd := &cobra.Command{
 		Use:   "registry",
 		Short: "Image registry related subcommands",
-		Long:  `Image registry related subcommands.`,
+		Long:  fmt.Sprintf(longRegistryCommandText, userRegistryFile()),
 	}
 
 	registryCmd.AddCommand(registryUpdateCommand())

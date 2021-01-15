@@ -22,7 +22,7 @@ and write it to a local file.`,
 				log.Fatalf("Failed to fetch registry: %v", err)
 			}
 
-			log.Infof("Successfully updated registry")
+			log.Infof("Successfully updated registry at '%s'", registryPath)
 		},
 	}
 
