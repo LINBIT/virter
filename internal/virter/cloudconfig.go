@@ -26,7 +26,11 @@ ssh_keys:
 {{ .IndentedPublicKey }}
 preserve_hostname: false
 hostname: {{ .VMName }}
+{{- if .DomainSuffix }}
 fqdn: {{ .VMName }}.{{ .DomainSuffix }}
+{{- else }}
+fqdn: {{ .VMName }}
+{{- end }}
 `
 
 func (v *Virter) metaData(vmName string) (string, error) {
@@ -43,15 +47,15 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys
 
 	domainSuffix, err := v.getDomainSuffix()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	templateData := map[string]interface{}{
-		"VMName":              vmName,
-		"DomainSuffix":          domainSuffix,
-		"SSHPublicKeys":       sshPublicKeys,
-		"IndentedPrivateKey":  privateKey,
-		"IndentedPublicKey":   publicKey,
+		"VMName":             vmName,
+		"DomainSuffix":       domainSuffix,
+		"SSHPublicKeys":      sshPublicKeys,
+		"IndentedPrivateKey": privateKey,
+		"IndentedPublicKey":  publicKey,
 	}
 
 	return renderTemplate("user-data", templateUserData, templateData)

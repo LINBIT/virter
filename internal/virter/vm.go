@@ -554,7 +554,11 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 			return nil, err
 		}
 
-		knownHosts.AddHost(meta.HostKey, ips[i], vmName, fmt.Sprintf("%s.%s", vmName, domainSuffix))
+		hosts := []string{ips[i], vmName}
+		if domainSuffix != "" {
+			hosts = append(hosts, fmt.Sprintf("%s.%s", vmName, domainSuffix))
+		}
+		knownHosts.AddHost(meta.HostKey, hosts...)
 	}
 
 	return knownHosts, nil
@@ -577,7 +581,9 @@ func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerap
 		return err
 	}
 
-	containerCfg.AddDNSSearchDomain(domain)
+	if domain != "" {
+		containerCfg.AddDNSSearchDomain(domain)
+	}
 	containerCfg.AddDNSServer(dnsserver)
 
 	err = containerRun(ctx, containerProvider, containerCfg, vmNames, v.sshkeys, knownHosts, copyStep)

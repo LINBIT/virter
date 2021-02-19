@@ -65,7 +65,8 @@ func (v *Virter) getDNSServer() (net.IP, error) {
 	return ipNet.IP, nil
 }
 
-// get the domain suffix of the libvirt network
+// Get the domain suffix of the libvirt network. Returns an empty string if no
+// domain is configured.
 func (v *Virter) getDomainSuffix() (string, error) {
 	network, err := v.libvirt.NetworkLookupByName(v.networkName)
 	if err != nil {
@@ -77,12 +78,8 @@ func (v *Virter) getDomainSuffix() (string, error) {
 		return "", fmt.Errorf("could not get network xml: %w", err)
 	}
 
-	if net.Domain == nil {
-		return "", fmt.Errorf("network '%s' has no <domain/> configured", v.networkName)
-	}
-
-	if net.Domain.Name == "" {
-		return "", fmt.Errorf("network '%s' has empty name attribute in <domain/>", v.networkName)
+	if net.Domain == nil || net.Domain.Name == "" {
+		return "", nil
 	}
 
 	return net.Domain.Name, nil
