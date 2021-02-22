@@ -1,0 +1,6 @@
+[[steps]]
+[steps.shell]
+script = '''
+echo "Hello world!"
+echo "Running on $(uname -sr)"
+'''
