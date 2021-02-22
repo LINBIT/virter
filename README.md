@@ -23,16 +23,9 @@ virter vm ssh centos-7-hello
 virter vm rm centos-7-hello
 ```
 
-## Building from source
+## Usage
 
-If you want to test the latest unstable version of virter, you can build the
-git version from sources:
-
-```
-git clone https://github.com/LINBIT/virter
-cd virter
-go build .
-```
+For usage just run `virter help`.
 
 ## Installation Details
 
@@ -131,15 +124,22 @@ systemctl restart apparmor.service
 systemctl restart libvirtd.service
 ```
 
-## Usage
-
-For usage just run `virter help`.
-
 ## Architecture
 
 Virter connects to the libvirt daemon for all the heavy lifting. It supplies
 bootstrap configuration to the VMs using `cloud-init` volumes, so that the
 hostname is set and SSH access is possible.
+
+## Building from source
+
+If you want to test the latest unstable version of virter, you can build the
+git version from sources:
+
+```
+git clone https://github.com/LINBIT/virter
+cd virter
+go build .
+```
 
 ## Comparison to other tools
 
