@@ -23,6 +23,10 @@ virter vm ssh centos-7-hello
 virter vm rm centos-7-hello
 ```
 
+Depending on your host distribution and libvirt installation, you may need to:
+* [Set up a storage pool](#libvirt-storage-pool); and/or
+* [Configure AppArmor](#apparmor).
+
 ## Usage
 
 For usage just run `virter help`.
@@ -114,6 +118,19 @@ In addition, when the VM generates a lot of output, this can trigger `virtlogd`
 to roll the log file over, which creates a file owned by root (assuming
 `virtlogd` is running as root). To prevent this, increase `max_size` in
 `/etc/libvirt/virtlogd.conf`.
+
+### libvirt storage pool
+
+Virter requires a libvirt storage pool for its images and VM volumes. By
+default, it expects a pool named `default`. Some libvirt distributions
+configure this pool automatically. Some, such as the standard packages on
+Ubuntu Focal, do not. If the pool does not exist, create it like this:
+
+```
+virsh pool-define-as --name default --type dir --target /var/lib/libvirt/images
+virsh pool-autostart default
+virsh pool-start default
+```
 
 ### AppArmor
 
