@@ -4,6 +4,7 @@ Image = "virter-hello-world"
 [[steps]]
 [steps.docker]
 image = "{{.Image}}"
+# example of how to copy a file from the container after provisioning is finished:
 [steps.docker.copy]
 source = "/entry.sh"
 dest = "/tmp/"

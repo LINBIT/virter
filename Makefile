@@ -18,4 +18,4 @@ release:
 
 .PHONY: examples
 examples:
-	docker build -t virter-hello-world:latest examples/hello-world/
+	docker build -t virter-hello-world:latest examples/hello-world-docker/
