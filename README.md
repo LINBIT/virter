@@ -14,7 +14,7 @@ projects which cannot use containers due to kernel dependencies, such as
 First install and set up [libvirt](https://libvirt.org/index.html). Then
 download one of the [releases](https://github.com/LINBIT/virter/releases).
 Virter is packaged as a single binary, so just put that into `/usr/local/bin` and
-you are ready to use virter:
+you are ready to use Virter:
 
 ```
 virter image pull centos-7 # also would be auto-pulled in next step
@@ -32,11 +32,12 @@ For usage just run `virter help`.
 Virter requires:
 
 * A running libvirt daemon on the host where it is run
-* A container runtime. Currently, Virter supports `docker` and `podman`.
+* When container provisioning is used: A container runtime.
+  Currently, Virter supports `docker` and `podman`.
 
 Configuration is read by default from `~/.config/virter/virter.toml`.
 
-When starting virter for the first time, a default configuration file will be
+When starting Virter for the first time, a default configuration file will be
 generated, including documentation about the various flags.
 
 ### Container runtime
@@ -65,7 +66,7 @@ If you require DNS resolution from your VMs to return correct FQDNs, add the
 </network>
 ```
 
-By default, virter uses the libvirt network named `default`.
+By default, Virter uses the libvirt network named `default`.
 
 ### DHCP Leases
 
@@ -73,15 +74,15 @@ Libvirt produces some weird behavior when MAC or IP addresses are reused while
 there is still an active DHCP lease for them. This can result in a new VM
 getting assigned a random IP instead of the IP corresponding to its ID.
 
-To work around this, virter tries to execute the `dhcp_release` utility in
+To work around this, Virter tries to execute the `dhcp_release` utility in
 order to release the DHCP lease from libvirt's DHCP server when a VM is
-removed. This utility has to be run by the root user, so virter executes
+removed. This utility has to be run by the root user, so Virter executes
 it using `sudo`.
 
 If execution fails (for example because the utility is not installed or the
-sudo rules are not set up correctly), the error is ignored by virter.
+sudo rules are not set up correctly), the error is ignored by Virter.
 
-So, to make virter work more reliably, especially when you are running lots
+So, to make Virter work more reliably, especially when you are running lots
 of VMs in a short amount of time, you should install the `dhcp_release` utility
 (usually packaged as `dnsmasq-utils`). Additionally, you should make sure that
 your user can run `dhcp_release` as root, for example by using a sudo rule like
@@ -132,7 +133,7 @@ hostname is set and SSH access is possible.
 
 ## Building from source
 
-If you want to test the latest unstable version of virter, you can build the
+If you want to test the latest unstable version of Virter, you can build the
 git version from sources:
 
 ```
@@ -150,7 +151,7 @@ useful for more detailed libvirt management. They work well together.
 
 ### `virt-install`
 
-`virt-install` is built for the images that use conventional installers. Virter
+`virt-install` is built for images that use conventional installers. Virter
 uses `cloud-init`, making it simpler to use and quicker to start a fresh VM.
 
 ### Running VMs in AWS/GCP/OpenNebula
