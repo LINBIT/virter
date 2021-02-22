@@ -27,6 +27,13 @@ virter vm rm centos-7-hello
 
 For usage just run `virter help`.
 
+Some examples are provided in the [examples](./examples) directory. See the
+README files for the individual examples.
+
+There is also additional [documentation for the provisioning
+feature](./doc/provisioning.md). This is useful for defining new images. These
+images can be used to start clusters of cloned VMs.
+
 ## Installation Details
 
 Virter requires:
