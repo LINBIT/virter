@@ -120,7 +120,13 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 
 	for _, s := range buildConfig.ProvisionConfig.Steps {
 		if s.Docker != nil {
-			containerCfg := containerapi.NewContainerConfig(buildConfig.ContainerName, s.Docker.Image, s.Docker.Env, containerapi.WithCommand(s.Docker.Command...))
+			containerCfg := containerapi.NewContainerConfig(
+				buildConfig.ContainerName,
+				s.Docker.Image,
+				s.Docker.Env,
+				containerapi.WithCommand(s.Docker.Command...),
+				containerapi.WithPullConfig(containerapi.PullIfNotExists),
+			)
 			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, nil)
 		} else if s.Shell != nil {
 			err = v.VMExecShell(ctx, vmNames, s.Shell)

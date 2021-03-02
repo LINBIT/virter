@@ -80,7 +80,13 @@ func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDocker
 	}
 	defer containerProvider.Close()
 
-	containerCfg := containerapi.NewContainerConfig("virter-"+strings.Join(vmNames, "-"), s.Image, s.Env, containerapi.WithCommand(s.Command...))
+	containerCfg := containerapi.NewContainerConfig(
+		"virter-"+strings.Join(vmNames, "-"),
+		s.Image,
+		s.Env,
+		containerapi.WithCommand(s.Command...),
+		containerapi.WithPullConfig(containerapi.PullIfNotExists),
+	)
 
 	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, s.Copy)
 }
