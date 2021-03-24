@@ -50,8 +50,14 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		return fmt.Errorf("failed to close known hosts file: %w", err)
 	}
 
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to find current working directory: %w", err)
+	}
+
 	containerCfg.AddMount(containerapi.Mount{HostPath: keyStore.KeyPath(), ContainerPath: "/root/.ssh/id_rsa", ReadOnly: true})
 	containerCfg.AddMount(containerapi.Mount{HostPath: knownHostsFile.Name(), ContainerPath: "/root/.ssh/known_hosts"})
+	containerCfg.AddMount(containerapi.Mount{HostPath: wd, ContainerPath: "/virter/workspace", ReadOnly: true})
 
 	containerCfg.SetEnv("TARGETS", strings.Join(vmNames, ","))
 	containerCfg.SetEnv("SSH_PRIVATE_KEY", string(keyStore.KeyBytes()))
