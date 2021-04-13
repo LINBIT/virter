@@ -117,6 +117,13 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 		}
 	}
 
+	log.Debugf("adding extra NIC to vm for: %v", vm.ExtraNics)
+	extraNICs, err := vmNICtoLibvirtInterfaces(vm.ExtraNics)
+	if err != nil {
+		return "", err
+	}
+	log.Debugf("output are these interfaces: %v", extraNICs)
+
 	metaXml, err := xml.Marshal(metaWrapper{VMMeta: meta})
 	if err != nil {
 		return "", fmt.Errorf("failed to create metadata xml: %w", err)
@@ -175,8 +182,8 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 					Model: "virtio-scsi",
 				},
 			},
-			Interfaces: []lx.DomainInterface{
-				lx.DomainInterface{
+			Interfaces: append(
+				[]lx.DomainInterface{{
 					MAC: &lx.DomainInterfaceMAC{
 						Address: mac,
 					},
@@ -189,8 +196,9 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 					Model: &lx.DomainInterfaceModel{
 						Type: "virtio",
 					},
-				},
-			},
+				}},
+				extraNICs...,
+			),
 			Consoles: []lx.DomainConsole{
 				libvirtConsole(vm),
 			},
@@ -211,6 +219,34 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 		QEMUCommandline: qemuCommandline,
 	}
 	return domain.Marshal()
+}
+
+func vmNICtoLibvirtInterfaces(nics []NIC) ([]lx.DomainInterface, error) {
+	lnics := make([]lx.DomainInterface, len(nics))
+	for i, nic := range nics {
+		var source *lx.DomainInterfaceSource
+		switch nic.GetType() {
+		case NICTypeBridge:
+			source = &lx.DomainInterfaceSource{Bridge: &lx.DomainInterfaceSourceBridge{Bridge: nic.GetSource()}}
+		case NICTypeNetwork:
+			source = &lx.DomainInterfaceSource{Network: &lx.DomainInterfaceSourceNetwork{Network: nic.GetSource()}}
+		default:
+			return nil, fmt.Errorf("unsupported interface type: %s", nic.GetType())
+		}
+
+		var mac *lx.DomainInterfaceMAC
+		if nic.GetMAC() != "" {
+			mac = &lx.DomainInterfaceMAC{Address: nic.GetMAC()}
+		}
+
+		lnics[i] = lx.DomainInterface{
+			Source: source,
+			MAC:    mac,
+			Model:  &lx.DomainInterfaceModel{Type: nic.GetModel()},
+		}
+	}
+
+	return lnics, nil
 }
 
 func (v *Virter) ciDataVolumeXML(name string) (string, error) {

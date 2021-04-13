@@ -105,6 +105,9 @@ func vmRunCommand() *cobra.Command {
 	var diskStrings []string
 	var disks []virter.Disk
 
+	var nicStrings []string
+	var nics []virter.NIC
+
 	var provisionFile string
 	var provisionOverrides []string
 
@@ -124,6 +127,15 @@ func vmRunCommand() *cobra.Command {
 					log.Fatalf("Invalid disk: %v", err)
 				}
 				disks = append(disks, &d)
+			}
+
+			for _, s := range nicStrings {
+				var n NICArg
+				err := n.Set(s)
+				if err != nil {
+					log.Fatalf("Invalid nic: %v", err)
+				}
+				nics = append(nics, &n)
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
@@ -206,6 +218,7 @@ func vmRunCommand() *cobra.Command {
 						ExtraSSHPublicKeys: extraAuthorizedKeys,
 						ConsolePath:        consolePath,
 						Disks:              disks,
+						ExtraNics:          nics,
 						GDBPort:            thisGDBPort,
 					}
 
@@ -265,6 +278,8 @@ func vmRunCommand() *cobra.Command {
 	// If this ever gets implemented in pflag , we will be able to solve this
 	// in a much smoother way.
 	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio". Can be specified multiple times`)
+	runCmd.Flags().StringArrayVarP(&nicStrings, "nic", "i", []string{}, `Add a NIC to the VM. Format: "type=network,source=some-net-name". Type can also be "bridge", in which case the source is the bridge device name. Additional config options are "model" (default: virtio) and "mac" (default chosen by libvirt). Can be specified multiple times`)
+
 	runCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	runCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 

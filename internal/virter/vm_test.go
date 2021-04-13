@@ -64,7 +64,7 @@ func TestVMRun(t *testing.T) {
 
 	assert.Empty(t, l.vols[vmName].content)
 
-	host := l.network.description.IPs[0].DHCP.Hosts[0]
+	host := l.networks[networkName].description.IPs[0].DHCP.Hosts[0]
 	assert.Equal(t, "52:54:00:00:00:2a", host.MAC)
 	assert.Equal(t, "192.168.122.42", host.IP)
 
@@ -88,7 +88,7 @@ func TestSSHPing(t *testing.T) {
 	domain := newFakeLibvirtDomain(vmMAC)
 	domain.active = true
 	l.domains[vmName] = domain
-	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
@@ -168,7 +168,7 @@ func TestVMRm(t *testing.T) {
 			domain.active = r[domainCreated]
 			l.domains[vmName] = domain
 
-			fakeNetworkAddHost(l.network, vmMAC, vmIP)
+			fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 		}
 
 		if r[bootVolume] {
@@ -187,9 +187,9 @@ func TestVMRm(t *testing.T) {
 
 		assert.Empty(t, l.vols)
 		if r[staticDHCP] {
-			assert.Len(t, l.network.description.IPs[0].DHCP.Hosts, 1)
+			assert.Len(t, l.networks[networkName].description.IPs[0].DHCP.Hosts, 1)
 		} else {
-			assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
+			assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
 		}
 		assert.Empty(t, l.domains)
 	}
@@ -240,7 +240,7 @@ func TestVMCommit(t *testing.T) {
 		l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
 		addDisk(l, vmName, ciDataVolumeName)
 
-		fakeNetworkAddHost(l.network, vmMAC, vmIP)
+		fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
 		an := new(mocks.AfterNotifier)
 
@@ -262,7 +262,7 @@ func TestVMCommit(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Len(t, l.vols, 1)
-			assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
+			assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
 			assert.Empty(t, l.domains)
 		} else {
 			assert.Error(t, err)
@@ -280,7 +280,7 @@ func TestVMExecDocker(t *testing.T) {
 	domain.active = true
 	l.domains[vmName] = domain
 
-	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
 	docker := mockContainerProvider()
 
@@ -301,7 +301,7 @@ func TestVMExecRsync(t *testing.T) {
 	domain.active = true
 	l.domains[vmName] = domain
 
-	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
@@ -365,7 +365,7 @@ func TestVMExecCopy(t *testing.T) {
 	domain.active = true
 	l.domains[vmName] = domain
 
-	fakeNetworkAddHost(l.network, vmMAC, vmIP)
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 

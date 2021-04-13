@@ -180,34 +180,42 @@ func (v *Virter) RemoveMACDHCPEntries(mac string) error {
 }
 
 func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool) error {
-	mac, err := v.getMAC(domain)
-	if err != nil {
-		return err
-	}
-	if mac == "" {
-		return fmt.Errorf("could not find MAC address of domain")
-	}
-
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return fmt.Errorf("could not get network: %w", err)
-	}
-
-	ips, err := v.findIPs(network, mac)
+	nics, err := v.getNICs(domain)
 	if err != nil {
 		return err
 	}
 
-	if removeDHCPEntries {
-		err = v.removeDHCPEntries(network, mac, ips)
+	for _, nic := range nics {
+		if nic.Network == "" {
+			continue
+		}
+
+		network, err := v.libvirt.NetworkLookupByName(nic.Network)
+		if err != nil {
+			if hasErrorCode(err, errNoNetwork) {
+				// We ignore non-existing networks, as there is no dhcp entry to remove
+				continue
+			}
+
+			return fmt.Errorf("could not get network: %w", err)
+		}
+
+		ips, err := v.findIPs(network, nic.MAC)
 		if err != nil {
 			return err
 		}
-	}
 
-	err = v.tryReleaseDHCP(network, mac, ips)
-	if err != nil {
-		log.Debugf("Could not release DHCP lease: %v", err)
+		if removeDHCPEntries {
+			err = v.removeDHCPEntries(network, nic.MAC, ips)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = v.tryReleaseDHCP(network, nic.MAC, ips)
+		if err != nil {
+			log.Debugf("Could not release DHCP lease: %v", err)
+		}
 	}
 
 	return nil
@@ -240,42 +248,66 @@ func (v *Virter) getDomainForMAC(mac string) (libvirt.Domain, error) {
 	}
 
 	for _, domain := range domains {
-		domainMAC, err := v.getMAC(domain)
+		nics, err := v.getNICs(domain)
 		if getErr, ok := err.(*LibvirtGetError); ok && getErr.NotFound {
 			continue
 		}
 		if err != nil {
 			return libvirt.Domain{}, fmt.Errorf("could not check MAC for domain '%s': %w", domain.Name, err)
 		}
-		if domainMAC == mac {
-			return domain, nil
+		for _, nic := range nics {
+			if nic.MAC == mac {
+				return domain, nil
+			}
 		}
 	}
 
 	return libvirt.Domain{}, nil
 }
 
-func (v *Virter) getMAC(domain libvirt.Domain) (string, error) {
+type nic struct {
+	MAC        string
+	Network    string
+	HostDevice string
+}
+
+// getNICs returns the list of macs and their virtual network
+func (v *Virter) getNICs(domain libvirt.Domain) ([]nic, error) {
 	domainDescription, err := getDomainDescription(v.libvirt, domain)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	devicesDescription := domainDescription.Devices
 	if devicesDescription == nil {
-		return "", fmt.Errorf("no devices in domain")
+		return nil, fmt.Errorf("no devices in domain")
 	}
 
+	var nics []nic
 	for _, interfaceDescription := range devicesDescription.Interfaces {
-		if interfaceDescription.MAC != nil &&
-			interfaceDescription.Source != nil &&
-			interfaceDescription.Source.Network != nil &&
-			interfaceDescription.Source.Network.Network == v.networkName {
-			return interfaceDescription.MAC.Address, nil
+		mac := ""
+		if interfaceDescription.MAC != nil {
+			mac = interfaceDescription.MAC.Address
 		}
+
+		network := ""
+		if interfaceDescription.Source != nil && interfaceDescription.Source.Network != nil {
+			network = interfaceDescription.Source.Network.Network
+		}
+
+		hostdevice := ""
+		if interfaceDescription.Target != nil {
+			hostdevice = interfaceDescription.Target.Dev
+		}
+
+		nics = append(nics, nic{
+			MAC:        mac,
+			Network:    network,
+			HostDevice: hostdevice,
+		})
 	}
 
-	return "", nil
+	return nics, nil
 }
 
 // getDHCPHosts returns a array of used dhcp entry hosts
@@ -287,7 +319,8 @@ func (v *Virter) getDHCPHosts(network libvirt.Network) ([]libvirtxml.NetworkDHCP
 		return hosts, err
 	}
 	if len(networkDescription.IPs) < 1 {
-		return hosts, fmt.Errorf("no IPs in network")
+		// No IPs == no DHCP entries
+		return hosts, nil
 	}
 
 	ipDescription := networkDescription.IPs[0]

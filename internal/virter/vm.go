@@ -769,9 +769,17 @@ func connectSSHRetry(ctx context.Context, config *ssh.ClientConfig, ipPort strin
 }
 
 func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (string, error) {
-	mac, err := v.getMAC(domain)
+	nics, err := v.getNICs(domain)
 	if err != nil {
 		return "", err
+	}
+
+	mac := ""
+	for _, nic := range nics {
+		if network.Name == nic.Network {
+			mac = nic.MAC
+			break
+		}
 	}
 	if mac == "" {
 		return "", fmt.Errorf("could not find MAC address of domain")

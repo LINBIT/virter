@@ -12,5 +12,9 @@ func networkCommand() *cobra.Command {
 	}
 
 	networkCmd.AddCommand(networkHostCommand())
+	networkCmd.AddCommand(networkLsCommand())
+	networkCmd.AddCommand(networkAddCommand())
+	networkCmd.AddCommand(networkRmCommand())
+	networkCmd.AddCommand(networkListAttachedCommand())
 	return networkCmd
 }

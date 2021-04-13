@@ -28,6 +28,13 @@ type LibvirtConnection interface {
 	StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, Clonevol libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
 	StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset uint64, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error)
 	StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity uint64, rAllocation uint64, err error)
+	ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error)
+	NetworkGetDhcpLeases(Net libvirt.Network, Mac libvirt.OptString, NeedResults int32, Flags uint32) (rLeases []libvirt.NetworkDhcpLease, rRet uint32, err error)
+	NetworkDefineXML(XML string) (rNet libvirt.Network, err error)
+	NetworkSetAutostart(Net libvirt.Network, Autostart int32) (err error)
+	NetworkCreate(Net libvirt.Network) (err error)
+	NetworkDestroy(Net libvirt.Network) (err error)
+	NetworkUndefine(Net libvirt.Network) (err error)
 	NetworkLookupByName(Name string) (rNet libvirt.Network, err error)
 	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
 	NetworkUpdate(Net libvirt.Network, Command uint32, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error)
@@ -91,6 +98,20 @@ type Disk interface {
 	GetBus() string
 }
 
+type NICType string
+
+const (
+	NICTypeNetwork = "network"
+	NICTypeBridge  = "bridge"
+)
+
+type NIC interface {
+	GetType() string
+	GetSource() string
+	GetModel() string
+	GetMAC() string
+}
+
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
 	ImageName          string
@@ -103,12 +124,13 @@ type VMConfig struct {
 	ExtraSSHPublicKeys []string
 	ConsolePath        string
 	Disks              []Disk
+	ExtraNics          []NIC
 	GDBPort            uint
 }
 
 // VMMeta is additional metadata stored with each VM
 type VMMeta struct {
-	HostKey string   `xml:"hostkey"`
+	HostKey string `xml:"hostkey"`
 }
 
 // SSHPingConfig contains the configuration for pinging a VM via SSH

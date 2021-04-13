@@ -192,9 +192,9 @@ foo = "{{.ShellEnv"
 			"no-template", noTemplate, true, ProvisionOption{}, []ProvisionStep{
 				ProvisionStep{
 					Docker: &ProvisionDockerStep{
-						Image: "some-image",
+						Image:   "some-image",
 						Command: []string{"exit", "0"},
-						Env:   map[string]string{"foo": "bar"},
+						Env:     map[string]string{"foo": "bar"},
 					},
 				},
 				ProvisionStep{
@@ -224,9 +224,9 @@ foo = "{{.ShellEnv"
 			[]ProvisionStep{
 				ProvisionStep{
 					Docker: &ProvisionDockerStep{
-						Image: "template-image",
+						Image:   "template-image",
 						Command: []string{"echo", "template-arg"},
-						Env:   map[string]string{"foo": "hello template-value"},
+						Env:     map[string]string{"foo": "hello template-value"},
 					},
 				},
 				ProvisionStep{

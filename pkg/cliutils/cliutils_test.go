@@ -66,8 +66,8 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "unmarshal error propagates",
-			arg: "str=foo2,int=-412,yes_or_no=42",
+			name:        "unmarshal error propagates",
+			arg:         "str=foo2,int=-412,yes_or_no=42",
 			expectError: true,
 		},
 	}

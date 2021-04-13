@@ -132,7 +132,7 @@ func TestImageBuild(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, l.vols, 2)
-	assert.Empty(t, l.network.description.IPs[0].DHCP.Hosts)
+	assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
 	assert.Empty(t, l.domains)
 
 	shell.AssertExpectations(t)

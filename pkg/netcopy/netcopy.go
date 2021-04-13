@@ -21,7 +21,7 @@ type NetworkCopier interface {
 }
 
 // The default copier. Uses `rsync` to do the actual work
-type RsyncNetworkCopier struct {}
+type RsyncNetworkCopier struct{}
 
 // HostPath stores a path with host information
 type HostPath struct {

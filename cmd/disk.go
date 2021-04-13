@@ -8,10 +8,10 @@ import (
 
 // DiskArg represents a disk that can be passed to virter via a command line argument.
 type DiskArg struct {
-	Name    string `arg:"name"`
-	Size    Size   `arg:"size"`
-	Format  string `arg:"format,qcow2"`
-	Bus     string `arg:"bus,virtio"`
+	Name   string `arg:"name"`
+	Size   Size   `arg:"size"`
+	Format string `arg:"format,qcow2"`
+	Bus    string `arg:"bus,virtio"`
 }
 
 type Size struct {

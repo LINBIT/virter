@@ -91,7 +91,6 @@ func fillValues(p map[string]string, v interface{}) error {
 			}
 		}
 
-
 		switch fieldVal.Kind() {
 		case reflect.String:
 			fieldVal.SetString(p[name])
@@ -101,7 +100,7 @@ func fillValues(p map[string]string, v interface{}) error {
 				return fmt.Errorf("failed to convert %s to int type: %w", p[name], err)
 			}
 			fieldVal.SetInt(n)
-		case reflect.Uint,  reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			n, err := strconv.ParseUint(p[name], 10, 0)
 			if err != nil {
 				return fmt.Errorf("failed to convert %s to int type: %w", p[name], err)
@@ -119,7 +118,7 @@ func fillValues(p map[string]string, v interface{}) error {
 				}
 			}
 			err := u.UnmarshalText([]byte(p[name]))
-			if err != nil{
+			if err != nil {
 				return fmt.Errorf("failed to convert value %s: %w", p[name], err)
 			}
 		}

@@ -115,10 +115,10 @@ step, and then committing the resulting volume.`,
 			}
 
 			buildConfig := virter.ImageBuildConfig{
-				ContainerName:     containerName,
-				ShutdownTimeout:   shutdownTimeout,
-				ProvisionConfig:   provisionConfig,
-				ResetMachineID:    resetMachineID,
+				ContainerName:   containerName,
+				ShutdownTimeout: shutdownTimeout,
+				ProvisionConfig: provisionConfig,
+				ResetMachineID:  resetMachineID,
 			}
 
 			err = pullIfNotExists(v, vmConfig.ImageName)

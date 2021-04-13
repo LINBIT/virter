@@ -1,6 +1,7 @@
 package virter_test
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -11,9 +12,71 @@ import (
 )
 
 type FakeLibvirtConnection struct {
-	vols    map[string]*FakeLibvirtStorageVol
-	network *FakeLibvirtNetwork
-	domains map[string]*FakeLibvirtDomain
+	vols     map[string]*FakeLibvirtStorageVol
+	networks map[string]*FakeLibvirtNetwork
+	domains  map[string]*FakeLibvirtDomain
+}
+
+type fakeLibvirtError struct {
+	Code uint32
+}
+
+func (f fakeLibvirtError) Error() string {
+	return fmt.Sprintf("fake libvirt error: %d", f)
+}
+
+var (
+	fakeLibvirtNoNetwork = fakeLibvirtError{Code: 43}
+)
+
+func (l *FakeLibvirtConnection) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) ([]libvirt.Network, uint32, error) {
+	nets := make([]libvirt.Network, 0, len(l.networks))
+	for k := range l.networks {
+		nets = append(nets, libvirt.Network{Name: k})
+	}
+
+	return nets, 0, nil
+}
+
+func (l *FakeLibvirtConnection) NetworkDefineXML(XML string) (libvirt.Network, error) {
+	var parsed libvirtxml.Network
+	err := xml.Unmarshal([]byte(XML), &parsed)
+	if err != nil {
+		return libvirt.Network{}, err
+	}
+
+	_, ok := l.networks[parsed.Name]
+	if ok {
+		return libvirt.Network{}, fmt.Errorf("network already exists")
+	}
+
+	l.networks[parsed.Name] = &FakeLibvirtNetwork{description: &parsed}
+	return libvirt.Network{Name: parsed.Name}, nil
+}
+
+func (l *FakeLibvirtConnection) NetworkSetAutostart(Net libvirt.Network, Autostart int32) (err error) {
+	return nil
+}
+
+func (l *FakeLibvirtConnection) NetworkCreate(Net libvirt.Network) (err error) {
+	return nil
+}
+
+func (l *FakeLibvirtConnection) NetworkDestroy(Net libvirt.Network) (err error) {
+	return nil
+}
+
+func (l *FakeLibvirtConnection) NetworkUndefine(Net libvirt.Network) error {
+	_, ok := l.networks[Net.Name]
+	if !ok {
+		return fakeLibvirtNoNetwork
+	}
+	delete(l.networks, Net.Name)
+	return nil
+}
+
+func (l *FakeLibvirtConnection) NetworkGetDhcpLeases(Net libvirt.Network, Mac libvirt.OptString, NeedResults int32, Flags uint32) (rLeases []libvirt.NetworkDhcpLease, rRet uint32, err error) {
+	return nil, 0, nil
 }
 
 type FakeLibvirtStorageVol struct {
@@ -33,9 +96,9 @@ type FakeLibvirtDomain struct {
 
 func newFakeLibvirtConnection() *FakeLibvirtConnection {
 	return &FakeLibvirtConnection{
-		vols:    make(map[string]*FakeLibvirtStorageVol),
-		network: fakeLibvirtNetwork(),
-		domains: make(map[string]*FakeLibvirtDomain),
+		vols:     make(map[string]*FakeLibvirtStorageVol),
+		networks: map[string]*FakeLibvirtNetwork{networkName: fakeLibvirtNetwork()},
+		domains:  make(map[string]*FakeLibvirtDomain),
 	}
 }
 
@@ -176,33 +239,34 @@ func (l *FakeLibvirtConnection) StorageVolGetInfo(Vol libvirt.StorageVol) (rType
 	return 0, 42, 23, nil
 }
 
-func (l *FakeLibvirtConnection) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
-	if Name != networkName {
-		return libvirt.Network{}, errors.New("unknown network")
-	}
-
-	return libvirt.Network{
-		Name: Name,
-	}, nil
+func (l *FakeLibvirtConnection) ConnectListNetworks(Maxnames int32) (rNames []string, err error) {
+	return []string{networkName}, nil
 }
 
-func (l *FakeLibvirtConnection) NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error) {
-	if Net.Name != networkName {
-		return "", errors.New("unknown network")
+func (l *FakeLibvirtConnection) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
+	_, ok := l.networks[Name]
+	if !ok {
+		return libvirt.Network{}, fakeLibvirtNoNetwork
 	}
 
-	xml, err := l.network.description.Marshal()
-	if err != nil {
-		panic(err)
+	return libvirt.Network{Name: Name}, nil
+}
+
+func (l *FakeLibvirtConnection) NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (string, error) {
+	n, ok := l.networks[Net.Name]
+	if !ok {
+		return "", fakeLibvirtNoNetwork
 	}
-	return xml, nil
+
+	xmldesc, err := xml.Marshal(n.description)
+	if err != nil {
+		return "", err
+	}
+
+	return string(xmldesc), nil
 }
 
 func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command uint32, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error) {
-	if Net.Name != networkName {
-		return errors.New("unknown network")
-	}
-
 	// the following 2 arguments are swapped; see
 	// https://github.com/digitalocean/go-libvirt/issues/87
 	section := Command
@@ -212,7 +276,14 @@ func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command uint3
 		return errors.New("unknown section")
 	}
 
-	hosts := &l.network.description.IPs[0].DHCP.Hosts
+	var n *libvirtxml.Network
+	for _, knownNet := range l.networks {
+		if knownNet.description.Name == Net.Name {
+			n = knownNet.description
+		}
+	}
+
+	hosts := &n.IPs[0].DHCP.Hosts
 
 	host := &libvirtxml.NetworkDHCPHost{}
 	if err := host.Unmarshal(XML); err != nil {
@@ -396,7 +467,9 @@ const (
 func fakeLibvirtNetwork() *FakeLibvirtNetwork {
 	return &FakeLibvirtNetwork{
 		description: &libvirtxml.Network{
-			Domain: &libvirtxml.NetworkDomain{Name: "fake-domain.com"},
+			XMLName: xml.Name{Local: "network"},
+			Name:    networkName,
+			Domain:  &libvirtxml.NetworkDomain{Name: "fake-domain.com"},
 			IPs: []libvirtxml.NetworkIP{
 				libvirtxml.NetworkIP{
 					Address: networkAddress,

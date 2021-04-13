@@ -92,10 +92,10 @@ type ImageBuildTools struct {
 
 // ImageBuildConfig contains the configuration for building an image
 type ImageBuildConfig struct {
-	ContainerName     string
-	ShutdownTimeout   time.Duration
-	ProvisionConfig   ProvisionConfig
-	ResetMachineID    bool
+	ContainerName   string
+	ShutdownTimeout time.Duration
+	ProvisionConfig ProvisionConfig
+	ResetMachineID  bool
 }
 
 func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, pingConfig SSHPingConfig, buildConfig ImageBuildConfig) error {

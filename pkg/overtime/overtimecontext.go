@@ -21,17 +21,17 @@ func WithOvertimeContext(parent context.Context, overtime time.Duration) (contex
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			// we are done here, context is cancelled
 			return
-		case <- parent.Done():
+		case <-parent.Done():
 			// "parent" context is cancelled, we can start our own timeout now
 		}
 
 		timer, timerCancel := context.WithTimeout(ctx, overtime)
 		defer timerCancel()
 		// No need for extra select here. The timer context will be cancelled in case the parent context is cancelled.
-		<- timer.Done()
+		<-timer.Done()
 		cancel()
 	}()
 
