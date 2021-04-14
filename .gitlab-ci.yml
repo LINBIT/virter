@@ -39,12 +39,7 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  # run golangci-lint on every commit. when we are in a merge request, only check
-  # the changes inside that MR, otherwise check the whole codebase
-  # (note: $CI_COMMIT_BEFORE_SHA is set to "" when we are not in a merge request,
-  # but golangci-lint conventiently ignores the --new-from-rev flag when it's
-  # empty, and so it checks the entire codebase like we want).
-  image: golangci/golangci-lint:v1.26-alpine
+  image: golangci/golangci-lint:v1.39-alpine
   script:
     - GOPATH=$(pwd)/.mygo go get github.com/vektra/mockery/.../
     - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
