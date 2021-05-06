@@ -2,6 +2,7 @@ package virter
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"os/exec"
 
@@ -27,7 +28,7 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 	}
 
 	networkBaseIP := ipNet.IP.Mask(ipNet.Mask)
-	ip := addToIP(networkBaseIP, id)
+	ip := AddToIP(networkBaseIP, id)
 
 	if !ipNet.Contains(ip) {
 		return fmt.Errorf("computed IP %v is not in network", ip)
@@ -85,7 +86,7 @@ func (v *Virter) getDomainSuffix() (string, error) {
 	return net.Domain.Name, nil
 }
 
-func addToIP(ip net.IP, addend uint) net.IP {
+func AddToIP(ip net.IP, addend uint) net.IP {
 	i := ip.To4()
 	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])
 	v += addend
@@ -113,10 +114,39 @@ func ipToID(ipnet net.IPNet, ip net.IP) (uint, error) {
 
 // QemuMAC calculates a MAC address for a given id
 func QemuMAC(id uint) string {
-	id0 := byte((id >> 16) & 0xFF)
-	id1 := byte((id >> 8) & 0xFF)
-	id2 := byte(id & 0xFF)
-	return fmt.Sprintf("52:54:00:%02x:%02x:%02x", id0, id1, id2)
+	mac, err := AddToMAC(QemuBaseMAC(), id)
+	if err != nil {
+		// Should never happen because "id" should never exceed 32 bits
+		// and any 32 bit value can be added to the QEMU base MAC.
+		panic(fmt.Sprintf("failed to construct QEMU MAC: %v", err))
+	}
+
+	return mac.String()
+}
+
+func QemuBaseMAC() net.HardwareAddr {
+	mac, err := net.ParseMAC("52:54:00:00:00:00")
+	if err != nil {
+		panic("failed to parse hardcoded MAC address")
+	}
+
+	return mac
+}
+
+func AddToMAC(mac net.HardwareAddr, addend uint) (net.HardwareAddr, error) {
+	var value big.Int
+	value.SetBytes(mac)
+	value.Add(&value, big.NewInt(int64(addend)))
+
+	valueBytes := value.Bytes()
+	if len(valueBytes) > len(mac) {
+		return net.HardwareAddr{}, fmt.Errorf("overflow adding %d to %v", addend, mac)
+	}
+
+	// zero-pad bytes
+	out := make([]byte, len(mac))
+	copy(out[len(out)-len(valueBytes):], valueBytes)
+	return out, nil
 }
 
 func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {

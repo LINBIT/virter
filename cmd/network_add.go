@@ -1,22 +1,29 @@
 package cmd
 
 import (
+	"fmt"
+	"net"
+
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net"
+
+	"github.com/LINBIT/virter/internal/virter"
 )
 
 func networkAddCommand() *cobra.Command {
 	var forward string
 	var dhcp bool
+	var dhcpMAC string
+	var dhcpID uint
+	var dhcpCount uint
 	var network string
 	var domain string
 
 	addCmd := &cobra.Command{
 		Use:   "add <name>",
 		Short: "Add a new network",
-		Long:  `Add a new network. VMs can be attached to such a network in addition to the default network used by virter.`,
+		Long:  `Add a new network. VMs can be attached to such a network in addition to the default network used by virter. DHCP entries can be added directly to the new network.`,
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			v, err := InitVirter()
@@ -41,13 +48,7 @@ func networkAddCommand() *cobra.Command {
 
 				var dhcpDesc *libvirtxml.NetworkDHCP
 				if dhcp {
-					start := nextIP(ip)
-					end := previousIP(broadcastAddress(n))
-
-					n.Network()
-					dhcpDesc = &libvirtxml.NetworkDHCP{
-						Ranges: []libvirtxml.NetworkDHCPRange{{Start: start.String(), End: end.String()}},
-					}
+					dhcpDesc = buildNetworkDHCP(ip, n, dhcpMAC, dhcpID, dhcpCount)
 				}
 
 				addressesDesc = append(addressesDesc, libvirtxml.NetworkIP{
@@ -82,8 +83,41 @@ func networkAddCommand() *cobra.Command {
 	addCmd.Flags().StringVarP(&forward, "forward-mode", "m", "", "Set the forward mode, for example 'nat'")
 	addCmd.Flags().StringVarP(&network, "network-cidr", "n", "", "Configure the network range (IPv4) in CIDR notation. The IP will be assigned to the host device.")
 	addCmd.Flags().BoolVarP(&dhcp, "dhcp", "p", false, "Configure DHCP. Use together with '--network-cidr'. DHCP range is configured starting from --network-cidr+1 until the broadcast address")
+	addCmd.Flags().StringVarP(&dhcpMAC, "dhcp-mac", "", virter.QemuBaseMAC().String(), "Base MAC address to which ID is added. The default can be used to populate a virter access network")
+	addCmd.Flags().UintVarP(&dhcpID, "dhcp-id", "", 0, "ID which determines the MAC and IP addresses to associate")
+	addCmd.Flags().UintVar(&dhcpCount, "dhcp-count", 0, "Number of host entries to add")
 	addCmd.Flags().StringVarP(&domain, "domain", "d", "", "Configure DNS names for the network")
 	return addCmd
+}
+
+func buildNetworkDHCP(ip net.IP, n *net.IPNet, dhcpMAC string, dhcpID uint, dhcpCount uint) *libvirtxml.NetworkDHCP {
+	start := nextIP(ip)
+	end := previousIP(broadcastAddress(n))
+
+	baseMAC, err := net.ParseMAC(dhcpMAC)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	networkBaseIP := ip.Mask(n.Mask)
+	hosts := make([]libvirtxml.NetworkDHCPHost, dhcpCount)
+	for i := uint(0); i < dhcpCount; i++ {
+		id := dhcpID + i
+		mac, err := virter.AddToMAC(baseMAC, id)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		hosts[i] = libvirtxml.NetworkDHCPHost{
+			MAC: mac.String(),
+			IP:  fmt.Sprint(virter.AddToIP(networkBaseIP, id)),
+		}
+	}
+
+	return &libvirtxml.NetworkDHCP{
+		Ranges: []libvirtxml.NetworkDHCPRange{{Start: start.String(), End: end.String()}},
+		Hosts:  hosts,
+	}
 }
 
 func nextIP(ip net.IP) net.IP {
