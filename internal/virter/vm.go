@@ -671,7 +671,7 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, vmName := range vmNames {
 		vmName := vmName
-		log.Printf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, vmNames)
+		log.Printf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, vmName)
 		g.Go(func() error {
 			dest := fmt.Sprintf("%s:%s", vmName, rsyncStep.Dest)
 			return v.VMExecCopy(ctx, copier, files, dest)
