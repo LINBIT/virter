@@ -19,8 +19,8 @@ func vmExecCommand() *cobra.Command {
 
 	execCmd := &cobra.Command{
 		Use:   "exec vm_name [vm_name...]",
-		Short: "Run a Docker container against a VM",
-		Long:  `Run a Docker container on the host with a connection to a VM.`,
+		Short: "Run provisioning steps on VMs",
+		Long:  `Run provisioning steps. For instance, shell scripts directly on VMs, or from a container with connections to VMs.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := onInterruptWrap(context.Background())
