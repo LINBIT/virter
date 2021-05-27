@@ -2,10 +2,12 @@ package virter_test
 
 import (
 	"encoding/xml"
-	"github.com/LINBIT/virter/internal/virter"
+	"testing"
+
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
-	"testing"
+
+	"github.com/LINBIT/virter/internal/virter"
 )
 
 func TestVirter_NetworkAdd(t *testing.T) {
@@ -60,18 +62,22 @@ func TestVirter_NetworkRemove(t *testing.T) {
 
 func TestVirter_NetworkListAttached(t *testing.T) {
 	l := newFakeLibvirtConnection()
-	l.vols[imageName] = &FakeLibvirtStorageVol{}
+	l.addFakeImage(imageName)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 	vmnics, err := v.NetworkListAttached(networkName)
 	assert.NoError(t, err)
 	assert.Empty(t, vmnics)
+
+	img, err := v.FindImage(imageName)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
 
 	expected := []virter.VMNic{{VMName: "test", MAC: "52:54:00:00:00:fe"}}
 	err = v.VMRun(virter.VMConfig{
 		Name:      "test",
 		MemoryKiB: 1024,
 		VCPUs:     1,
-		ImageName: imageName,
+		Image:     img,
 	})
 	assert.NoError(t, err)
 	vmnics, err = v.NetworkListAttached(networkName)

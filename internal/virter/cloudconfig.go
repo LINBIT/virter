@@ -3,10 +3,11 @@ package virter
 import (
 	"bytes"
 	"fmt"
-	"github.com/LINBIT/virter/pkg/sshkeys"
-	libvirt "github.com/digitalocean/go-libvirt"
+
 	"github.com/kdomanski/iso9660"
 	"github.com/kr/text"
+
+	"github.com/LINBIT/virter/pkg/sshkeys"
 )
 
 const templateMetaData = `instance-id: {{ .VMName }}
@@ -62,18 +63,18 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys
 	return renderTemplate("user-data", templateUserData, templateData)
 }
 
-func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig, hostkey sshkeys.HostKey) error {
+func (v *Virter) createCIData(vmConfig VMConfig, hostkey sshkeys.HostKey) (*RawLayer, error) {
 	vmName := vmConfig.Name
 	sshPublicKeys := append(vmConfig.ExtraSSHPublicKeys, string(v.sshkeys.PublicKey()))
 
 	metaData, err := v.metaData(vmName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	userData, err := v.userData(vmName, sshPublicKeys, hostkey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	files := map[string][]byte{
@@ -83,25 +84,20 @@ func (v *Virter) createCIData(sp libvirt.StoragePool, vmConfig VMConfig, hostkey
 
 	ciData, err := GenerateISO(files)
 	if err != nil {
-		return fmt.Errorf("failed to generate ISO: %w", err)
+		return nil, fmt.Errorf("failed to generate ISO: %w", err)
 	}
 
-	xml, err := v.ciDataVolumeXML(ciDataVolumeName(vmName))
+	ciLayer, err := v.NewDynamicLayer(ciDataVolumeName(vmName), WithFormat("raw"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	sv, err := v.libvirt.StorageVolCreateXML(sp, xml, 0)
+	err = ciLayer.Upload(bytes.NewReader(ciData))
 	if err != nil {
-		return fmt.Errorf("could not create cloud-init volume: %w", err)
+		return nil, fmt.Errorf("failed to transfer cloud-init data to libvirt: %w", err)
 	}
 
-	err = v.libvirt.StorageVolUpload(sv, bytes.NewReader(ciData), 0, 0, 0)
-	if err != nil {
-		return fmt.Errorf("failed to transfer cloud-init data to libvirt: %w", err)
-	}
-
-	return nil
+	return ciLayer, nil
 }
 
 func ciDataVolumeName(vmName string) string {

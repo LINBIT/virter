@@ -4,10 +4,12 @@ import (
 	"context"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vbauerster/mpb/v7"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/actualtime"
 )
 
@@ -15,11 +17,11 @@ func vmCommitCommand() *cobra.Command {
 	var shutdown bool
 
 	var commitCmd = &cobra.Command{
-		Use:   "commit name",
+		Use:   "commit vm-name [image-name]",
 		Short: "Commit a virtual machine",
 		Long: `Commit a virtual machine to an image. The image name will be
-the virtual machine name.`,
-		Args: cobra.ExactArgs(1),
+the virtual machine name if no other value is given.`,
+		Args: cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			v, err := InitVirter()
 			if err != nil {
@@ -29,9 +31,18 @@ the virtual machine name.`,
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
+			vmName := args[0]
+			imageName := vmName
+			if len(args) == 2 {
+				imageName = args[1]
+			}
+
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
-			err = v.VMCommit(ctx, actualtime.ActualTime{}, args[0], shutdown, shutdownTimeout, viper.GetBool("libvirt.static_dhcp"))
+
+			p := mpb.NewWithContext(ctx)
+
+			err = v.VMCommit(ctx, actualtime.ActualTime{}, vmName, imageName, shutdown, shutdownTimeout, viper.GetBool("libvirt.static_dhcp"), virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatal(err)
 			}

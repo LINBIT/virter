@@ -2,14 +2,14 @@ package cmd
 
 import (
 	"context"
-
-	log "github.com/sirupsen/logrus"
+	"fmt"
 
 	"github.com/LINBIT/containerapi"
 	"github.com/rck/unit"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/vbauerster/mpb/v7"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/actualtime"
@@ -71,6 +71,29 @@ step, and then committing the resulting volume.`,
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
+			baseImage, err := v.FindImage(baseImageName)
+			if err != nil {
+				log.Fatalf("Error while getting image: %v", err)
+			}
+
+			p := mpb.NewWithContext(ctx)
+
+			if baseImage == nil {
+				// Try the "legacy" registry
+				reg := loadRegistry()
+				url, err := reg.Lookup(baseImageName)
+				if err != nil {
+					log.WithError(err).Fatal("unknown image")
+				}
+
+				baseImage, err = pullLegacyRegistry(ctx, v, baseImageName, url, p)
+				if err != nil {
+					log.WithError(err).Fatal("failed to pull image")
+				}
+
+				p.Wait()
+			}
+
 			// ContainerProvider will be set later if needed
 			tools := virter.ImageBuildTools{
 				ShellClientBuilder: SSHClientBuilder{},
@@ -78,7 +101,7 @@ step, and then committing the resulting volume.`,
 			}
 
 			vmConfig := virter.VMConfig{
-				ImageName:          baseImageName,
+				Image:              baseImage,
 				Name:               newImageName,
 				MemoryKiB:          memKiB,
 				BootCapacityKiB:    bootCapacityKiB,
@@ -121,15 +144,14 @@ step, and then committing the resulting volume.`,
 				ResetMachineID:  resetMachineID,
 			}
 
-			err = pullIfNotExists(v, vmConfig.ImageName)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			err = v.ImageBuild(ctx, tools, vmConfig, sshPingConfig, buildConfig)
+			err = v.ImageBuild(ctx, tools, vmConfig, sshPingConfig, buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatalf("Failed to build image: %v", err)
 			}
+
+			p.Wait()
+
+			fmt.Printf("Built %s\n", newImageName)
 		},
 	}
 

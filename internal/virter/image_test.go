@@ -1,168 +1,228 @@
 package virter_test
 
 import (
-	"bytes"
-	"context"
-	"fmt"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"io"
 	"io/ioutil"
-	"net/http"
+	"strings"
 	"testing"
-	"time"
+	"testing/iotest"
 
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
+	regv1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/fake"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/LINBIT/virter/internal/virter"
-	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
-//go:generate mockery --name=HTTPClient
-
-func TestImagePull(t *testing.T) {
-	client := new(mocks.HTTPClient)
-	mockDo(client, http.StatusOK)
-
-	l := newFakeLibvirtConnection()
-
+func TestLocalImage_Layers(t *testing.T) {
+	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	ctx := context.Background()
-	err := v.ImagePull(ctx, client, nopReaderProxy{}, imageURL, imageName)
+	expectedLayerDiff, err := layer.DiffID()
 	assert.NoError(t, err)
 
-	client.AssertExpectations(t)
+	img, err := v.MakeImage("image1", layer)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
 
-	assert.Len(t, l.vols, 1)
-	assert.Equal(t, []byte(imageContent), l.vols[imageName].content)
+	layers, err := img.Layers()
+	assert.NoError(t, err)
+	assert.Len(t, layers, 1)
+
+	actualLayer := layers[0]
+	diff, err := actualLayer.DiffID()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedLayerDiff, diff)
 }
 
-func TestImagePullBadStatus(t *testing.T) {
-	client := new(mocks.HTTPClient)
-	mockDo(client, http.StatusNotFound)
-
-	l := newFakeLibvirtConnection()
-
+func TestVirter_MakeImage(t *testing.T) {
+	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	ctx := context.Background()
-	err := v.ImagePull(ctx, client, nopReaderProxy{}, imageURL, imageName)
-	assert.Error(t, err)
+	img, err := v.MakeImage("image1", layer)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
+	assert.Equal(t, "image1", img.Name())
+	assert.Equal(t, layer.Name(), img.TopLayer().Name())
 
-	client.AssertExpectations(t)
+	imgFound, err := v.FindImage("image1")
+	assert.NoError(t, err)
+	assert.NotNil(t, imgFound)
+	assert.Equal(t, "image1", imgFound.Name())
+	assert.Equal(t, layer.Name(), imgFound.TopLayer().Name())
 
+	imgTagAgain, err := v.MakeImage("image1", layer)
+	assert.NoError(t, err)
+	assert.NotNil(t, imgTagAgain)
+	assert.Equal(t, "image1", imgTagAgain.Name())
+	assert.Equal(t, layer.Name(), imgTagAgain.TopLayer().Name())
+}
+
+func TestVirter_ImageRm(t *testing.T) {
+	l, layer := prepareVolumeLayer(t)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	img, err := v.MakeImage("image1", layer)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
+
+	// Unknown images should work
+	err = v.ImageRm("image2")
+	assert.NoError(t, err)
+
+	err = v.ImageRm("image1")
+	assert.NoError(t, err)
+
+	// Should have removed all volumes
 	assert.Empty(t, l.vols)
 }
 
-func mockDo(client *mocks.HTTPClient, statusCode int) {
-	response := &http.Response{
-		StatusCode: statusCode,
-		Status:     fmt.Sprintf("Status: %v", statusCode),
-		Body:       ioutil.NopCloser(bytes.NewReader([]byte(imageContent))),
-	}
-	req, _ := http.NewRequest("GET", imageURL, nil)
-	client.On("Do", req).Return(response, nil)
-}
-
-type nopReaderProxy struct {
-}
-
-func (b nopReaderProxy) SetTotal(total int64) {
-}
-
-func (b nopReaderProxy) ProxyReader(r io.ReadCloser) io.ReadCloser {
-	return r
-}
-
-func TestImageBuild(t *testing.T) {
-	shell := new(mocks.ShellClient)
-	shell.On("DialContext", mock.Anything).Return(nil)
-	shell.On("Close").Return(nil)
-
-	docker := mockContainerProvider()
-
-	an := new(mocks.AfterNotifier)
-	mockAfter(an, make(chan time.Time))
-
-	l := newFakeLibvirtConnection()
-
-	l.vols[imageName] = &FakeLibvirtStorageVol{}
-
+func TestVirter_ImageImportFromReader(t *testing.T) {
+	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	tools := virter.ImageBuildTools{
-		ShellClientBuilder: MockShellClientBuilder{shell},
-		ContainerProvider:  docker,
-		AfterNotifier:      an,
-	}
-
-	vmConfig := virter.VMConfig{
-		ImageName:          imageName,
-		Name:               vmName,
-		ID:                 vmID,
-		StaticDHCP:         false,
-		MemoryKiB:          1024,
-		VCPUs:              1,
-		ExtraSSHPublicKeys: []string{sshPublicKey},
-	}
-
-	sshPingConfig := virter.SSHPingConfig{
-		SSHPingCount:  1,
-		SSHPingPeriod: time.Second, // ignored
-	}
-
-	provisionConfig := virter.ProvisionConfig{
-		Steps: []virter.ProvisionStep{
-			virter.ProvisionStep{
-				Docker: &virter.ProvisionDockerStep{
-					Image: dockerImageName,
-				},
-			},
-		},
-	}
-
-	buildConfig := virter.ImageBuildConfig{
-		ContainerName:   "virter-test",
-		ShutdownTimeout: shutdownTimeout,
-		ProvisionConfig: provisionConfig,
-	}
-
-	err := v.ImageBuild(context.Background(), tools, vmConfig, sshPingConfig, buildConfig)
+	img, err := v.ImageImportFromReader("image1", ioutil.NopCloser(strings.NewReader(ExampleLayerContent)))
 	assert.NoError(t, err)
+	assert.NotNil(t, img)
 
+	assert.Equal(t, img.TopLayer(), layer)
+	// 2 volumes: existing content + tag volume
 	assert.Len(t, l.vols, 2)
-	assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
-	assert.Empty(t, l.domains)
 
-	shell.AssertExpectations(t)
-	docker.AssertExpectations(t)
-	an.AssertExpectations(t)
+	img2, err := v.ImageImportFromReader("image2", ioutil.NopCloser(strings.NewReader(ExampleLayerContent+ExampleLayerContent)))
+	assert.NoError(t, err)
+	assert.NotNil(t, img2)
+
+	assert.NotEqual(t, img2.TopLayer(), layer)
+	// 4 volumes: 2 * (existing content + tag volume)
+	assert.Len(t, l.vols, 4)
+
+	failed, err := v.ImageImportFromReader("image2", ioutil.NopCloser(iotest.ErrReader(errors.New("test"))))
+	assert.Error(t, err)
+	assert.Nil(t, failed)
+	// 4 volumes: 2 * (existing content + tag volume), no new volume from failed import
+	assert.Len(t, l.vols, 4)
 }
 
-func TestImageSave(t *testing.T) {
+func TestVirter_ImageList(t *testing.T) {
 	l := newFakeLibvirtConnection()
-
-	l.vols[imageName] = &FakeLibvirtStorageVol{
-		description: &libvirtxml.StorageVolume{
-			Name:   imageName,
-			Target: &libvirtxml.StorageVolumeTarget{},
-			Physical: &libvirtxml.StorageVolumeSize{
-				Value: uint64(len(imageContent)),
-			},
-		},
-		content: []byte(imageContent),
-	}
-
+	l.addFakeImage("image1")
+	l.addFakeImage("image2")
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	var dest bytes.Buffer
-	err := v.ImageSave(imageName, &dest)
+	imgs, err := v.ImageList()
 	assert.NoError(t, err)
+	assert.Len(t, imgs, 2)
 
-	assert.Len(t, l.vols, 1)
-	assert.Equal(t, []byte(imageContent), dest.Bytes())
+	var names []string
+	for _, img := range imgs {
+		names = append(names, img.Name())
+	}
+	assert.ElementsMatch(t, []string{"image1", "image2"}, names)
+
+	assert.Equal(t, imgs[0].TopLayer(), imgs[1].TopLayer())
 }
 
-const imageURL = "http://foo.bar"
-const imageContent = "some-data"
+type inMemoryLayer struct {
+	content string
+}
+
+func (i *inMemoryLayer) DiffID() (regv1.Hash, error) {
+	hasher := sha256.New()
+	_, err := hasher.Write([]byte(i.content))
+	if err != nil {
+		return regv1.Hash{}, err
+	}
+
+	return regv1.Hash{Algorithm: "sha256", Hex: hex.EncodeToString(hasher.Sum(nil))}, nil
+}
+
+func (i *inMemoryLayer) Uncompressed() (io.ReadCloser, error) {
+	return ioutil.NopCloser(strings.NewReader(i.content)), nil
+}
+
+func (i *inMemoryLayer) MediaType() (types.MediaType, error) {
+	return virter.LayerMediaType, nil
+}
+
+func fakeRemoteLayer(t *testing.T, content string) regv1.Layer {
+	layer, err := partial.UncompressedToLayer(&inMemoryLayer{
+		content: content,
+	})
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	return layer
+}
+
+func TestVirter_ImageImport(t *testing.T) {
+	l, base := prepareVolumeLayer(t)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	source := &fake.FakeImage{
+		ManifestStub: func() (*regv1.Manifest, error) {
+			return &regv1.Manifest{
+				Config: regv1.Descriptor{
+					MediaType: virter.ImageMediaType,
+				},
+			}, nil
+		},
+		LayersStub: func() ([]regv1.Layer, error) {
+			return []regv1.Layer{
+				fakeRemoteLayer(t, ExampleLayerContent),
+				fakeRemoteLayer(t, "some more content"),
+			}, nil
+		},
+	}
+
+	local, err := v.ImageImport("name", source)
+	assert.NoError(t, err)
+	assert.NotNil(t, local)
+
+	assert.Equal(t, "name", local.Name())
+	// sha256("some more content")
+	assert.Equal(t, virter.LayerVolumePrefix+"sha256:c13faca63307342e622347733e82496954c9d56a0c5b90af6e0fb7aa7e920ad2", local.TopLayer().Name())
+
+	actualbase, err := local.TopLayer().Dependency()
+	assert.NoError(t, err)
+	assert.NotNil(t, actualbase)
+	assert.Equal(t, base.Name(), actualbase.Name())
+	assert.Contains(t, l.vols, virter.TagVolumePrefix+"name")
+	assert.Contains(t, l.vols, virter.LayerVolumePrefix+"sha256:c13faca63307342e622347733e82496954c9d56a0c5b90af6e0fb7aa7e920ad2")
+	assert.Contains(t, l.vols, virter.LayerVolumePrefix+ExampleLayerDigest)
+}
+
+func TestVirter_Image(t *testing.T) {
+	l := newFakeLibvirtConnection()
+	l.addFakeImage("image1")
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	img, err := v.FindImage("image1")
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
+
+	mt, err := img.MediaType()
+	assert.NoError(t, err)
+	assert.Equal(t, types.DockerManifestSchema2, mt)
+
+	cfg, err := img.ConfigName()
+	assert.NoError(t, err)
+	assert.Equal(t, "sha256:697fac62e6b113ea0d9865703491f88d8d89672ea3d33a35359e0d29f0d0bbd9", cfg.String())
+
+	layer, err := img.LayerByDiffID(regv1.Hash{Algorithm: "sha256", Hex: ExampleLayerDigest[len("sha256:"):]})
+	assert.NoError(t, err)
+	assert.NotNil(t, layer)
+
+	reader, err := layer.Uncompressed()
+	assert.NoError(t, err)
+
+	layerContent, err := io.ReadAll(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, ExampleLayerContent, string(layerContent))
+}

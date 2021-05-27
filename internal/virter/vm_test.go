@@ -2,6 +2,7 @@ package virter_test
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/LINBIT/containerapi"
-
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -45,13 +45,16 @@ func TestCheckVMConfig(t *testing.T) {
 
 func TestVMRun(t *testing.T) {
 	l := newFakeLibvirtConnection()
-
-	l.vols[imageName] = &FakeLibvirtStorageVol{}
+	l.addFakeImage(imageName)
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
+	img, err := v.FindImage(imageName)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
+
 	c := virter.VMConfig{
-		ImageName:          imageName,
+		Image:              img,
 		Name:               vmName,
 		ID:                 vmID,
 		StaticDHCP:         false,
@@ -59,10 +62,10 @@ func TestVMRun(t *testing.T) {
 		MemoryKiB:          1024,
 		ExtraSSHPublicKeys: []string{sshPublicKey},
 	}
-	err := v.VMRun(c)
+	err = v.VMRun(c)
 	assert.NoError(t, err)
 
-	assert.Empty(t, l.vols[vmName].content)
+	assert.Contains(t, l.vols, virter.DynamicLayerName(vmName))
 
 	host := l.networks[networkName].description.IPs[0].DHCP.Hosts[0]
 	assert.Equal(t, "52:54:00:00:00:2a", host.MAC)
@@ -147,51 +150,54 @@ var vmRmTests = []map[string]bool{
 	},
 }
 
-func addDisk(l *FakeLibvirtConnection, vmName string, volumeName string) {
+func addDisk(l *FakeLibvirtConnection, vmName, volumeName string) {
 	disks := l.domains[vmName].description.Devices.Disks
 	l.domains[vmName].description.Devices.Disks = append(disks, libvirtxml.DomainDisk{
 		Source: &libvirtxml.DomainDiskSource{
 			Volume: &libvirtxml.DomainDiskSourceVolume{
-				Volume: ciDataVolumeName,
+				Volume: virter.DynamicLayerName(volumeName),
 			},
 		},
 	})
 }
 
 func TestVMRm(t *testing.T) {
-	for _, r := range vmRmTests {
-		l := newFakeLibvirtConnection()
+	for i := range vmRmTests {
+		r := vmRmTests[i]
+		t.Run(fmt.Sprintf("%+v", r), func(t *testing.T) {
+			l := newFakeLibvirtConnection()
 
-		if r[domainCreated] || r[domainPersistent] {
-			domain := newFakeLibvirtDomain(vmMAC)
-			domain.persistent = r[domainPersistent]
-			domain.active = r[domainCreated]
-			l.domains[vmName] = domain
+			if r[domainCreated] || r[domainPersistent] {
+				domain := newFakeLibvirtDomain(vmMAC)
+				domain.persistent = r[domainPersistent]
+				domain.active = r[domainCreated]
+				l.domains[vmName] = domain
 
-			fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
-		}
+				fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+			}
 
-		if r[bootVolume] {
-			l.vols[vmName] = &FakeLibvirtStorageVol{}
-		}
+			if r[bootVolume] {
+				l.addEmptyRawVol(virter.DynamicLayerName(vmName))
+			}
 
-		if r[ciDataVolume] {
-			l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
-			addDisk(l, vmName, ciDataVolumeName)
-		}
+			if r[ciDataVolume] {
+				l.addEmptyRawVol(virter.DynamicLayerName(vmName))
+				addDisk(l, vmName, ciDataVolumeName)
+			}
 
-		v := virter.New(l, poolName, networkName, newMockKeystore())
+			v := virter.New(l, poolName, networkName, newMockKeystore())
 
-		err := v.VMRm(vmName, r[staticDHCP])
-		assert.NoError(t, err)
+			err := v.VMRm(vmName, r[staticDHCP])
+			assert.NoError(t, err)
 
-		assert.Empty(t, l.vols)
-		if r[staticDHCP] {
-			assert.Len(t, l.networks[networkName].description.IPs[0].DHCP.Hosts, 1)
-		} else {
-			assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
-		}
-		assert.Empty(t, l.domains)
+			assert.Empty(t, l.vols)
+			if r[staticDHCP] {
+				assert.Len(t, l.networks[networkName].description.IPs[0].DHCP.Hosts, 1)
+			} else {
+				assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
+			}
+			assert.Empty(t, l.domains)
+		})
 	}
 }
 
@@ -230,14 +236,20 @@ func TestVMCommit(t *testing.T) {
 		expectOk := !r[commitDomainActive] || (r[commitShutdown] && !r[commitShutdownTimeout])
 
 		l := newFakeLibvirtConnection()
+		img := l.addFakeImage(imageName)
 
 		domain := newFakeLibvirtDomain(vmMAC)
 		domain.persistent = true
 		domain.active = r[commitDomainActive]
 		l.domains[vmName] = domain
 
-		l.vols[vmName] = &FakeLibvirtStorageVol{}
-		l.vols[ciDataVolumeName] = &FakeLibvirtStorageVol{}
+		l.vols[virter.DynamicLayerName(vmName)] = &FakeLibvirtStorageVol{
+			description: &libvirtxml.StorageVolume{
+				Name:         virter.DynamicLayerName(vmName),
+				BackingStore: img.description.BackingStore,
+			},
+		}
+		l.vols[virter.DynamicLayerName(ciDataVolumeName)] = &FakeLibvirtStorageVol{description: &libvirtxml.StorageVolume{Name: virter.DynamicLayerName(vmName)}}
 		addDisk(l, vmName, ciDataVolumeName)
 
 		fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
@@ -252,16 +264,18 @@ func TestVMCommit(t *testing.T) {
 			} else {
 				mockAfter(an, make(chan time.Time))
 			}
-
 		}
 
 		v := virter.New(l, poolName, networkName, newMockKeystore())
 
-		err := v.VMCommit(context.Background(), an, vmName, r[commitShutdown], shutdownTimeout, false)
+		err := v.VMCommit(context.Background(), an, vmName, vmName, r[commitShutdown], shutdownTimeout, false)
 		if expectOk {
 			assert.NoError(t, err)
 
-			assert.Len(t, l.vols, 1)
+			vol, err := v.FindImage(vmName)
+			assert.NoError(t, err)
+			assert.NotNil(t, vol)
+
 			assert.Empty(t, l.networks[networkName].description.IPs[0].DHCP.Hosts)
 			assert.Empty(t, l.domains)
 		} else {

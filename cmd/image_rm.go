@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -23,10 +22,10 @@ func imageRmCommand() *cobra.Command {
 			defer v.ForceDisconnect()
 
 			var errs error
-			for _, vm := range args {
-				err = v.ImageRm(context.Background(), vm)
+			for _, img := range args {
+				err = v.ImageRm(img)
 				if err != nil {
-					e := fmt.Errorf("failed to remove image '%s': %w", vm, err)
+					e := fmt.Errorf("failed to remove image '%s': %w", img, err)
 					errs = multierror.Append(errs, e)
 				}
 			}

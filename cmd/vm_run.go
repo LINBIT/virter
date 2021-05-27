@@ -2,21 +2,18 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/rck/unit"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/rck/unit"
+	"github.com/vbauerster/mpb/v7"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/LINBIT/virter/internal/virter"
-	"github.com/LINBIT/virter/pkg/registry"
 )
 
 var sizeUnits = func() map[string]int64 {
@@ -42,7 +39,7 @@ func createConsoleDir(path string) (string, error) {
 			path, err)
 	}
 
-	if err := os.MkdirAll(absPath, 0700); err != nil {
+	if err := os.MkdirAll(absPath, 0o700); err != nil {
 		return "", fmt.Errorf("failed to create console directory at '%v': %w", absPath, err)
 	}
 
@@ -63,25 +60,6 @@ func createConsoleFile(consoleDir, vmName string) (string, error) {
 	file.Close()
 
 	return consolePath, nil
-}
-
-func pullIfNotExists(v *virter.Virter, imageName string) error {
-	exists, err := v.ImageExists(imageName)
-	if err != nil {
-		return fmt.Errorf("could not determine whether or not image %v exists: %w",
-			imageName, err)
-	}
-	if !exists {
-		log.Printf("Image %v not available locally, pulling", imageName)
-		e := pullImage(v, imageName, "")
-		if errors.Is(e, registry.ErrNotFound) {
-			return fmt.Errorf("Could not find image %v", imageName)
-		} else if e != nil {
-			return fmt.Errorf("Error pulling image %v: %w", imageName, e)
-		}
-	}
-
-	return nil
 }
 
 func vmRunCommand() *cobra.Command {
@@ -160,11 +138,6 @@ func vmRunCommand() *cobra.Command {
 				log.Fatalf("Error while creating console directory: %v", err)
 			}
 
-			err = pullIfNotExists(v, imageName)
-			if err != nil {
-				log.Fatal(err)
-			}
-
 			// do we want to run provisioning steps?
 			provision := provisionFile != "" || len(provisionOverrides) > 0
 
@@ -207,8 +180,30 @@ func vmRunCommand() *cobra.Command {
 						log.Fatalf("Error while creating console file: %v", err)
 					}
 
+					image, err := v.FindImage(imageName)
+					if err != nil {
+						log.Fatalf("Error while getting image: %v", err)
+					}
+
+					if image == nil {
+						// Try the "legacy" registry
+						reg := loadRegistry()
+						url, err := reg.Lookup(imageName)
+						if err != nil {
+							log.WithError(err).Fatal("unknown image")
+						}
+
+						p := mpb.New()
+						image, err = pullLegacyRegistry(ctx, v, imageName, url, p)
+						if err != nil {
+							log.WithError(err).Fatal("failed to pull image")
+						}
+
+						p.Wait()
+					}
+
 					c := virter.VMConfig{
-						ImageName:          imageName,
+						Image:              image,
 						Name:               thisVMName,
 						MemoryKiB:          memKiB,
 						BootCapacityKiB:    bootCapacityKiB,

@@ -9,6 +9,8 @@ import (
 
 	libvirt "github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
+
+	"github.com/LINBIT/virter/internal/virter"
 )
 
 type FakeLibvirtConnection struct {
@@ -25,9 +27,7 @@ func (f fakeLibvirtError) Error() string {
 	return fmt.Sprintf("fake libvirt error: %d", f)
 }
 
-var (
-	fakeLibvirtNoNetwork = fakeLibvirtError{Code: 43}
-)
+var fakeLibvirtNoNetwork = fakeLibvirtError{Code: 43}
 
 func (l *FakeLibvirtConnection) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) ([]libvirt.Network, uint32, error) {
 	nets := make([]libvirt.Network, 0, len(l.networks))
@@ -123,6 +123,13 @@ func (l *FakeLibvirtConnection) StoragePoolLookupByName(Name string) (rPool libv
 	}, nil
 }
 
+func (l *FakeLibvirtConnection) StoragePoolListAllVolumes(Pool libvirt.StoragePool, NeedResults int32, Flags uint32) (rVols []libvirt.StorageVol, rRet uint32, err error) {
+	for _, v := range l.vols {
+		rVols = append(rVols, libvirt.StorageVol{Name: v.description.Name})
+	}
+	return
+}
+
 func (l *FakeLibvirtConnection) StorageVolCreateXML(Pool libvirt.StoragePool, XML string, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error) {
 	description := &libvirtxml.StorageVolume{}
 	if err := description.Unmarshal(XML); err != nil {
@@ -146,15 +153,6 @@ func (l *FakeLibvirtConnection) StorageVolDelete(Vol libvirt.StorageVol, Flags l
 	return nil
 }
 
-func (l *FakeLibvirtConnection) StorageVolGetPath(Vol libvirt.StorageVol) (rName string, err error) {
-	_, ok := l.vols[Vol.Name]
-	if !ok {
-		return "", mockLibvirtError(errNoStorageVol)
-	}
-
-	return backingPath, nil
-}
-
 func (l *FakeLibvirtConnection) StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error) {
 	_, ok := l.vols[Name]
 	if !ok {
@@ -166,7 +164,7 @@ func (l *FakeLibvirtConnection) StorageVolLookupByName(Pool libvirt.StoragePool,
 	}, nil
 }
 
-func (l *FakeLibvirtConnection) StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error) {
+func (l *FakeLibvirtConnection) StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error) {
 	vol, ok := l.vols[Vol.Name]
 	if !ok {
 		return mockLibvirtError(errNoStorageVol)
@@ -181,15 +179,16 @@ func (l *FakeLibvirtConnection) StorageVolUpload(Vol libvirt.StorageVol, outStre
 }
 
 func (l *FakeLibvirtConnection) StorageVolGetXMLDesc(Vol libvirt.StorageVol, Flags uint32) (rXML string, err error) {
-	if Vol.Name != imageName {
-		return "", errors.New("unknown volume")
+	v, ok := l.vols[Vol.Name]
+	if !ok {
+		return "", fmt.Errorf("unknown volume %s", Vol.Name)
 	}
 
-	xml, err := l.vols[Vol.Name].description.Marshal()
+	encoded, err := v.description.Marshal()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return xml, nil
+	return encoded, nil
 }
 
 func (l *FakeLibvirtConnection) StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, Clonevol libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error) {
@@ -206,7 +205,7 @@ func (l *FakeLibvirtConnection) StorageVolCreateXMLFrom(Pool libvirt.StoragePool
 	// start off with existing definition, using only name and permissions from new XML
 	description := oldVol.description
 	description.Name = newDescription.Name
-	description.Target.Permissions = newDescription.Target.Permissions
+	description.Target = newDescription.Target
 	l.vols[description.Name] = &FakeLibvirtStorageVol{
 		description: description,
 		content:     oldVol.content,
@@ -216,7 +215,7 @@ func (l *FakeLibvirtConnection) StorageVolCreateXMLFrom(Pool libvirt.StoragePool
 	}, nil
 }
 
-func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset uint64, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error) {
+func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error) {
 	vol, ok := l.vols[Vol.Name]
 	if !ok {
 		return mockLibvirtError(errNoStorageVol)
@@ -230,7 +229,7 @@ func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStr
 	return nil
 }
 
-func (l *FakeLibvirtConnection) StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity uint64, rAllocation uint64, err error) {
+func (l *FakeLibvirtConnection) StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity, rAllocation uint64, err error) {
 	_, ok := l.vols[Vol.Name]
 	if !ok {
 		return 0, 0, 0, mockLibvirtError(errNoStorageVol)
@@ -266,7 +265,7 @@ func (l *FakeLibvirtConnection) NetworkGetXMLDesc(Net libvirt.Network, Flags uin
 	return string(xmldesc), nil
 }
 
-func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command uint32, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error) {
+func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error) {
 	// the following 2 arguments are swapped; see
 	// https://github.com/digitalocean/go-libvirt/issues/87
 	section := Command
@@ -445,6 +444,43 @@ func (l *FakeLibvirtConnection) DomainSnapshotDelete(Snap libvirt.DomainSnapshot
 	return nil
 }
 
+func (l *FakeLibvirtConnection) addEmptyRawVol(name string) *FakeLibvirtStorageVol {
+	empty := &FakeLibvirtStorageVol{
+		description: &libvirtxml.StorageVolume{
+			Name: name,
+		},
+	}
+
+	l.vols[empty.description.Name] = empty
+
+	return empty
+}
+
+func (l *FakeLibvirtConnection) addFakeImage(name string) *FakeLibvirtStorageVol {
+	empty := &FakeLibvirtStorageVol{
+		description: &libvirtxml.StorageVolume{
+			// Hash for empty volume
+			Name: virter.LayerVolumePrefix + ExampleLayerDigest,
+		},
+		content: []byte(ExampleLayerContent),
+	}
+
+	l.vols[empty.description.Name] = empty
+
+	tag := &FakeLibvirtStorageVol{
+		description: &libvirtxml.StorageVolume{
+			Name: virter.TagVolumePrefix + name,
+			BackingStore: &libvirtxml.StorageVolumeBackingStore{
+				Path: "./" + empty.description.Name,
+			},
+		},
+	}
+
+	l.vols[tag.description.Name] = tag
+
+	return tag
+}
+
 func mockLibvirtError(code errorNumber) error {
 	return libvirtError{uint32(code)}
 }
@@ -481,7 +517,7 @@ func fakeLibvirtNetwork() *FakeLibvirtNetwork {
 	}
 }
 
-func fakeNetworkAddHost(network *FakeLibvirtNetwork, mac string, ip string) {
+func fakeNetworkAddHost(network *FakeLibvirtNetwork, mac, ip string) {
 	hosts := &network.description.IPs[0].DHCP.Hosts
 	host := libvirtxml.NetworkDHCPHost{
 		MAC: mac,
@@ -519,7 +555,6 @@ func newFakeLibvirtDomain(mac string) *FakeLibvirtDomain {
 }
 
 const (
-	backingPath    = "/some/path"
 	networkAddress = "192.168.122.1"
 	networkNetmask = "255.255.255.0"
 )

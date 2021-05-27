@@ -11,7 +11,6 @@ import (
 	"github.com/LINBIT/containerapi"
 	sshclient "github.com/LINBIT/gosshclient"
 	libvirt "github.com/digitalocean/go-libvirt"
-	"github.com/rck/unit"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
@@ -20,20 +19,6 @@ import (
 	"github.com/LINBIT/virter/pkg/netcopy"
 	"github.com/LINBIT/virter/pkg/sshkeys"
 )
-
-// ImageExists checks whether an image called imageName exists in the libvirt
-// virter storage pool.
-func (v *Virter) ImageExists(imageName string) (bool, error) {
-	_, err := v.libvirt.StorageVolLookupByName(v.provisionStoragePool, imageName)
-	if err != nil {
-		if hasErrorCode(err, errNoStorageVol) {
-			return false, nil
-		}
-		return false, fmt.Errorf("could not get backing image volume: %w", err)
-	}
-
-	return true, nil
-}
 
 func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	vmName := vmConfig.Name
@@ -47,8 +32,8 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	}
 
 	for _, img := range imgs {
-		if exists, err := v.ImageExists(img); exists || err != nil {
-			return exists, err
+		if layer, err := v.FindDynamicLayer(img); layer != nil || err != nil {
+			return layer != nil, err
 		}
 	}
 	return false, nil
@@ -101,20 +86,20 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	log.Print("Create boot volume")
-	err = v.createVMVolume(v.provisionStoragePool, vmConfig)
+	_, err = v.ImageSpawn(vmConfig.Name, vmConfig.Image, vmConfig.BootCapacityKiB)
 	if err != nil {
 		return err
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(v.provisionStoragePool, vmConfig, hostkey)
+	_, err = v.createCIData(vmConfig, hostkey)
 	if err != nil {
 		return err
 	}
 
 	for _, d := range vmConfig.Disks {
 		log.Printf("Create volume '%s'", d.GetName())
-		err = v.createDiskVolume(v.provisionStoragePool, vmConfig.Name, d)
+		_, err = v.NewDynamicLayer(diskVolumeName(vmConfig.Name, d.GetName()), WithCapacity(d.GetSizeKiB()), WithFormat(d.GetFormat()))
 		if err != nil {
 			return err
 		}
@@ -124,73 +109,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		HostKey: hostkey.PublicKey(),
 	}
 
-	err = v.createVM(v.provisionStoragePool, vmConfig, mac, meta)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (v *Virter) createVMVolume(sp libvirt.StoragePool, vmConfig VMConfig) error {
-	imageName := vmConfig.ImageName
-	vmName := vmConfig.Name
-
-	backingVolume, err := v.libvirt.StorageVolLookupByName(sp, imageName)
-	if err != nil {
-		return fmt.Errorf("could not get backing image volume: %w", err)
-	}
-
-	backingPath, err := v.libvirt.StorageVolGetPath(backingVolume)
-	if err != nil {
-		return fmt.Errorf("could not get backing image path: %w", err)
-	}
-
-	sizeB := vmConfig.BootCapacityKiB * uint64(unit.K) // user defined one, might be 0 for don't care
-	if sizeB == 0 {
-		_, sizeB, _, err = v.libvirt.StorageVolGetInfo(backingVolume)
-		if err != nil {
-			return fmt.Errorf("could not get backing image info: %w", err)
-		}
-		minSize := uint64(10 * unit.G)
-		if sizeB < minSize {
-			sizeB = minSize
-		}
-	}
-
-	xml, err := v.vmVolumeXML(vmName, backingPath, sizeB)
-	if err != nil {
-		return err
-	}
-
-	_, err = v.libvirt.StorageVolCreateXML(sp, xml, 0)
-	if err != nil {
-		return fmt.Errorf("could not create VM boot volume: %w", err)
-	}
-
-	return nil
-}
-
-func (v *Virter) createDiskVolume(sp libvirt.StoragePool, vmName string, disk Disk) error {
-	xml, err := v.diskVolumeXML(diskVolumeName(vmName, disk.GetName()), disk.GetSizeKiB(), "KiB", disk.GetFormat())
-	if err != nil {
-		return err
-	}
-
-	_, err = v.libvirt.StorageVolCreateXML(sp, xml, 0)
-	if err != nil {
-		return fmt.Errorf("could not create scratch volume: %w", err)
-	}
-
-	return nil
-}
-
-func diskVolumeName(vmName, diskName string) string {
-	return vmName + "-" + diskName
-}
-
-func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string, meta *VMMeta) error {
-	xml, err := v.vmXML(sp.Name, vmConfig, mac, meta)
+	xml, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
 	if err != nil {
 		return err
 	}
@@ -220,6 +139,10 @@ func (v *Virter) createVM(sp libvirt.StoragePool, vmConfig VMConfig, mac string,
 	}
 
 	return nil
+}
+
+func diskVolumeName(vmName, diskName string) string {
+	return vmName + "-" + diskName
 }
 
 // PingSSH repeatedly tries to connect to a VM via SSH until it succeeds
@@ -278,20 +201,25 @@ func tryDialSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, host
 
 // VMRm removes a VM.
 func (v *Virter) VMRm(vmName string, staticDHCP bool) error {
-	err := v.vmRmExceptBoot(v.provisionStoragePool, vmName, !staticDHCP)
+	err := v.vmRmExceptBoot(vmName, !staticDHCP)
 	if err != nil {
 		return err
 	}
 
-	err = v.rmVolume(v.provisionStoragePool, vmName, "boot")
+	layer, err := v.FindDynamicLayer(vmName)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not get volume %s: %w", vmName, err)
+	}
+
+	err = layer.DeleteAllIfUnused()
+	if err != nil {
+		return fmt.Errorf("could not delete volume %s: %w", vmName, err)
 	}
 
 	return nil
 }
 
-func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string, removeDHCPEntries bool) error {
+func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if !hasErrorCode(err, errNoDomain) {
 		if err != nil {
@@ -340,13 +268,19 @@ func (v *Virter) vmRmExceptBoot(sp libvirt.StoragePool, vmName string, removeDHC
 		}
 
 		for _, disk := range disks {
-			if disk == vmName {
+			if disk == DynamicLayerName(vmName) {
 				// do not delete boot volume
 				continue
 			}
-			err = v.rmVolume(sp, disk, "disk")
+
+			layer, err := v.FindRawLayer(disk)
 			if err != nil {
-				return err
+				return fmt.Errorf("could not get volume %s: %w", disk, err)
+			}
+
+			err = layer.DeleteAllIfUnused()
+			if err != nil {
+				return fmt.Errorf("could not delete volume %s: %w", disk, err)
 			}
 		}
 	}
@@ -371,27 +305,10 @@ func (v *Virter) rmSnapshots(domain libvirt.Domain) error {
 	return nil
 }
 
-func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName, debugName string) error {
-	volume, err := v.libvirt.StorageVolLookupByName(sp, volumeName)
-	if !hasErrorCode(err, errNoStorageVol) {
-		if err != nil {
-			return fmt.Errorf("could not get %v volume: %w", debugName, err)
-		}
-
-		log.Printf("Delete %v volume", debugName)
-		err = v.libvirt.StorageVolDelete(volume, 0)
-		if err != nil {
-			return fmt.Errorf("could not delete %v volume: %w", debugName, err)
-		}
-	}
-
-	return nil
-}
-
 // VMCommit commits a VM to an image. If shutdown is true, the VM is shut down
 // before committing. If shutdown is false, the caller is responsible for
 // ensuring that the VM is not running.
-func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName string, shutdown bool, shutdownTimeout time.Duration, staticDHCP bool) error {
+func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName, imageName string, shutdown bool, shutdownTimeout time.Duration, staticDHCP bool, opts ...LayerOperationOption) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
@@ -413,7 +330,26 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		}
 	}
 
-	err = v.vmRmExceptBoot(v.provisionStoragePool, vmName, !staticDHCP)
+	err = v.vmRmExceptBoot(vmName, !staticDHCP)
+	if err != nil {
+		return err
+	}
+
+	layer, err := v.FindDynamicLayer(vmName)
+	if err != nil {
+		return err
+	}
+
+	if layer == nil {
+		return fmt.Errorf("could not commit: missing root layer")
+	}
+
+	volumeLayer, err := layer.ToVolumeLayer(nil, opts...)
+	if err != nil {
+		return err
+	}
+
+	_, err = v.MakeImage(imageName, volumeLayer, opts...)
 	if err != nil {
 		return err
 	}

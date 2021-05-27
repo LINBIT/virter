@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+
 	"text/template"
 	"time"
 
@@ -19,13 +20,13 @@ import (
 type LibvirtConnection interface {
 	ConnectListAllDomains(NeedResults int32, Flags libvirt.ConnectListAllDomainsFlags) (rDomains []libvirt.Domain, rRet uint32, err error)
 	StoragePoolLookupByName(Name string) (rPool libvirt.StoragePool, err error)
+	StoragePoolListAllVolumes(Pool libvirt.StoragePool, NeedResults int32, Flags uint32) (rVols []libvirt.StorageVol, rRet uint32, err error)
 	StorageVolCreateXML(Pool libvirt.StoragePool, XML string, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
+	StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, original libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
 	StorageVolDelete(Vol libvirt.StorageVol, Flags libvirt.StorageVolDeleteFlags) (err error)
-	StorageVolGetPath(Vol libvirt.StorageVol) (rName string, err error)
 	StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error)
 	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
 	StorageVolGetXMLDesc(Vol libvirt.StorageVol, Flags uint32) (rXML string, err error)
-	StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, Clonevol libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
 	StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error)
 	StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity, rAllocation uint64, err error)
 	ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error)
@@ -124,7 +125,7 @@ type NIC interface {
 
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
-	ImageName          string
+	Image              *LocalImage
 	Name               string
 	MemoryKiB          uint64
 	BootCapacityKiB    uint64

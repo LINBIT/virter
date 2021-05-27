@@ -93,11 +93,11 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
 
 func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (string, error) {
 	vmDisks := []VMDisk{
-		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: vm.Name, bus: "virtio", format: "qcow2"},
-		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: ciDataVolumeName(vm.Name), bus: "ide", format: "raw"},
+		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: DynamicLayerName(vm.Name), bus: "virtio", format: "qcow2"},
+		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "ide", format: "raw"},
 	}
 	for _, d := range vm.Disks {
-		disk := VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: diskVolumeName(vm.Name, d.GetName()), bus: d.GetBus(), format: d.GetFormat()}
+		disk := VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: DynamicLayerName(diskVolumeName(vm.Name, d.GetName())), bus: d.GetBus(), format: d.GetFormat()}
 		vmDisks = append(vmDisks, disk)
 	}
 

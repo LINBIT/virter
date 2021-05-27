@@ -1,25 +1,27 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
-
 	"github.com/spf13/cobra"
+	"github.com/vbauerster/mpb/v7"
+	"golang.org/x/term"
 )
 
 func imageSaveCommand() *cobra.Command {
-	var out string
-
 	saveCmd := &cobra.Command{
-		Use:   "save image",
+		Use:   "save name [file]",
 		Short: "Save an image",
-		Long:  `Save an image file either to stdout or to disk.`,
-		Args:  cobra.ExactArgs(1),
+		Long: `Saves an image as a standalone qcow2 image. If the image uses multiple layers, all layers will be
+squashed into a single file.`,
+		Args: cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
-			imageName := args[0]
+			ctx, cancel := onInterruptWrap(context.Background())
+			defer cancel()
 
 			v, err := InitVirter()
 			if err != nil {
@@ -27,36 +29,77 @@ func imageSaveCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			var dest io.Writer
-			if out != "" {
-				// create file only if it doesn't exist already
-				file, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0664)
-				if err != nil {
-					log.Fatalf("Failed to open output file: %v", err)
+			image := args[0]
+			var out io.Writer
+			if len(args) == 1 {
+				out = os.Stdout
+				if term.IsTerminal(int(os.Stdout.Fd())) {
+					log.Fatal("refusing to write image to terminal, redirect or specify a filename")
 				}
-				dest = file
-				defer file.Close()
 			} else {
-				if terminal.IsTerminal(int(os.Stdout.Fd())) {
-					log.Fatal("Refusing to output image to a terminal")
+				f, err := os.Create(args[1])
+				if err != nil {
+					log.WithError(err).Fatal("failed to create output file")
 				}
-				dest = os.Stdout
-			}
-			err = v.ImageSave(imageName, dest)
-			if err != nil {
-				if out != "" {
-					log.Debugf("image save failed, removing partial output file %q", out)
-					err := os.Remove(out)
-					if err != nil {
-						log.Errorf("Failed to remove partial output file %q: %v", out, err)
+				defer func() {
+					_ = f.Close()
+					if ctx.Err() != nil {
+						_ = os.Remove(args[1])
 					}
-				}
-				log.Fatalf("Failed to save image: %v", err)
+				}()
+
+				out = f
 			}
+
+			imgRef, err := v.FindImage(image)
+			if err != nil {
+				log.WithError(err).Fatalf("error searching image %s", image)
+			}
+
+			if imgRef == nil {
+				log.Fatalf("could not find a local image %s", image)
+			}
+
+			top := imgRef.TopLayer()
+
+			squashed, err := top.Squashed()
+			if err != nil {
+				log.WithError(err).Fatal("could not squash image")
+			}
+
+			defer func() {
+				err := squashed.Delete()
+				if err != nil {
+					log.WithError(err).Warn("failed to delete squashed volume")
+				}
+			}()
+
+			desc, err := squashed.Descriptor()
+			if err != nil {
+				log.WithError(err).Fatal("could not get description of squashed volume")
+			}
+
+			p := mpb.NewWithContext(ctx, mpb.WithOutput(os.Stderr))
+
+			bar := DefaultProgressFormat(p).NewBar(image, "save", int64(desc.Physical.Value))
+
+			reader, err := squashed.Uncompressed()
+			if err != nil {
+				log.WithError(err).Fatal("could not get reader from volume")
+			}
+
+			reader = bar.ProxyReader(reader)
+			defer reader.Close()
+
+			_, err = io.Copy(out, reader)
+			if err != nil {
+				log.WithError(err).Fatal("failed to copy volume content to output")
+			}
+
+			p.Wait()
+			_, _ = fmt.Fprintf(os.Stderr, "Saved %s\n", image)
 		},
 	}
-
-	saveCmd.Flags().StringVarP(&out, "out", "o", "", "File to write the image to")
 
 	return saveCmd
 }
