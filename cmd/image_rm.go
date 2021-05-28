@@ -2,17 +2,19 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 func imageRmCommand() *cobra.Command {
 	rmCmd := &cobra.Command{
-		Use:   "rm name",
-		Short: "Remove an image",
-		Long:  `Remove an image from a libvirt storage pool.`,
-		Args:  cobra.ExactArgs(1),
+		Use:   "rm name [name...]",
+		Short: "Remove images",
+		Long:  `Remove one or multiple images from a libvirt storage pool.`,
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			v, err := InitVirter()
 			if err != nil {
@@ -20,9 +22,16 @@ func imageRmCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			err = v.ImageRm(context.Background(), args[0])
-			if err != nil {
-				log.Fatalf("Error removing image: %v", err)
+			var errs error
+			for _, vm := range args {
+				err = v.ImageRm(context.Background(), vm)
+				if err != nil {
+					e := fmt.Errorf("failed to remove image '%s': %w", vm, err)
+					errs = multierror.Append(errs, e)
+				}
+			}
+			if errs != nil {
+				log.Fatal(errs)
 			}
 		},
 	}
