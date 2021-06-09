@@ -8,7 +8,7 @@ url = "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd
 url = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
 
 [debian-10]
-url = "https://cloud.debian.org/images/cloud/buster/daily/20200119-143/debian-10-generic-amd64-daily-20200119-143.qcow2"
+url = "https://cloud.debian.org/images/cloud/buster/20210329-591/debian-10-generic-amd64-20210329-591.qcow2"
 
 [debian-9]
 # There is no publicly available "generic" image, but the OpenStack one works
