@@ -15,6 +15,7 @@ local-hostname: {{ .VMName }}
 
 const templateUserData = `#cloud-config
 disable_root: False
+ssh_pwauth: unchanged
 ssh_authorized_keys:
 {{- range .SSHPublicKeys }}
   - {{ . }}
