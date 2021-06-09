@@ -52,18 +52,3 @@ lint:
     reports:
       junit:
         - lint.xml
-
-deploy:
-  stage: deploy
-  rules:
-    - if: $CI_COMMIT_BRANCH == 'master'
-  dependencies:
-    - build
-  before_script:
-    - echo "DEPLOY"
-  script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t $CI_REGISTRY/linbit/virter/virter:latest .
-    - docker push $CI_REGISTRY/linbit/virter/virter:latest
-  tags:
-    - shell
