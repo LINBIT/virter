@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/LINBIT/containerapi"
-
 	libvirt "github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	uuid "github.com/satori/go.uuid"
@@ -51,12 +50,7 @@ func (v *Virter) ImagePull(ctx context.Context, client HTTPClient, readerProxy R
 		return fmt.Errorf("error %v from %v", response.Status, url)
 	}
 
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return fmt.Errorf("could not get storage pool: %w", err)
-	}
-
-	sv, err := v.libvirt.StorageVolCreateXML(sp, xml, 0)
+	sv, err := v.libvirt.StorageVolCreateXML(v.provisionStoragePool, xml, 0)
 	if err != nil {
 		return fmt.Errorf("could not create storage volume: %w", err)
 	}
@@ -64,7 +58,7 @@ func (v *Virter) ImagePull(ctx context.Context, client HTTPClient, readerProxy R
 	err = v.libvirt.StorageVolUpload(sv, proxyResponse, 0, 0, 0)
 	if err != nil {
 		err = fmt.Errorf("failed to transfer data from URL to libvirt: %w", err)
-		if rmErr := v.rmVolume(sp, name, name); rmErr != nil {
+		if rmErr := v.rmVolume(v.provisionStoragePool, name, name); rmErr != nil {
 			err = fmt.Errorf("could not remove image: %v, after transfer failed: %w", rmErr, err)
 		}
 		return err
@@ -75,12 +69,7 @@ func (v *Virter) ImagePull(ctx context.Context, client HTTPClient, readerProxy R
 
 // ImageRm removes an image from libvirt.
 func (v *Virter) ImageRm(ctx context.Context, name string) error {
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return fmt.Errorf("could not get storage pool: %w", err)
-	}
-
-	return v.rmVolume(sp, name, name)
+	return v.rmVolume(v.provisionStoragePool, name, name)
 }
 
 // ImageBuildTools includes the dependencies for building an image
@@ -179,12 +168,7 @@ func (v *Virter) volDeleteMust(vol libvirt.StorageVol) {
 }
 
 func (v *Virter) ImageSave(name string, to io.Writer) error {
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return fmt.Errorf("could not get storage pool: %w", err)
-	}
-
-	vol, err := v.libvirt.StorageVolLookupByName(sp, name)
+	vol, err := v.libvirt.StorageVolLookupByName(v.provisionStoragePool, name)
 	if err != nil {
 		return fmt.Errorf("could not get storage volume: %w", err)
 	}
@@ -207,7 +191,7 @@ func (v *Virter) ImageSave(name string, to io.Writer) error {
 		return fmt.Errorf("could not marshal storage volume XML: %w", err)
 	}
 
-	newVol, err := v.libvirt.StorageVolCreateXMLFrom(sp, newXML, vol, 0)
+	newVol, err := v.libvirt.StorageVolCreateXMLFrom(v.provisionStoragePool, newXML, vol, 0)
 	if err != nil {
 		return fmt.Errorf("could not clone volume: %w", err)
 	}

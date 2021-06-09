@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"text/template"
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/LINBIT/virter/pkg/sshkeys"
@@ -23,11 +23,11 @@ type LibvirtConnection interface {
 	StorageVolDelete(Vol libvirt.StorageVol, Flags libvirt.StorageVolDeleteFlags) (err error)
 	StorageVolGetPath(Vol libvirt.StorageVol) (rName string, err error)
 	StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error)
-	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset uint64, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
+	StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error)
 	StorageVolGetXMLDesc(Vol libvirt.StorageVol, Flags uint32) (rXML string, err error)
 	StorageVolCreateXMLFrom(Pool libvirt.StoragePool, XML string, Clonevol libvirt.StorageVol, Flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)
-	StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset uint64, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error)
-	StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity uint64, rAllocation uint64, err error)
+	StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error)
+	StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity, rAllocation uint64, err error)
 	ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error)
 	NetworkGetDhcpLeases(Net libvirt.Network, Mac libvirt.OptString, NeedResults int32, Flags uint32) (rLeases []libvirt.NetworkDhcpLease, rRet uint32, err error)
 	NetworkDefineXML(XML string) (rNet libvirt.Network, err error)
@@ -37,7 +37,7 @@ type LibvirtConnection interface {
 	NetworkUndefine(Net libvirt.Network) (err error)
 	NetworkLookupByName(Name string) (rNet libvirt.Network, err error)
 	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
-	NetworkUpdate(Net libvirt.Network, Command uint32, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error)
+	NetworkUpdate(Net libvirt.Network, Command, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error)
 	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
 	DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error)
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
@@ -54,10 +54,10 @@ type LibvirtConnection interface {
 
 // Virter manipulates libvirt for virter.
 type Virter struct {
-	libvirt         LibvirtConnection
-	storagePoolName string
-	networkName     string
-	sshkeys         sshkeys.KeyStore
+	libvirt              LibvirtConnection
+	provisionStoragePool libvirt.StoragePool
+	provisionNetwork     libvirt.Network
+	sshkeys              sshkeys.KeyStore
 }
 
 // New configures a new Virter.
@@ -65,11 +65,22 @@ func New(libvirtConnection LibvirtConnection,
 	storagePoolName string,
 	networkName string,
 	store sshkeys.KeyStore) *Virter {
+	// We intentionally allow these to be null. Not every command requires them and for example the network commands
+	// could be used to bootstrap the actual virter network.
+	sp, err := libvirtConnection.StoragePoolLookupByName(storagePoolName)
+	if err != nil {
+		log.WithError(err).Warnf("could not look up storage pool %s", storagePoolName)
+	}
+	net, err := libvirtConnection.NetworkLookupByName(networkName)
+	if err != nil {
+		log.WithError(err).Warnf("could not look up network %s", networkName)
+	}
+
 	return &Virter{
-		libvirt:         libvirtConnection,
-		storagePoolName: storagePoolName,
-		networkName:     networkName,
-		sshkeys:         store,
+		libvirt:              libvirtConnection,
+		provisionStoragePool: sp,
+		provisionNetwork:     net,
+		sshkeys:              store,
 	}
 }
 
@@ -85,9 +96,8 @@ func (v *Virter) Disconnect() error {
 // Note: this is useful for `defer` statements
 func (v *Virter) ForceDisconnect() {
 	err := v.Disconnect()
-
 	if err != nil {
-		log.Fatalf("failed to disconnect from libvirt: %v", err)
+		log.WithError(err).Fatalf("failed to disconnect from libvirt")
 	}
 }
 

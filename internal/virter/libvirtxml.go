@@ -4,10 +4,11 @@ import (
 	"encoding/xml"
 	"fmt"
 
-	"github.com/LINBIT/virter/pkg/driveletter"
 	libvirt "github.com/digitalocean/go-libvirt"
 	lx "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LINBIT/virter/pkg/driveletter"
 )
 
 type VMDiskDevice string
@@ -189,8 +190,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 					},
 					Source: &lx.DomainInterfaceSource{
 						Network: &lx.DomainInterfaceSourceNetwork{
-							Network: v.networkName,
-							Bridge:  "virbr0",
+							Network: v.provisionNetwork.Name,
 						},
 					},
 					Model: &lx.DomainInterfaceModel{
@@ -253,7 +253,7 @@ func (v *Virter) ciDataVolumeXML(name string) (string, error) {
 	return v.diskVolumeXML(name, 0, "B", "raw")
 }
 
-func (v *Virter) vmVolumeXML(name string, backingPath string, sizeB uint64) (string, error) {
+func (v *Virter) vmVolumeXML(name, backingPath string, sizeB uint64) (string, error) {
 	volume := v.diskVolume(name, sizeB, "B", "qcow2")
 	volume.BackingStore = &lx.StorageVolumeBackingStore{
 		Path:   backingPath,

@@ -9,30 +9,22 @@ import (
 	"time"
 
 	"github.com/LINBIT/containerapi"
-
-	"github.com/LINBIT/virter/pkg/netcopy"
+	sshclient "github.com/LINBIT/gosshclient"
+	libvirt "github.com/digitalocean/go-libvirt"
 	"github.com/rck/unit"
-
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
 
-	sshclient "github.com/LINBIT/gosshclient"
 	"github.com/LINBIT/virter/pkg/actualtime"
+	"github.com/LINBIT/virter/pkg/netcopy"
 	"github.com/LINBIT/virter/pkg/sshkeys"
-
-	libvirt "github.com/digitalocean/go-libvirt"
 )
 
 // ImageExists checks whether an image called imageName exists in the libvirt
 // virter storage pool.
 func (v *Virter) ImageExists(imageName string) (bool, error) {
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return false, fmt.Errorf("could not get storage pool: %w", err)
-	}
-
-	_, err = v.libvirt.StorageVolLookupByName(sp, imageName)
+	_, err := v.libvirt.StorageVolLookupByName(v.provisionStoragePool, imageName)
 	if err != nil {
 		if hasErrorCode(err, errNoStorageVol) {
 			return false, nil
@@ -102,11 +94,6 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 	// end checks
 
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return fmt.Errorf("could not get storage pool: %w", err)
-	}
-
 	log.Print("Create host key")
 	hostkey, err := sshkeys.NewRSAHostKey()
 	if err != nil {
@@ -114,20 +101,20 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	log.Print("Create boot volume")
-	err = v.createVMVolume(sp, vmConfig)
+	err = v.createVMVolume(v.provisionStoragePool, vmConfig)
 	if err != nil {
 		return err
 	}
 
 	log.Print("Create cloud-init volume")
-	err = v.createCIData(sp, vmConfig, hostkey)
+	err = v.createCIData(v.provisionStoragePool, vmConfig, hostkey)
 	if err != nil {
 		return err
 	}
 
 	for _, d := range vmConfig.Disks {
 		log.Printf("Create volume '%s'", d.GetName())
-		err = v.createDiskVolume(sp, vmConfig.Name, d)
+		err = v.createDiskVolume(v.provisionStoragePool, vmConfig.Name, d)
 		if err != nil {
 			return err
 		}
@@ -137,7 +124,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		HostKey: hostkey.PublicKey(),
 	}
 
-	err = v.createVM(sp, vmConfig, mac, meta)
+	err = v.createVM(v.provisionStoragePool, vmConfig, mac, meta)
 	if err != nil {
 		return err
 	}
@@ -198,7 +185,7 @@ func (v *Virter) createDiskVolume(sp libvirt.StoragePool, vmName string, disk Di
 	return nil
 }
 
-func diskVolumeName(vmName string, diskName string) string {
+func diskVolumeName(vmName, diskName string) string {
 	return vmName + "-" + diskName
 }
 
@@ -291,17 +278,12 @@ func tryDialSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, host
 
 // VMRm removes a VM.
 func (v *Virter) VMRm(vmName string, staticDHCP bool) error {
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return fmt.Errorf("could not get storage pool: %w", err)
-	}
-
-	err = v.vmRmExceptBoot(sp, vmName, !staticDHCP)
+	err := v.vmRmExceptBoot(v.provisionStoragePool, vmName, !staticDHCP)
 	if err != nil {
 		return err
 	}
 
-	err = v.rmVolume(sp, vmName, "boot")
+	err = v.rmVolume(v.provisionStoragePool, vmName, "boot")
 	if err != nil {
 		return err
 	}
@@ -389,7 +371,7 @@ func (v *Virter) rmSnapshots(domain libvirt.Domain) error {
 	return nil
 }
 
-func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName string, debugName string) error {
+func (v *Virter) rmVolume(sp libvirt.StoragePool, volumeName, debugName string) error {
 	volume, err := v.libvirt.StorageVolLookupByName(sp, volumeName)
 	if !hasErrorCode(err, errNoStorageVol) {
 		if err != nil {
@@ -431,12 +413,7 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		}
 	}
 
-	sp, err := v.libvirt.StoragePoolLookupByName(v.storagePoolName)
-	if err != nil {
-		return fmt.Errorf("could not get storage pool: %w", err)
-	}
-
-	err = v.vmRmExceptBoot(sp, vmName, !staticDHCP)
+	err = v.vmRmExceptBoot(v.provisionStoragePool, vmName, !staticDHCP)
 	if err != nil {
 		return err
 	}
@@ -503,12 +480,7 @@ func (v *Virter) getIP(vmName string, network *libvirt.Network) (string, error) 
 	}
 
 	if network == nil {
-		lookup, err := v.libvirt.NetworkLookupByName(v.networkName)
-		if err != nil {
-			return "", fmt.Errorf("could not get network: %w", err)
-		}
-
-		network = &lookup
+		network = &v.provisionNetwork
 	}
 
 	ip, err := v.findVMIP(*network, domain)
@@ -521,13 +493,9 @@ func (v *Virter) getIP(vmName string, network *libvirt.Network) (string, error) 
 
 func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 	var ips []string
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return ips, fmt.Errorf("could not get network: %w", err)
-	}
 
 	for _, vmName := range vmNames {
-		ip, err := v.getIP(vmName, &network)
+		ip, err := v.getIP(vmName, &v.provisionNetwork)
 		if err != nil {
 			return nil, err
 		}

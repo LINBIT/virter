@@ -7,9 +7,8 @@ import (
 	"os/exec"
 
 	libvirt "github.com/digitalocean/go-libvirt"
-	log "github.com/sirupsen/logrus"
-
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
+	log "github.com/sirupsen/logrus"
 )
 
 // AddDHCPHost determines the IP for an ID and adds a DHCP mapping from a MAC
@@ -17,12 +16,7 @@ import (
 // so that DHCP entries do not need to be released between removing a VM and
 // creating another with the same ID.
 func (v *Virter) AddDHCPHost(mac string, id uint) error {
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return fmt.Errorf("could not get network: %w", err)
-	}
-
-	ipNet, err := v.getIPNet(network)
+	ipNet, err := v.getIPNet(v.provisionNetwork)
 	if err != nil {
 		return err
 	}
@@ -36,7 +30,7 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 
 	log.Printf("Add DHCP entry from %v to %v", mac, ip)
 	err = v.libvirt.NetworkUpdate(
-		network,
+		v.provisionNetwork,
 		// the following 2 arguments are swapped; see
 		// https://github.com/digitalocean/go-libvirt/issues/87
 		uint32(libvirt.NetworkSectionIPDhcpHost),
@@ -53,12 +47,7 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 
 // Get the libvirt DNS server
 func (v *Virter) getDNSServer() (net.IP, error) {
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return nil, fmt.Errorf("could not get network: %w", err)
-	}
-
-	ipNet, err := v.getIPNet(network)
+	ipNet, err := v.getIPNet(v.provisionNetwork)
 	if err != nil {
 		return nil, fmt.Errorf("could not get network description: %w", err)
 	}
@@ -69,12 +58,7 @@ func (v *Virter) getDNSServer() (net.IP, error) {
 // Get the domain suffix of the libvirt network. Returns an empty string if no
 // domain is configured.
 func (v *Virter) getDomainSuffix() (string, error) {
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return "", fmt.Errorf("could not get network: %w", err)
-	}
-
-	net, err := getNetworkDescription(v.libvirt, network)
+	net, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
 	if err != nil {
 		return "", fmt.Errorf("could not get network xml: %w", err)
 	}
@@ -191,17 +175,12 @@ func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {
 // RemoveMACDHCPEntries removes DHCP host entries associated with the given
 // MAC address
 func (v *Virter) RemoveMACDHCPEntries(mac string) error {
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return fmt.Errorf("could not get network: %w", err)
-	}
-
-	ips, err := v.findIPs(network, mac)
+	ips, err := v.findIPs(v.provisionNetwork, mac)
 	if err != nil {
 		return err
 	}
 
-	err = v.removeDHCPEntries(network, mac, ips)
+	err = v.removeDHCPEntries(v.provisionNetwork, mac, ips)
 	if err != nil {
 		return err
 	}
@@ -395,17 +374,12 @@ func cidr(mask net.IP) uint {
 // If wantedID is 0 GetVMID searches for an unused ID and returns the first it can find.
 // For searching it uses the set libvirt network and already reserved DHCP entries.
 func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
-	network, err := v.libvirt.NetworkLookupByName(v.networkName)
-	if err != nil {
-		return 0, fmt.Errorf("could not get network: %w", err)
-	}
-
-	hosts, err := v.getDHCPHosts(network)
+	hosts, err := v.getDHCPHosts(v.provisionNetwork)
 	if err != nil {
 		return 0, err
 	}
 
-	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
 	if err != nil {
 		return 0, err
 	}
