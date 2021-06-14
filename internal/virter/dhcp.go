@@ -28,13 +28,24 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 		return fmt.Errorf("computed IP %v is not in network", ip)
 	}
 
+	// the following 2 arguments are swapped until version 7.2.0; see
+	// https://github.com/digitalocean/go-libvirt/issues/87
+	version, err := v.libvirt.ConnectGetLibVersion()
+	if err != nil {
+		return fmt.Errorf("unable to get libvirt version: %w", err)
+	}
+	var command uint32 = uint32(libvirt.NetworkUpdateCommandAddLast)
+	var section uint32 = uint32(libvirt.NetworkSectionIPDhcpHost)
+	if version < 7002000 {
+		command = uint32(libvirt.NetworkSectionIPDhcpHost)
+		section = uint32(libvirt.NetworkUpdateCommandAddLast)
+	}
+
 	log.Printf("Add DHCP entry from %v to %v", mac, ip)
 	err = v.libvirt.NetworkUpdate(
 		v.provisionNetwork,
-		// the following 2 arguments are swapped; see
-		// https://github.com/digitalocean/go-libvirt/issues/87
-		uint32(libvirt.NetworkSectionIPDhcpHost),
-		uint32(libvirt.NetworkUpdateCommandAddLast),
+		command,
+		section,
 		-1,
 		fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
 		libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
@@ -232,13 +243,25 @@ func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool)
 
 func (v *Virter) removeDHCPEntries(network libvirt.Network, mac string, ips []string) error {
 	for _, ip := range ips {
+		// the following 2 arguments are swapped until version 7.2.0; see
+		// https://github.com/digitalocean/go-libvirt/issues/87
+		version, err := v.libvirt.ConnectGetLibVersion()
+		if err != nil {
+			return fmt.Errorf("unable to get libvirt version: %w", err)
+		}
+
+		var command uint32 = uint32(libvirt.NetworkUpdateCommandDelete)
+		var section uint32 = uint32(libvirt.NetworkSectionIPDhcpHost)
+		if version < 7002000 {
+			command = uint32(libvirt.NetworkSectionIPDhcpHost)
+			section = uint32(libvirt.NetworkUpdateCommandDelete)
+		}
+
 		log.Printf("Remove DHCP entry from %v to %v", mac, ip)
-		err := v.libvirt.NetworkUpdate(
+		err = v.libvirt.NetworkUpdate(
 			network,
-			// the following 2 arguments are swapped; see
-			// https://github.com/digitalocean/go-libvirt/issues/87
-			uint32(libvirt.NetworkSectionIPDhcpHost),
-			uint32(libvirt.NetworkUpdateCommandDelete),
+			command,
+			section,
 			-1,
 			fmt.Sprintf("<host mac='%s' ip='%v'/>", mac, ip),
 			libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)

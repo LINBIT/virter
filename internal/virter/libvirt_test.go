@@ -266,10 +266,15 @@ func (l *FakeLibvirtConnection) NetworkGetXMLDesc(Net libvirt.Network, Flags uin
 }
 
 func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error) {
-	// the following 2 arguments are swapped; see
+	// the following 2 arguments are swapped until version 7.2.0; see
 	// https://github.com/digitalocean/go-libvirt/issues/87
-	section := Command
-	command := Section
+	version, _ := l.ConnectGetLibVersion()
+	var section = Section
+	var command = Command
+	if version < 7002000 {
+		section = Command
+		command = Section
+	}
 
 	if section != uint32(libvirt.NetworkSectionIPDhcpHost) {
 		return errors.New("unknown section")
@@ -423,6 +428,10 @@ func (l *FakeLibvirtConnection) DomainUndefine(Dom libvirt.Domain) (err error) {
 	gcDomain(l.domains, Dom.Name, domain)
 
 	return nil
+}
+
+func (l *FakeLibvirtConnection) ConnectGetLibVersion() (uint64, error) {
+	return 7000000, nil
 }
 
 func gcDomain(domains map[string]*FakeLibvirtDomain, name string, domain *FakeLibvirtDomain) {

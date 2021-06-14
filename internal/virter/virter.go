@@ -51,6 +51,7 @@ type LibvirtConnection interface {
 	DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error)
 	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
 	Disconnect() error
+	ConnectGetLibVersion() (uint64, error)
 }
 
 // Virter manipulates libvirt for virter.
