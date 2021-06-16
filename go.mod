@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/LINBIT/containerapi v0.6.0
 	github.com/LINBIT/gosshclient v0.3.1
-	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
+	github.com/digitalocean/go-libvirt v0.0.0-20210615174804-eaff166426e3
 	github.com/docker/go-units v0.4.0
 	github.com/google/go-containerregistry v0.5.1
 	github.com/hashicorp/go-multierror v1.1.0
@@ -27,10 +27,7 @@ require (
 	github.com/vbauerster/mpb/v7 v7.0.2
 	github.com/vektra/mockery v1.1.2
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 // indirect
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
 )
-
-// to enable libvirt authentication via policykit
-replace github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793 => github.com/wanzenbug/go-libvirt v0.0.0-20200901120615-7281076f1c61
