@@ -89,6 +89,8 @@ func vmRunCommand() *cobra.Command {
 	var provisionFile string
 	var provisionOverrides []string
 
+	pullPolicy := PullPolicyIfNotExist
+
 	runCmd := &cobra.Command{
 		Use:   "run image",
 		Short: "Start a virtual machine with a given image",
@@ -126,12 +128,18 @@ func vmRunCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			imageName := args[0]
-
 			extraAuthorizedKeys, err := extraAuthorizedKeys()
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			p := mpb.New()
+			image, err := GetLocalImage(ctx, args[0], args[0], v, PullPolicyIfNotExist, DefaultProgressFormat(p))
+			if err != nil {
+				log.Fatalf("Error while getting image: %v", err)
+			}
+
+			p.Wait()
 
 			consoleDir, err = createConsoleDir(consoleDir)
 			if err != nil {
@@ -163,7 +171,7 @@ func vmRunCommand() *cobra.Command {
 					var thisVMName string
 					if vmName == "" {
 						// if the name is not set, use image name + id
-						thisVMName = fmt.Sprintf("%s-%d", imageName, id)
+						thisVMName = fmt.Sprintf("%s-%d", image.Name(), id)
 					} else if !cmd.Flags().Changed("count") {
 						// if it is set, use the supplied name if
 						// --count is the default (1)
@@ -178,28 +186,6 @@ func vmRunCommand() *cobra.Command {
 					consolePath, err := createConsoleFile(consoleDir, thisVMName)
 					if err != nil {
 						log.Fatalf("Error while creating console file: %v", err)
-					}
-
-					image, err := v.FindImage(imageName)
-					if err != nil {
-						log.Fatalf("Error while getting image: %v", err)
-					}
-
-					if image == nil {
-						// Try the "legacy" registry
-						reg := loadRegistry()
-						url, err := reg.Lookup(imageName)
-						if err != nil {
-							log.WithError(err).Fatal("unknown image")
-						}
-
-						p := mpb.New()
-						image, err = pullLegacyRegistry(ctx, v, imageName, url, p)
-						if err != nil {
-							log.WithError(err).Fatal("failed to pull image")
-						}
-
-						p.Wait()
 					}
 
 					c := virter.VMConfig{
@@ -249,6 +235,10 @@ func vmRunCommand() *cobra.Command {
 					log.Fatal(err)
 				}
 			}
+
+			for _, name := range vmNames {
+				fmt.Println(name)
+			}
 		},
 	}
 
@@ -277,6 +267,8 @@ func vmRunCommand() *cobra.Command {
 
 	runCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	runCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
+
+	runCmd.Flags().VarP(&pullPolicy, "pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", PullPolicyAlways, PullPolicyIfNotExist, PullPolicyNever))
 
 	return runCmd
 }

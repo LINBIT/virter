@@ -8,7 +8,7 @@ image layers. The empty layer will grow to store the changes during the VMs exec
 
 ## Sharing images
 
-Virter images can be shared via container registries or pulled from a predefined list of HTTP servers. 
+Virter images can be shared via container registries or pulled from a predefined list of HTTP servers.
 
 ## Pulling images
 
@@ -19,6 +19,16 @@ $ virter image pull local-image my.registry.com/my-namespace/my-image:tag
 sha256:0f1a974bbae614165 pull done [=================] 282.82MiB / 282.82MiB
 sha256:99bd66cc35a3db143 pull done [=====================] 1.93MiB / 1.93MiB
 Pulled local-image
+```
+
+If you only specify the registry location, a local image name will be generated for you. See [the section on image names](#image-names).
+
+```
+$ virter image pull my.registry.com/my-namespace/my-image:tag
+INFO[0000] Mapping image my.registry.com/my-namespace/my-image:tag to local volume my-namespace--my-image-tag
+sha256:0f1a974bbae614165 pull done [=================] 282.82MiB / 282.82MiB
+sha256:99bd66cc35a3db143 pull done [=====================] 1.93MiB / 1.93MiB
+Pulled my-namespace--my-image-tag
 ```
 
 Pulling from a container registry will always update the local image. If the image was already present, but in an older
@@ -57,6 +67,33 @@ sha256:99bd66cc35a3db143 compress done [==================================] 13.0
 sha256:0f1a974bbae614165 compress done [================================] 284.94MiB / 284.94MiB
 Pushed my.registry.com/my-namespace/my-image:tag
 ```
+
+If the image you want to push matches the "localized" name, you can skip specifying the local image
+
+```
+$ virter image push my.registry.com/my-namespace/my-image:tag
+INFO[0000] Mapping image my.registry.com/my-namespace/my-image:tag to local volume my-namespace--my-image-tag
+sha256:0f1a974bbae614165 compress done [=================] 282.82MiB / 282.82MiB
+sha256:99bd66cc35a3db143 compress done [=====================] 1.93MiB / 1.93MiB
+Pushed my.registry.com/my-namespace/my-image:tag
+```
+
+## Image names
+
+Whenever you specify an image, for example in `virter image pull/build/rm` but also in `virter vm run` you can use
+a registry reference, for example `my.registry.com/my-namespace/my-image:tag`.
+
+Internally, Virter will convert this to a name compatible with libvirt:
+* The registry host section is removed.
+* All `/` are replaced by `--`.
+* The `latest` tag is added if no tag is specified.
+* The `:` separating repository and tag is replaced by `-`.
+
+### Examples
+In the example above, the local volume would be named `my-namespace--my-image-tag`.
+
+If you start a VM with ID 3 and image `my.registry.com/my-namespace/my-image`, the VM will be named
+`my-namespace--my-image-latest-3`.
 
 ## Save and load images from the local filesystem
 

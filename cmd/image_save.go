@@ -51,7 +51,9 @@ squashed into a single file.`,
 				out = f
 			}
 
-			imgRef, err := v.FindImage(image)
+			p := mpb.NewWithContext(ctx, mpb.WithOutput(os.Stderr))
+
+			imgRef, err := GetLocalImage(ctx, image, image, v, PullPolicyNever, DefaultProgressFormat(p))
 			if err != nil {
 				log.WithError(err).Fatalf("error searching image %s", image)
 			}
@@ -79,9 +81,7 @@ squashed into a single file.`,
 				log.WithError(err).Fatal("could not get description of squashed volume")
 			}
 
-			p := mpb.NewWithContext(ctx, mpb.WithOutput(os.Stderr))
-
-			bar := DefaultProgressFormat(p).NewBar(image, "save", int64(desc.Physical.Value))
+			bar := DefaultProgressFormat(p).NewBar(imgRef.Name(), "save", int64(desc.Physical.Value))
 
 			reader, err := squashed.Uncompressed()
 			if err != nil {
@@ -97,7 +97,7 @@ squashed into a single file.`,
 			}
 
 			p.Wait()
-			_, _ = fmt.Fprintf(os.Stderr, "Saved %s\n", image)
+			_, _ = fmt.Fprintf(os.Stderr, "Saved %s\n", imgRef.Name())
 		},
 	}
 

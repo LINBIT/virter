@@ -23,9 +23,15 @@ func imageRmCommand() *cobra.Command {
 
 			var errs error
 			for _, img := range args {
-				err = v.ImageRm(img)
+				localName := LocalImageName(img)
 				if err != nil {
-					e := fmt.Errorf("failed to remove image '%s': %w", img, err)
+					e := fmt.Errorf("failed to remove image '%s': %w", localName, err)
+					errs = multierror.Append(errs, e)
+				}
+
+				err = v.ImageRm(localName)
+				if err != nil {
+					e := fmt.Errorf("failed to remove image '%s': %w", localName, err)
 					errs = multierror.Append(errs, e)
 				}
 			}

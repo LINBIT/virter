@@ -11,18 +11,22 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v7"
-
-	"github.com/LINBIT/virter/internal/virter"
 )
 
 func imagePushCommand() *cobra.Command {
 	pushCmd := &cobra.Command{
-		Use:     "push name repository-reference",
+		Use:     "push name [repository-reference]",
 		Short:   "Push an image",
-		Long:    `Push an image to a container registry.`,
-		Example: "virter image push local-vm-image my.registry.org/namespace/name:latest",
-		Args:    cobra.ExactArgs(2),
+		Long:    `Push an image to a container registry. If one argument is given, it is the push target; the local image to be pushed is inferred. When using two arguments, the first is the local image name, the second the push location.`,
+		Example: "virter image push my.registry.org/namespace/name:latest",
+		Args:    cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
+			source := args[0]
+			dest := args[0]
+			if len(args) == 2 {
+				dest = args[1]
+			}
+
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
 
@@ -34,7 +38,7 @@ func imagePushCommand() *cobra.Command {
 
 			p := mpb.NewWithContext(ctx)
 
-			img, err := v.FindImage(args[0], virter.WithProgress(DefaultProgressFormat(p)))
+			img, err := GetLocalImage(ctx, source, source, v, PullPolicyNever, DefaultProgressFormat(p))
 			if err != nil {
 				log.WithError(err).Fatal("failed to get image")
 			}
@@ -43,7 +47,7 @@ func imagePushCommand() *cobra.Command {
 				log.Fatalf("Unknown image %s", args[0])
 			}
 
-			ref, err := name.ParseReference(args[1], name.WithDefaultRegistry(""))
+			ref, err := name.ParseReference(dest, name.WithDefaultRegistry(""))
 			if err != nil {
 				log.WithError(err).Fatal("failed to parse destination ref")
 			}

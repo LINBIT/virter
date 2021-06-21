@@ -26,7 +26,11 @@ read from stdin`,
 			}
 			defer v.ForceDisconnect()
 
-			image := args[0]
+			image := LocalImageName(args[0])
+			if err != nil {
+				log.WithError(err).Fatal("error parsing destination image name")
+			}
+
 			importLayer, err := v.NewDynamicLayer("load-" + image)
 			if err != nil {
 				log.WithError(err).Fatal("error creating import layer")

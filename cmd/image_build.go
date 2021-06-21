@@ -31,19 +31,20 @@ func imageBuildCommand() *cobra.Command {
 	var consoleDir string
 	var resetMachineID bool
 
+	pullPolicy := PullPolicyIfNotExist
+
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
 		Short: "Build an image",
-		Long: `Build an image by starting a VM, running a provisioning
-step, and then committing the resulting volume.`,
-		Args: cobra.ExactArgs(2),
+		Long:  `Build an image by starting a VM, running a provisioning step, and then committing the resulting volume.`,
+		Args:  cobra.ExactArgs(2),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
 			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			baseImageName := args[0]
-			newImageName := args[1]
+			newImageName := LocalImageName(args[1])
 
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
@@ -71,28 +72,14 @@ step, and then committing the resulting volume.`,
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
-			baseImage, err := v.FindImage(baseImageName)
+			p := mpb.NewWithContext(ctx)
+
+			baseImage, err := GetLocalImage(ctx, baseImageName, baseImageName, v, pullPolicy, DefaultProgressFormat(p))
 			if err != nil {
 				log.Fatalf("Error while getting image: %v", err)
 			}
 
-			p := mpb.NewWithContext(ctx)
-
-			if baseImage == nil {
-				// Try the "legacy" registry
-				reg := loadRegistry()
-				url, err := reg.Lookup(baseImageName)
-				if err != nil {
-					log.WithError(err).Fatal("unknown image")
-				}
-
-				baseImage, err = pullLegacyRegistry(ctx, v, baseImageName, url, p)
-				if err != nil {
-					log.WithError(err).Fatal("failed to pull image")
-				}
-
-				p.Wait()
-			}
+			p.Wait()
 
 			// ContainerProvider will be set later if needed
 			tools := virter.ImageBuildTools{
@@ -144,6 +131,8 @@ step, and then committing the resulting volume.`,
 				ResetMachineID:  resetMachineID,
 			}
 
+			p = mpb.NewWithContext(ctx)
+
 			err = v.ImageBuild(ctx, tools, vmConfig, sshPingConfig, buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatalf("Failed to build image: %v", err)
@@ -166,6 +155,7 @@ step, and then committing the resulting volume.`,
 	buildCmd.Flags().VarP(bootCapacity, "bootcap", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
 	buildCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	buildCmd.Flags().BoolVar(&resetMachineID, "reset-machine-id", true, "Whether or not to clear the /etc/machine-id file after provisioning")
+	buildCmd.Flags().VarP(&pullPolicy, "pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", PullPolicyAlways, PullPolicyIfNotExist, PullPolicyNever))
 
 	return buildCmd
 }
