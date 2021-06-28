@@ -330,7 +330,7 @@ func (rl *RawLayer) ToVolumeLayer(diffID *regv1.Hash, opts ...LayerOperationOpti
 
 	importedVolume, err := rl.conn.StorageVolLookupByName(rl.pool, importName)
 	if hasErrorCode(err, errNoStorageVol) {
-		clone, err := rl.CloneAs(importName)
+		clone, err := rl.CloneAs(importName, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -355,7 +355,9 @@ func (rl *RawLayer) ToVolumeLayer(diffID *regv1.Hash, opts ...LayerOperationOpti
 }
 
 // CloneAs creates a copy of this layer under the given name.
-func (rl *RawLayer) CloneAs(name string) (*RawLayer, error) {
+func (rl *RawLayer) CloneAs(name string, opts ...LayerOperationOption) (*RawLayer, error) {
+	o := makeLayerOperationOpts(opts...)
+
 	original, err := rl.Descriptor()
 	if err != nil {
 		return nil, err
@@ -387,8 +389,44 @@ func (rl *RawLayer) CloneAs(name string) (*RawLayer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reader for original volume: %w", err)
 	}
+	if o.Progress != nil {
+		bar := o.Progress.NewBar(name, "buffer layer", int64(original.Physical.Value))
+		r = bar.ProxyReader(r)
+	}
 
-	err = clonedLayer.Upload(r)
+	// NB: evidence collected on my (mwanzenboeck) machine suggests a potential deadlock when using StorageVolDownload
+	// (called in Uncompressed()) and StorageVolUpload (called in Upload()). When the amount piped between download and
+	// upload is large enough, libvirt seems to get stuck. As a workaround, we first download the layer to a temporary
+	// file and upload it only after the download has finished.
+	bufferFile, err := ioutil.TempFile("", name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary clone buffer file: %w", err)
+	}
+
+	defer func() {
+		_ = bufferFile.Close()
+		_ = os.Remove(bufferFile.Name())
+	}()
+
+	_, err = io.Copy(bufferFile, r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy layer to temporary clone buffer: %w", err)
+	}
+
+	_, err = bufferFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reset temporary clone buffer to start: %w", err)
+	}
+
+	// Casting to io.ReaderCloser, so that we can assign ProxyReader if progress is configured.
+	var uploadSource io.ReadCloser = bufferFile
+
+	if o.Progress != nil {
+		bar := o.Progress.NewBar(name, "upload layer", int64(original.Physical.Value))
+		uploadSource = bar.ProxyReader(uploadSource)
+	}
+
+	err = clonedLayer.Upload(uploadSource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to clone volume: %w", err)
 	}
