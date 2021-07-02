@@ -132,3 +132,31 @@ This is especially useful when combined with a provisioning configuration file t
 ```shell
 $ virter vm exec -p provisioning.toml --set env.foo=bar centos-1 centos-2 centos-3
 ```
+
+## Caching provision images
+
+You can directly push your provision image to a registry using the `--push` option:
+
+```
+$ virter image build ubuntu-focal registry.example.com/my-image:latest --push
+```
+
+You can skip rebuilding the same image every time you run `virter image build` by specifying a `--build-id` when using
+`--push`:
+
+```
+$ virter image build ubuntu-focal registry.example.com/my-image:latest --push --build-id my-latest-build
+```
+
+The build ID acts as a cache key: as long the build ID is the same for every `virter image build` command, virter
+will re-use the previously provisioned image. If the build ID changes or the current build would use a different
+base image virter will re-run the provisioning, even if the build ID remains the same.
+
+For example, if you only want to rerun provisioning if the provisioning config was changed, you can run
+```
+$ virter image build ubuntu-focal registry.example.com/my-image:latest --push --build-id $(sha256sum provision.toml) -p provision.toml
+$ # Alternatively, if you are running in a git repository, you could use:
+$ virter image build ubuntu-focal registry.example.com/my-image:latest --push --build-id $(git rev-list -1 HEAD -- provision.toml) -p provision.toml
+```
+
+To always rebuild the image, even if using `--build-id`, use the `--no-cache` flag.
