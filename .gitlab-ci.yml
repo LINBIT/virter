@@ -52,3 +52,19 @@ lint:
     reports:
       junit:
         - lint.xml
+
+sync-images:
+  stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_MERGE_REQUEST_ID
+      when: manual
+  tags:
+    - libvirt
+  script:
+    - ./virter registry update
+    - while read name url; do
+    -  ./virter image pull $name $url
+    -  ./virter image push $name ${LINBIT_DOCKER_REGISTRY}/vm/${name}:latest
+    - done < <(./virter image ls --available | tail -n +2)
+    - ./virter image pull
