@@ -59,6 +59,7 @@ sync-images:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_MERGE_REQUEST_ID
       when: manual
+      allow_failure: true
   tags:
     - libvirt
   script:
@@ -67,4 +68,3 @@ sync-images:
     -  ./virter image pull $name $url
     -  ./virter image push $name ${LINBIT_DOCKER_REGISTRY}/vm/${name}:latest
     - done < <(./virter image ls --available | tail -n +2)
-    - ./virter image pull

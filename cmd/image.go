@@ -114,8 +114,10 @@ func GetLocalImage(ctx context.Context, imageName string, source string, v *virt
 		return nil, fmt.Errorf("unknown pull policy %s", policy)
 	}
 
+	isHttpUrl := strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://")
+
 	parsedRef, err := name.ParseReference(source, name.WithDefaultRegistry(""))
-	if err != nil || parsedRef.Context().Registry.Name() == "" {
+	if isHttpUrl || err != nil || parsedRef.Context().Registry.Name() == "" {
 		log.Tracef("Source %s failed to parse or has no registry location, trying non-registry pull", source)
 		return pullNonContainerRegistry(ctx, v, localName, source, p)
 	}
