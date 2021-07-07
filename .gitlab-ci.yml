@@ -1,4 +1,4 @@
-image: golang:buster
+image: golang:1.16-buster
 
 workflow:
   rules:
