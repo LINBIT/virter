@@ -24,6 +24,7 @@ import (
 
 func imageBuildCommand() *cobra.Command {
 	var vmID uint
+	var vmName string
 	var provisionFile string
 	var provisionOverrides []string
 
@@ -56,6 +57,10 @@ func imageBuildCommand() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			baseImageName := args[0]
 			newImageName := LocalImageName(args[1])
+
+			if vmName == "" {
+				vmName = newImageName
+			}
 
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
@@ -152,7 +157,7 @@ func imageBuildCommand() *cobra.Command {
 
 			vmConfig := virter.VMConfig{
 				Image:              baseImage,
-				Name:               newImageName,
+				Name:               vmName,
 				MemoryKiB:          memKiB,
 				BootCapacityKiB:    bootCapacityKiB,
 				VCPUs:              vcpus,
@@ -179,6 +184,7 @@ func imageBuildCommand() *cobra.Command {
 			}
 
 			buildConfig := virter.ImageBuildConfig{
+				ImageName:       newImageName,
 				ContainerName:   containerName,
 				ShutdownTimeout: shutdownTimeout,
 				ProvisionConfig: provisionConfig,
@@ -224,6 +230,7 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	buildCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
+	buildCmd.Flags().StringVarP(&vmName, "name", "", "", "Name to use for provisioning VM")
 	buildCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	u := unit.MustNewUnit(sizeUnits)
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)

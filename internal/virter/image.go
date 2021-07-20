@@ -530,6 +530,7 @@ type ImageBuildTools struct {
 
 // ImageBuildConfig contains the configuration for building an image
 type ImageBuildConfig struct {
+	ImageName       string
 	ContainerName   string
 	ShutdownTimeout time.Duration
 	ProvisionConfig ProvisionConfig
@@ -578,7 +579,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 		}
 	}
 
-	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, vmConfig.Name, true, buildConfig.ShutdownTimeout, vmConfig.StaticDHCP, opts...)
+	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, buildConfig.ImageName, true, buildConfig.ShutdownTimeout, vmConfig.StaticDHCP, opts...)
 	if err != nil {
 		return err
 	}
