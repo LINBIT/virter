@@ -417,7 +417,7 @@ func (l *FakeLibvirtConnection) DomainDestroy(Dom libvirt.Domain) (err error) {
 	return nil
 }
 
-func (l *FakeLibvirtConnection) DomainUndefine(Dom libvirt.Domain) (err error) {
+func (l *FakeLibvirtConnection) DomainUndefineFlags(Dom libvirt.Domain, Flags libvirt.DomainUndefineFlagsValues) (err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
 		return mockLibvirtError(errNoDomain)
@@ -432,6 +432,10 @@ func (l *FakeLibvirtConnection) DomainUndefine(Dom libvirt.Domain) (err error) {
 
 func (l *FakeLibvirtConnection) ConnectGetLibVersion() (uint64, error) {
 	return 7000000, nil
+}
+
+func (l *FakeLibvirtConnection) ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags uint32) (string, error) {
+	return "", nil
 }
 
 func gcDomain(domains map[string]*FakeLibvirtDomain, name string, domain *FakeLibvirtDomain) {

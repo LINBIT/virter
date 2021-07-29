@@ -75,6 +75,7 @@ func vmRunCommand() *cobra.Command {
 	var bootCapacityKiB uint64
 
 	var vcpus uint
+	cpuArch := virter.CpuArchNative
 
 	var consoleDir string
 
@@ -191,6 +192,7 @@ func vmRunCommand() *cobra.Command {
 					c := virter.VMConfig{
 						Image:              image,
 						Name:               thisVMName,
+						CpuArch:            cpuArch,
 						MemoryKiB:          memKiB,
 						BootCapacityKiB:    bootCapacityKiB,
 						VCPUs:              vcpus,
@@ -253,6 +255,7 @@ func vmRunCommand() *cobra.Command {
 	bootCapacity = u.MustNewValue(0, unit.None)
 	runCmd.Flags().VarP(bootCapacity, "bootcapacity", "", "Capacity of the boot volume (default is the capacity of the base image, at least 10G)")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
+	runCmd.Flags().VarP(&cpuArch, "arch", "", "CPU architecture to use. Will use kvm if host and VM use the same architecture")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	runCmd.Flags().UintVar(&gdbPort, "gdb-port", 0, "Enable gdb remote connection on this port (if --count is used, the ID will be added to this port number)")
 

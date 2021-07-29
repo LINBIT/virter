@@ -47,6 +47,16 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		return err
 	}
 
+	var machine []string
+	if vmConfig.CpuArch.OSDomain().Type.Machine != "" {
+		machine = append(machine, vmConfig.CpuArch.OSDomain().Type.Machine)
+	}
+
+	_, err = v.libvirt.ConnectGetDomainCapabilities(nil, []string{vmConfig.CpuArch.QemuArch()}, machine, nil, 0)
+	if err != nil {
+		return fmt.Errorf("host does not support emulating %s. install qemu-system-%s", vmConfig.CpuArch, vmConfig.CpuArch.QemuArch())
+	}
+
 	vmName := vmConfig.Name
 	_, err = v.libvirt.DomainLookupByName(vmName)
 	if !hasErrorCode(err, errNoDomain) {
@@ -109,15 +119,15 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		HostKey: hostkey.PublicKey(),
 	}
 
-	xml, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
+	vmXML, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Using domain XML: %s", xml)
+	log.Debugf("Using domain XML: %s", vmXML)
 
 	log.Print("Define VM")
-	d, err := v.libvirt.DomainDefineXML(xml)
+	d, err := v.libvirt.DomainDefineXML(vmXML)
 	if err != nil {
 		return fmt.Errorf("could not define domain: %w", err)
 	}
@@ -261,7 +271,7 @@ func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 
 		if persistent != 0 {
 			log.Print("Undefine VM")
-			err = v.libvirt.DomainUndefine(domain)
+			err = v.libvirt.DomainUndefineFlags(domain, libvirt.DomainUndefineNvram)
 			if err != nil {
 				return fmt.Errorf("could not undefine domain: %w", err)
 			}

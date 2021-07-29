@@ -94,7 +94,7 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
 func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (string, error) {
 	vmDisks := []VMDisk{
 		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: DynamicLayerName(vm.Name), bus: "virtio", format: "qcow2"},
-		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "ide", format: "raw"},
+		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "scsi", format: "raw"},
 	}
 	for _, d := range vm.Disks {
 		disk := VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: DynamicLayerName(diskVolumeName(vm.Name, d.GetName())), bus: d.GetBus(), format: d.GetFormat()}
@@ -131,7 +131,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 	}
 
 	domain := &lx.Domain{
-		Type: "kvm",
+		Type: vm.CpuArch.DomainType(),
 		Name: vm.Name,
 		Metadata: &lx.DomainMetadata{
 			XML: string(metaXml),
@@ -147,38 +147,28 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 			Placement: "static",
 			Value:     int(vm.VCPUs),
 		},
-		OS: &lx.DomainOS{
-			Type: &lx.DomainOSType{
-				Arch: "x86_64",
-				Type: "hvm",
-			},
-		},
+		OS: vm.CpuArch.OSDomain(),
 		Features: &lx.DomainFeatureList{
 			ACPI: &lx.DomainFeature{},
 			APIC: &lx.DomainFeatureAPIC{},
 		},
-		CPU: &lx.DomainCPU{
-			Mode: "host-passthrough",
-		},
+		CPU: vm.CpuArch.CPU(),
 		Clock: &lx.DomainClock{
 			Offset: "utc",
 			Timer: []lx.DomainTimer{
-				lx.DomainTimer{Name: "rtc", TickPolicy: "catchup"},
-				lx.DomainTimer{Name: "pit", TickPolicy: "delay"},
-				lx.DomainTimer{Name: "hpet", Present: "no"},
+				{Name: "rtc", TickPolicy: "catchup"},
+				{Name: "pit", TickPolicy: "delay"},
+				{Name: "hpet", Present: "no"},
 			},
 		},
 		OnPoweroff: "destroy",
 		OnReboot:   "restart",
 		OnCrash:    "destroy",
-		PM: &lx.DomainPM{
-			SuspendToMem:  &lx.DomainPMPolicy{Enabled: "no"},
-			SuspendToDisk: &lx.DomainPMPolicy{Enabled: "no"},
-		},
+		PM:         vm.CpuArch.PM(),
 		Devices: &lx.DomainDeviceList{
 			Disks: disks,
 			Controllers: []lx.DomainController{
-				lx.DomainController{
+				{
 					Type:  "scsi",
 					Model: "virtio-scsi",
 				},
@@ -203,10 +193,8 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 				libvirtConsole(vm),
 			},
 			Videos: []lx.DomainVideo{
-				lx.DomainVideo{
-					Model: lx.DomainVideoModel{
-						Type: "cirrus",
-					},
+				{
+					Model: lx.DomainVideoModel{Type: "cirrus"},
 				},
 			},
 			MemBalloon: &lx.DomainMemBalloon{

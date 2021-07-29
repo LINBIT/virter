@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-
 	"text/template"
 	"time"
 
@@ -47,11 +46,12 @@ type LibvirtConnection interface {
 	DomainIsPersistent(Dom libvirt.Domain) (rPersistent int32, err error)
 	DomainShutdown(Dom libvirt.Domain) (err error)
 	DomainDestroy(Dom libvirt.Domain) (err error)
-	DomainUndefine(Dom libvirt.Domain) (err error)
+	DomainUndefineFlags(Dom libvirt.Domain, Flags libvirt.DomainUndefineFlagsValues) (err error)
 	DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error)
 	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
 	Disconnect() error
 	ConnectGetLibVersion() (uint64, error)
+	ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags uint32) (rCapabilities string, err error)
 }
 
 // Virter manipulates libvirt for virter.
@@ -127,6 +127,7 @@ type NIC interface {
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
 	Image              *LocalImage
+	CpuArch            CpuArch
 	Name               string
 	MemoryKiB          uint64
 	BootCapacityKiB    uint64

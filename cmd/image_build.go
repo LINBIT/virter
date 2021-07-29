@@ -42,6 +42,7 @@ func imageBuildCommand() *cobra.Command {
 	var push bool
 	var noCache bool
 	var buildId string
+	cpuArch := virter.CpuArchNative
 
 	pullPolicy := PullPolicyIfNotExist
 
@@ -158,6 +159,7 @@ func imageBuildCommand() *cobra.Command {
 			vmConfig := virter.VMConfig{
 				Image:              baseImage,
 				Name:               vmName,
+				CpuArch:            cpuArch,
 				MemoryKiB:          memKiB,
 				BootCapacityKiB:    bootCapacityKiB,
 				VCPUs:              vcpus,
@@ -232,6 +234,7 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.Flags().StringVarP(&vmName, "name", "", "", "Name to use for provisioning VM")
 	buildCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
+	buildCmd.Flags().VarP(&cpuArch, "arch", "", "CPU architecture to use. Will use kvm if host and VM use the same architecture")
 	u := unit.MustNewUnit(sizeUnits)
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
