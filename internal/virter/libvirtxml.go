@@ -203,6 +203,11 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 					Name: "ballon0",
 				},
 			},
+			// Simulate hardware RNG. This should help the guest OS to reach the required amount of entropy early in
+			// the boot process.
+			RNGs: []lx.DomainRNG{
+				{Model: "virtio", Backend: &lx.DomainRNGBackend{Random: &lx.DomainRNGBackendRandom{Device: "/dev/urandom"}}},
+			},
 		},
 		QEMUCommandline: qemuCommandline,
 	}
