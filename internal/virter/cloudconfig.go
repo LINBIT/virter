@@ -16,7 +16,9 @@ local-hostname: {{ .VMName }}
 
 const templateUserData = `#cloud-config
 disable_root: False
-ssh_pwauth: unchanged
+# Ideally, we would set this to "unchanged". However, this causes cloud-init on centos-6
+# to produce an invalid SSHd config, completely preventing external access to the VM.
+ssh_pwauth: True
 ssh_authorized_keys:
 {{- range .SSHPublicKeys }}
   - {{ . }}
