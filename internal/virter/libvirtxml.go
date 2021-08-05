@@ -192,10 +192,10 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 			Consoles: []lx.DomainConsole{
 				libvirtConsole(vm),
 			},
+			// For some reason, debian stretch doesn't boot without a video card. The virtio model seems to stable
+			// enough, even for multi-arch scenarios.
 			Videos: []lx.DomainVideo{
-				{
-					Model: lx.DomainVideoModel{Type: "cirrus"},
-				},
+				{Model: lx.DomainVideoModel{Type: "virtio"}},
 			},
 			MemBalloon: &lx.DomainMemBalloon{
 				Model: "virtio",
