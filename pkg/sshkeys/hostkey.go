@@ -91,6 +91,8 @@ func (k *knownHosts) AsHostKeyConfig() (ssh.HostKeyCallback, []string) {
 			return fmt.Errorf("ssh: host key mismatch")
 		}, []string{
 			ssh.KeyAlgoRSA,
+			ssh.SigAlgoRSASHA2256,
+			ssh.SigAlgoRSASHA2512,
 		}
 }
 

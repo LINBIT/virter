@@ -6,9 +6,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"golang.org/x/crypto/ssh"
+	"io"
 	"io/ioutil"
 	"os"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // A KeyStore stores a single private key and the matching public key. It provides various methods to access
@@ -53,9 +55,55 @@ func NewKeyStore(privateKeyPath string, publicKeyPath string) (KeyStore, error) 
 }
 
 func (store *keyStore) Auth() []ssh.AuthMethod {
+	algo, ok := store.privateKey.(ssh.AlgorithmSigner)
+	if ok && algo.PublicKey().Type() == ssh.KeyAlgoRSA {
+		return []ssh.AuthMethod{
+			ssh.PublicKeys(
+				&algoSigner{signer: algo, ty: ssh.SigAlgoRSASHA2512},
+				&algoSigner{signer: algo, ty: ssh.SigAlgoRSASHA2256},
+				&algoSigner{signer: algo},
+			),
+		}
+	}
+
 	return []ssh.AuthMethod{
 		ssh.PublicKeys(store.privateKey),
 	}
+}
+
+// algoSigner adds support for non-default signature algorithms when authenticating.
+type algoSigner struct {
+	signer ssh.AlgorithmSigner
+	ty     string
+}
+
+func (w *algoSigner) PublicKey() ssh.PublicKey {
+	return &algoPublicKey{key: w.signer.PublicKey(), ty: w.ty}
+}
+
+func (w *algoSigner) Sign(rand io.Reader, data []byte) (*ssh.Signature, error) {
+	return w.signer.SignWithAlgorithm(rand, data, w.ty)
+}
+
+type algoPublicKey struct {
+	key ssh.PublicKey
+	ty  string
+}
+
+func (s *algoPublicKey) Type() string {
+	if s.ty == "" {
+		return s.key.Type()
+	}
+
+	return s.ty
+}
+
+func (s *algoPublicKey) Marshal() []byte {
+	return s.key.Marshal()
+}
+
+func (s *algoPublicKey) Verify(data []byte, sig *ssh.Signature) error {
+	return s.key.Verify(data, sig)
 }
 
 func (store *keyStore) KeyBytes() []byte {
