@@ -11,6 +11,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -503,6 +504,13 @@ func (rl *RawLayer) DeleteIfUnused() (bool, error) {
 		if err != nil {
 			_, isNonVirter := err.(*nonVirterVolumeError)
 			if isNonVirter {
+				// Not a virter format volume -> shouldn't depend on our volumes.
+				continue
+			}
+
+			e := libvirt.Error{}
+			if errors.As(err, &e) && e.Code == uint32(errNoStorageVol) {
+				// Volume already deleted -> can't have a relevant dependency anyways.
 				continue
 			}
 
