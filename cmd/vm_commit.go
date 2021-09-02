@@ -40,7 +40,7 @@ the virtual machine name if no other value is given.`,
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
 
-			p := mpb.NewWithContext(ctx)
+			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
 			err = v.VMCommit(ctx, actualtime.ActualTime{}, vmName, imageName, shutdown, shutdownTimeout, viper.GetBool("libvirt.static_dhcp"), virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {

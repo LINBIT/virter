@@ -134,7 +134,7 @@ func vmRunCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
-			p := mpb.New()
+			p := mpb.New(DefaultContainerOpt())
 			image, err := GetLocalImage(ctx, args[0], args[0], v, pullPolicy, DefaultProgressFormat(p))
 			if err != nil {
 				log.Fatalf("Error while getting image: %v", err)

@@ -36,7 +36,7 @@ read from stdin`,
 				log.WithError(err).Fatal("error creating import layer")
 			}
 
-			p := mpb.New()
+			p := mpb.New(DefaultContainerOpt())
 
 			var in io.Reader
 			if len(args) == 1 {

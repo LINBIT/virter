@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -14,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
+	"golang.org/x/term"
 
 	"github.com/LINBIT/virter/internal/virter"
 )
@@ -187,6 +189,14 @@ func imageCommand() *cobra.Command {
 	imageCmd.AddCommand(imagePruneCommand())
 
 	return imageCmd
+}
+
+func DefaultContainerOpt() mpb.ContainerOption {
+	if term.IsTerminal(int(os.Stderr.Fd())) {
+		return mpb.WithOutput(os.Stderr)
+	}
+
+	return mpb.WithOutput(nil)
 }
 
 type mpbProgress struct {

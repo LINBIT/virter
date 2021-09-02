@@ -106,7 +106,7 @@ func imageBuildCommand() *cobra.Command {
 
 			shutdownTimeout := viper.GetDuration("time.shutdown_timeout")
 
-			p := mpb.NewWithContext(ctx)
+			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
 			baseImage, err := GetLocalImage(ctx, baseImageName, baseImageName, v, pullPolicy, DefaultProgressFormat(p))
 			if err != nil {
@@ -136,7 +136,7 @@ func imageBuildCommand() *cobra.Command {
 				} else if unchanged {
 					log.Info("Image already up-to-date, skipping provision, pulling instead")
 
-					p := mpb.NewWithContext(ctx)
+					p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
 					_, err := GetLocalImage(ctx, newImageName, args[1], v, PullPolicyAlways, DefaultProgressFormat(p))
 					if err != nil {
@@ -193,7 +193,7 @@ func imageBuildCommand() *cobra.Command {
 				ResetMachineID:  resetMachineID,
 			}
 
-			p = mpb.NewWithContext(ctx)
+			p = mpb.NewWithContext(ctx, DefaultContainerOpt())
 
 			err = v.ImageBuild(ctx, tools, vmConfig, sshPingConfig, buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {

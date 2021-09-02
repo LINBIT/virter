@@ -51,7 +51,7 @@ squashed into a single file.`,
 				out = f
 			}
 
-			p := mpb.NewWithContext(ctx, mpb.WithOutput(os.Stderr))
+			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
 			imgRef, err := GetLocalImage(ctx, image, image, v, PullPolicyNever, DefaultProgressFormat(p))
 			if err != nil {

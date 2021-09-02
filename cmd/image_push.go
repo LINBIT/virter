@@ -36,7 +36,7 @@ func imagePushCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			p := mpb.NewWithContext(ctx)
+			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
 			img, err := GetLocalImage(ctx, source, source, v, PullPolicyNever, DefaultProgressFormat(p))
 			if err != nil {

@@ -31,7 +31,7 @@ will be used.`,
 			}
 			defer v.ForceDisconnect()
 
-			p := mpb.New()
+			p := mpb.New(DefaultContainerOpt())
 
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
