@@ -3,6 +3,7 @@ package virter
 import (
 	"encoding/xml"
 	"fmt"
+
 	"github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
@@ -63,7 +64,9 @@ func (v *Virter) NetworkRemove(netname string) error {
 	}
 
 	err = v.libvirt.NetworkDestroy(lnet)
-	if err != nil {
+	if err != nil && !hasErrorCode(err, libvirt.ErrOperationInvalid) {
+		// We intentionally ignore ErrOperationInvalid, as that indicates an inactive network, i.e. this step
+		// is already done.
 		return fmt.Errorf("failed to stop network '%s': %w", netname, err)
 	}
 
