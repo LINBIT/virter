@@ -56,7 +56,7 @@ func (v *Virter) NetworkAdd(desc libvirtxml.Network) error {
 func (v *Virter) NetworkRemove(netname string) error {
 	lnet, err := v.libvirt.NetworkLookupByName(netname)
 	if err != nil {
-		if hasErrorCode(err, errNoNetwork) {
+		if hasErrorCode(err, libvirt.ErrNoNetwork) {
 			return nil
 		}
 		return fmt.Errorf("failed to lookup network '%s': %w", netname, err)

@@ -19,16 +19,6 @@ type FakeLibvirtConnection struct {
 	domains  map[string]*FakeLibvirtDomain
 }
 
-type fakeLibvirtError struct {
-	Code uint32
-}
-
-func (f fakeLibvirtError) Error() string {
-	return fmt.Sprintf("fake libvirt error: %d", f)
-}
-
-var fakeLibvirtNoNetwork = fakeLibvirtError{Code: 43}
-
 func (l *FakeLibvirtConnection) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) ([]libvirt.Network, uint32, error) {
 	nets := make([]libvirt.Network, 0, len(l.networks))
 	for k := range l.networks {
@@ -69,7 +59,7 @@ func (l *FakeLibvirtConnection) NetworkDestroy(Net libvirt.Network) (err error) 
 func (l *FakeLibvirtConnection) NetworkUndefine(Net libvirt.Network) error {
 	_, ok := l.networks[Net.Name]
 	if !ok {
-		return fakeLibvirtNoNetwork
+		return libvirt.Error{Code: uint32(libvirt.ErrNoNetwork)}
 	}
 	delete(l.networks, Net.Name)
 	return nil
@@ -146,7 +136,7 @@ func (l *FakeLibvirtConnection) StorageVolCreateXML(Pool libvirt.StoragePool, XM
 func (l *FakeLibvirtConnection) StorageVolDelete(Vol libvirt.StorageVol, Flags libvirt.StorageVolDeleteFlags) (err error) {
 	_, ok := l.vols[Vol.Name]
 	if !ok {
-		return mockLibvirtError(errNoStorageVol)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
 	delete(l.vols, Vol.Name)
@@ -156,7 +146,7 @@ func (l *FakeLibvirtConnection) StorageVolDelete(Vol libvirt.StorageVol, Flags l
 func (l *FakeLibvirtConnection) StorageVolLookupByName(Pool libvirt.StoragePool, Name string) (rVol libvirt.StorageVol, err error) {
 	_, ok := l.vols[Name]
 	if !ok {
-		return libvirt.StorageVol{}, mockLibvirtError(errNoStorageVol)
+		return libvirt.StorageVol{}, libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
 	return libvirt.StorageVol{
@@ -167,7 +157,7 @@ func (l *FakeLibvirtConnection) StorageVolLookupByName(Pool libvirt.StoragePool,
 func (l *FakeLibvirtConnection) StorageVolUpload(Vol libvirt.StorageVol, outStream io.Reader, Offset, Length uint64, Flags libvirt.StorageVolUploadFlags) (err error) {
 	vol, ok := l.vols[Vol.Name]
 	if !ok {
-		return mockLibvirtError(errNoStorageVol)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
 	vol.content, err = ioutil.ReadAll(outStream)
@@ -218,7 +208,7 @@ func (l *FakeLibvirtConnection) StorageVolCreateXMLFrom(Pool libvirt.StoragePool
 func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStream io.Writer, Offset, Length uint64, Flags libvirt.StorageVolDownloadFlags) (err error) {
 	vol, ok := l.vols[Vol.Name]
 	if !ok {
-		return mockLibvirtError(errNoStorageVol)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
 	_, err = inStream.Write(vol.content)
@@ -232,7 +222,7 @@ func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStr
 func (l *FakeLibvirtConnection) StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity, rAllocation uint64, err error) {
 	_, ok := l.vols[Vol.Name]
 	if !ok {
-		return 0, 0, 0, mockLibvirtError(errNoStorageVol)
+		return 0, 0, 0, libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
 	return 0, 42, 23, nil
@@ -245,7 +235,7 @@ func (l *FakeLibvirtConnection) ConnectListNetworks(Maxnames int32) (rNames []st
 func (l *FakeLibvirtConnection) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
 	_, ok := l.networks[Name]
 	if !ok {
-		return libvirt.Network{}, fakeLibvirtNoNetwork
+		return libvirt.Network{}, libvirt.Error{Code: uint32(libvirt.ErrNoNetwork)}
 	}
 
 	return libvirt.Network{Name: Name}, nil
@@ -254,7 +244,7 @@ func (l *FakeLibvirtConnection) NetworkLookupByName(Name string) (rNet libvirt.N
 func (l *FakeLibvirtConnection) NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (string, error) {
 	n, ok := l.networks[Net.Name]
 	if !ok {
-		return "", fakeLibvirtNoNetwork
+		return "", libvirt.Error{Code: uint32(libvirt.ErrNoNetwork)}
 	}
 
 	xmldesc, err := xml.Marshal(n.description)
@@ -320,7 +310,7 @@ func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command, Sect
 func (l *FakeLibvirtConnection) DomainLookupByName(Name string) (rDom libvirt.Domain, err error) {
 	_, ok := l.domains[Name]
 	if !ok {
-		return libvirt.Domain{}, mockLibvirtError(errNoDomain)
+		return libvirt.Domain{}, libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	return libvirt.Domain{
@@ -331,7 +321,7 @@ func (l *FakeLibvirtConnection) DomainLookupByName(Name string) (rDom libvirt.Do
 func (l *FakeLibvirtConnection) DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return "", mockLibvirtError(errNoDomain)
+		return "", libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	xml, err := domain.description.Marshal()
@@ -358,7 +348,7 @@ func (l *FakeLibvirtConnection) DomainDefineXML(XML string) (rDom libvirt.Domain
 func (l *FakeLibvirtConnection) DomainCreate(Dom libvirt.Domain) (err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return mockLibvirtError(errNoDomain)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	domain.active = true
@@ -369,7 +359,7 @@ func (l *FakeLibvirtConnection) DomainCreate(Dom libvirt.Domain) (err error) {
 func (l *FakeLibvirtConnection) DomainIsActive(Dom libvirt.Domain) (rActive int32, err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return 0, mockLibvirtError(errNoDomain)
+		return 0, libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	return boolToInt32(domain.active), nil
@@ -378,7 +368,7 @@ func (l *FakeLibvirtConnection) DomainIsActive(Dom libvirt.Domain) (rActive int3
 func (l *FakeLibvirtConnection) DomainIsPersistent(Dom libvirt.Domain) (rPersistent int32, err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return 0, mockLibvirtError(errNoDomain)
+		return 0, libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	return boolToInt32(domain.persistent), nil
@@ -394,7 +384,7 @@ func boolToInt32(b bool) int32 {
 func (l *FakeLibvirtConnection) DomainShutdown(Dom libvirt.Domain) (err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return mockLibvirtError(errNoDomain)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	domain.active = false
@@ -407,7 +397,7 @@ func (l *FakeLibvirtConnection) DomainShutdown(Dom libvirt.Domain) (err error) {
 func (l *FakeLibvirtConnection) DomainDestroy(Dom libvirt.Domain) (err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return mockLibvirtError(errNoDomain)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	domain.active = false
@@ -420,7 +410,7 @@ func (l *FakeLibvirtConnection) DomainDestroy(Dom libvirt.Domain) (err error) {
 func (l *FakeLibvirtConnection) DomainUndefineFlags(Dom libvirt.Domain, Flags libvirt.DomainUndefineFlagsValues) (err error) {
 	domain, ok := l.domains[Dom.Name]
 	if !ok {
-		return mockLibvirtError(errNoDomain)
+		return libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	domain.persistent = false
@@ -447,7 +437,7 @@ func gcDomain(domains map[string]*FakeLibvirtDomain, name string, domain *FakeLi
 func (l *FakeLibvirtConnection) DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error) {
 	_, ok := l.domains[Dom.Name]
 	if !ok {
-		return []libvirt.DomainSnapshot{}, 0, mockLibvirtError(errNoDomain)
+		return []libvirt.DomainSnapshot{}, 0, libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
 	}
 
 	return []libvirt.DomainSnapshot{}, 0, nil
@@ -493,25 +483,6 @@ func (l *FakeLibvirtConnection) addFakeImage(name string) *FakeLibvirtStorageVol
 
 	return tag
 }
-
-func mockLibvirtError(code errorNumber) error {
-	return libvirtError{uint32(code)}
-}
-
-type libvirtError struct {
-	Code uint32
-}
-
-func (e libvirtError) Error() string {
-	return fmt.Sprintf("libvirt error code %v", e.Code)
-}
-
-type errorNumber int32
-
-const (
-	errNoDomain     errorNumber = 42
-	errNoStorageVol errorNumber = 50
-)
 
 func fakeLibvirtNetwork() *FakeLibvirtNetwork {
 	return &FakeLibvirtNetwork{

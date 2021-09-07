@@ -26,7 +26,7 @@ func getNetworkDescription(l LibvirtConnection, network libvirt.Network) (*libvi
 
 	networkXML, err := l.NetworkGetXMLDesc(network, 0)
 	if err != nil {
-		return &description, &LibvirtGetError{Message: "could not get network XML", Err: err, NotFound: hasErrorCode(err, errNoNetwork)}
+		return &description, &LibvirtGetError{Message: "could not get network XML", Err: err, NotFound: hasErrorCode(err, libvirt.ErrNoNetwork)}
 	}
 
 	err = description.Unmarshal(networkXML)
@@ -42,7 +42,7 @@ func getDomainDescription(l LibvirtConnection, domain libvirt.Domain) (*libvirtx
 
 	domainXML, err := l.DomainGetXMLDesc(domain, 0)
 	if err != nil {
-		return &description, &LibvirtGetError{Message: "could not get domain XML", Err: err, NotFound: hasErrorCode(err, errNoDomain)}
+		return &description, &LibvirtGetError{Message: "could not get domain XML", Err: err, NotFound: hasErrorCode(err, libvirt.ErrNoDomain)}
 	}
 
 	err = description.Unmarshal(domainXML)

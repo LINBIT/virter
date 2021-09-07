@@ -212,7 +212,7 @@ func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool)
 
 		network, err := v.libvirt.NetworkLookupByName(nic.Network)
 		if err != nil {
-			if hasErrorCode(err, errNoNetwork) {
+			if hasErrorCode(err, libvirt.ErrNoNetwork) {
 				// We ignore non-existing networks, as there is no dhcp entry to remove
 				continue
 			}

@@ -59,7 +59,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 
 	vmName := vmConfig.Name
 	_, err = v.libvirt.DomainLookupByName(vmName)
-	if !hasErrorCode(err, errNoDomain) {
+	if !hasErrorCode(err, libvirt.ErrNoDomain) {
 		if err != nil {
 			return fmt.Errorf("could not get domain: %w", err)
 		}
@@ -231,7 +231,7 @@ func (v *Virter) VMRm(vmName string, staticDHCP bool) error {
 
 func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
-	if !hasErrorCode(err, errNoDomain) {
+	if !hasErrorCode(err, libvirt.ErrNoDomain) {
 		if err != nil {
 			return fmt.Errorf("could not get domain: %w", err)
 		}

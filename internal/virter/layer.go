@@ -11,7 +11,6 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -91,7 +90,7 @@ func makeLayerOperationOpts(opts ...LayerOperationOption) *layerOperatorOpts {
 func (v *Virter) FindRawLayer(name string) (*RawLayer, error) {
 	vol, err := v.libvirt.StorageVolLookupByName(v.provisionStoragePool, name)
 	if err != nil {
-		if hasErrorCode(err, errNoStorageVol) {
+		if hasErrorCode(err, libvirt.ErrNoStorageVol) {
 			return nil, nil
 		}
 
@@ -330,7 +329,7 @@ func (rl *RawLayer) ToVolumeLayer(diffID *regv1.Hash, opts ...LayerOperationOpti
 	importName := LayerVolumePrefix + diffID.String()
 
 	importedVolume, err := rl.conn.StorageVolLookupByName(rl.pool, importName)
-	if hasErrorCode(err, errNoStorageVol) {
+	if hasErrorCode(err, libvirt.ErrNoStorageVol) {
 		clone, err := rl.CloneAs(importName, opts...)
 		if err != nil {
 			return nil, err
@@ -446,7 +445,7 @@ func (rl *RawLayer) Delete() error {
 
 	err := rl.conn.StorageVolDelete(rl.volume, 0)
 	if err != nil {
-		if hasErrorCode(err, errNoStorageVol) {
+		if hasErrorCode(err, libvirt.ErrNoStorageVol) {
 			return nil
 		}
 
@@ -508,8 +507,7 @@ func (rl *RawLayer) DeleteIfUnused() (bool, error) {
 				continue
 			}
 
-			e := libvirt.Error{}
-			if errors.As(err, &e) && e.Code == uint32(errNoStorageVol) {
+			if hasErrorCode(err, libvirt.ErrNoStorageVol) {
 				// Volume already deleted -> can't have a relevant dependency anyways.
 				continue
 			}
