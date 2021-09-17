@@ -40,6 +40,7 @@ func networkHostRmCommand() *cobra.Command {
 				}
 			}
 		},
+		ValidArgsFunction: suggestNone,
 	}
 
 	rmCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID which determines the host entry or entries to remove")

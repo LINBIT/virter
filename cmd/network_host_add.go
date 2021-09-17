@@ -50,6 +50,7 @@ func networkHostAddCommand() *cobra.Command {
 				}
 			}
 		},
+		ValidArgsFunction: suggestNone,
 	}
 
 	addCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID which determines the MAC and IP addresses to associate")

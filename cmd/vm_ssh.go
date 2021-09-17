@@ -24,6 +24,7 @@ func vmSSHCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 		},
+		ValidArgsFunction: suggestVmNames,
 	}
 	return sshCmd
 }

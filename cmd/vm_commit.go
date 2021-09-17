@@ -47,6 +47,17 @@ the virtual machine name if no other value is given.`,
 				log.Fatal(err)
 			}
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return suggestVmNames(cmd, args, toComplete)
+			}
+
+			if len(args) == 1 {
+				return suggestImageNames(cmd, args, toComplete)
+			}
+
+			return suggestNone(cmd, args, toComplete)
+		},
 	}
 
 	commitCmd.Flags().BoolVarP(&shutdown, "shutdown", "s", false, "whether to shut the VM down and wait until it stops (default false)")

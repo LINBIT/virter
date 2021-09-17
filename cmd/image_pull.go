@@ -45,6 +45,14 @@ will be used.`,
 
 			fmt.Printf("Pulled %s\n", image.Name())
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				// Only suggest first argument
+				return suggestImageNames(cmd, args, toComplete)
+			}
+
+			return suggestNone(cmd, args, toComplete)
+		},
 	}
 
 	return pullCmd

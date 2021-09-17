@@ -227,6 +227,14 @@ func imageBuildCommand() *cobra.Command {
 
 			fmt.Printf("Built %s\n", newImageName)
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) < 2 {
+				// Only suggest first and second argument
+				return suggestImageNames(cmd, args, toComplete)
+			}
+
+			return suggestNone(cmd, args, toComplete)
+		},
 	}
 
 	buildCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")

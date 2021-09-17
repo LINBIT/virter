@@ -221,3 +221,30 @@ func (m *mpbProgress) NewBar(name, operation string, total int64) *mpb.Bar {
 		mpb.AppendDecorators(decor.CountersKibiByte("%.2f / %.2f")),
 	)
 }
+
+func suggestImageNames(cmd *cobra.Command, args []string, tocomplete string) ([]string, cobra.ShellCompDirective) {
+	v, err := InitVirter()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	defer v.ForceDisconnect()
+
+	images, err := v.ImageList()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	filtered := make([]string, 0, len(images))
+outer:
+	for _, image := range images {
+		for _, arg := range args {
+			if arg == image.Name() {
+				continue outer
+			}
+		}
+
+		filtered = append(filtered, image.Name())
+	}
+
+	return filtered, cobra.ShellCompDirectiveNoFileComp
+}

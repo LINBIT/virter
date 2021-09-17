@@ -78,6 +78,7 @@ func networkAddCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 		},
+		ValidArgsFunction: suggestNone,
 	}
 
 	addCmd.Flags().StringVarP(&forward, "forward-mode", "m", "", "Set the forward mode, for example 'nat'")

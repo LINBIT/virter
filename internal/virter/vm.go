@@ -39,6 +39,20 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	return false, nil
 }
 
+func (v *Virter) ListVM() ([]string, error) {
+	domains, _, err := v.libvirt.ConnectListAllDomains(-1, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list domains")
+	}
+
+	result := make([]string, len(domains))
+	for i, domain := range domains {
+		result[i] = domain.Name
+	}
+
+	return result, nil
+}
+
 // VMRun starts a VM.
 func (v *Virter) VMRun(vmConfig VMConfig) error {
 	// checks

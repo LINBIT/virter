@@ -43,6 +43,7 @@ func vmRmCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 		},
+		ValidArgsFunction: suggestVmNames,
 	}
 
 	return rmCmd

@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"net"
+	"strings"
+
 	"github.com/rodaine/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"net"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -74,6 +75,7 @@ func networkLsCommand() *cobra.Command {
 
 			tbl.Print()
 		},
+		ValidArgsFunction: suggestNone,
 	}
 
 	return lsCmd

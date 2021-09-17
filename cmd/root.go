@@ -59,3 +59,7 @@ func Execute() {
 		log.Fatal(err)
 	}
 }
+
+func suggestNone(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
+}

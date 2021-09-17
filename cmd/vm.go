@@ -6,6 +6,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	sshclient "github.com/LINBIT/gosshclient"
+
 	"github.com/LINBIT/virter/internal/virter"
 )
 
@@ -47,4 +48,31 @@ func extraAuthorizedKeys() ([]string, error) {
 	}
 
 	return publicKeys, nil
+}
+
+func suggestVmNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	v, err := InitVirter()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	defer v.ForceDisconnect()
+
+	vms, err := v.ListVM()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	filtered := make([]string, 0, len(vms))
+outer:
+	for _, vm := range vms {
+		for _, arg := range args {
+			if arg == vm {
+				continue outer
+			}
+		}
+
+		filtered = append(filtered, vm)
+	}
+
+	return filtered, cobra.ShellCompDirectiveNoFileComp
 }

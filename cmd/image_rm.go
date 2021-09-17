@@ -39,6 +39,7 @@ func imageRmCommand() *cobra.Command {
 				log.Fatal(errs)
 			}
 		},
+		ValidArgsFunction: suggestImageNames,
 	}
 
 	return rmCmd

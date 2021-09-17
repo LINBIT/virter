@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/LINBIT/containerapi"
+
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/netcopy"
 
@@ -34,6 +35,7 @@ func vmExecCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 		},
+		ValidArgsFunction: suggestVmNames,
 	}
 
 	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")

@@ -97,6 +97,7 @@ func imageLsCommand() *cobra.Command {
 				t.Print()
 			}
 		},
+		ValidArgsFunction: suggestNone,
 	}
 
 	lsCmd.Flags().BoolVar(&listHttp, "available", false, "List all images available from http registries")

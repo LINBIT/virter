@@ -72,6 +72,14 @@ func imagePushCommand() *cobra.Command {
 
 			fmt.Printf("Pushed %s\n", ref.Name())
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				// Only suggest first argument
+				return suggestImageNames(cmd, args, toComplete)
+			}
+
+			return suggestNone(cmd, args, toComplete)
+		},
 	}
 
 	return pushCmd

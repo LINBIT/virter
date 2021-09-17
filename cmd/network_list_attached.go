@@ -30,6 +30,13 @@ func networkListAttachedCommand() *cobra.Command {
 			}
 			tbl.Print()
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return suggestNetworkNames(cmd, args, toComplete)
+			}
+
+			return suggestNone(cmd, args, toComplete)
+		},
 	}
 
 	return listAttachedCmd

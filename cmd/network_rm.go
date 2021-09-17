@@ -23,6 +23,7 @@ func networkRmCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 		},
+		ValidArgsFunction: suggestNetworkNames,
 	}
 	return rmCmd
 }

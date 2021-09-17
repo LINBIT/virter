@@ -36,6 +36,7 @@ func imagePruneCommand() *cobra.Command {
 				}
 			}
 		},
+		ValidArgsFunction: suggestNone,
 	}
 
 	return pruneCmd

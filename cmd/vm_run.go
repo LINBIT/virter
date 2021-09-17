@@ -242,6 +242,13 @@ func vmRunCommand() *cobra.Command {
 				fmt.Println(name)
 			}
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return suggestImageNames(cmd, args, toComplete)
+			}
+
+			return suggestNone(cmd, args, toComplete)
+		},
 	}
 
 	runCmd.Flags().StringVarP(&vmName, "name", "n", "", "name of new VM")
