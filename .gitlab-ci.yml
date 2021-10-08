@@ -63,6 +63,7 @@ sync-images:
   tags:
     - libvirt
   script:
+    - ln -snf $DOCKER_AUTH_CONFIG_FILE $HOME/.docker/config.json
     - ./virter registry update
     - while read name url; do
     -  ./virter image pull $name $url
