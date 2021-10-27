@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -55,9 +56,16 @@ func imageLsCommand() *cobra.Command {
 				if err != nil {
 					log.WithError(err).Fatal("Error listing images")
 				}
+				dists := make([]string, len(entries))
+				i := 0
+				for d := range entries {
+					dists[i] = d
+					i++
+				}
+				sort.Strings(dists)
 				t := table.New("Name", "URL")
-				for name, entry := range entries {
-					t.AddRow(name, entry.URL)
+				for _, name := range dists {
+					t.AddRow(name, entries[name].URL)
 				}
 				t.Print()
 			} else {
