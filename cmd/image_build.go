@@ -44,6 +44,9 @@ func imageBuildCommand() *cobra.Command {
 	var buildId string
 	cpuArch := virter.CpuArchNative
 
+	var mountStrings []string
+	var mounts []virter.Mount
+
 	pullPolicy := PullPolicyIfNotExist
 
 	buildCmd := &cobra.Command{
@@ -51,9 +54,20 @@ func imageBuildCommand() *cobra.Command {
 		Short: "Build an image",
 		Long:  `Build an image by starting a VM, running a provisioning step, and then committing the resulting volume.`,
 		Args:  cobra.ExactArgs(2),
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
 			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
+
+			for _, m := range mountStrings {
+				var a MountArg
+				err := a.Set(m)
+				if err != nil {
+					return fmt.Errorf("invalid mount: %w", err)
+				}
+				mounts = append(mounts, &a)
+			}
+
+			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			baseImageName := args[0]
@@ -167,6 +181,7 @@ func imageBuildCommand() *cobra.Command {
 				StaticDHCP:         viper.GetBool("libvirt.static_dhcp"),
 				ExtraSSHPublicKeys: extraAuthorizedKeys,
 				ConsolePath:        consolePath,
+				Mounts:             mounts,
 			}
 
 			sshPingConfig := virter.SSHPingConfig{
@@ -254,6 +269,7 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().BoolVarP(&push, "push", "", false, "Push the image after building")
 	buildCmd.Flags().BoolVarP(&noCache, "no-cache", "", false, "Disable caching for the image build")
 	buildCmd.Flags().StringVarP(&buildId, "build-id", "", "", "Build ID used to determine if an image needs to be rebuild.")
+	buildCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
 
 	return buildCmd
 }

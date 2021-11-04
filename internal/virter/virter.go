@@ -124,6 +124,11 @@ type NIC interface {
 	GetMAC() string
 }
 
+type Mount interface {
+	GetHostPath() string
+	GetVMPath() string
+}
+
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
 	Image              *LocalImage
@@ -138,6 +143,7 @@ type VMConfig struct {
 	ConsolePath        string
 	Disks              []Disk
 	ExtraNics          []NIC
+	Mounts             []Mount
 	GDBPort            uint
 }
 

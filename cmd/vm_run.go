@@ -87,6 +87,9 @@ func vmRunCommand() *cobra.Command {
 	var nicStrings []string
 	var nics []virter.NIC
 
+	var mountStrings []string
+	var mounts []virter.Mount
+
 	var provisionFile string
 	var provisionOverrides []string
 
@@ -97,7 +100,7 @@ func vmRunCommand() *cobra.Command {
 		Short: "Start a virtual machine with a given image",
 		Long:  `Start a fresh virtual machine from an image.`,
 		Args:  cobra.ExactArgs(1),
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
 			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
 
@@ -105,7 +108,7 @@ func vmRunCommand() *cobra.Command {
 				var d DiskArg
 				err := d.Set(s)
 				if err != nil {
-					log.Fatalf("Invalid disk: %v", err)
+					return fmt.Errorf("invalid disk: %w", err)
 				}
 				disks = append(disks, &d)
 			}
@@ -114,10 +117,21 @@ func vmRunCommand() *cobra.Command {
 				var n NICArg
 				err := n.Set(s)
 				if err != nil {
-					log.Fatalf("Invalid nic: %v", err)
+					return fmt.Errorf("invalid nic: %w", err)
 				}
 				nics = append(nics, &n)
 			}
+
+			for _, s := range mountStrings {
+				var a MountArg
+				err := a.Set(s)
+				if err != nil {
+					return fmt.Errorf("invalid mount: %w", err)
+				}
+				mounts = append(mounts, &a)
+			}
+
+			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := onInterruptWrap(context.Background())
@@ -201,6 +215,7 @@ func vmRunCommand() *cobra.Command {
 						ExtraSSHPublicKeys: extraAuthorizedKeys,
 						ConsolePath:        consolePath,
 						Disks:              disks,
+						Mounts:             mounts,
 						ExtraNics:          nics,
 						GDBPort:            thisGDBPort,
 					}
@@ -274,6 +289,7 @@ func vmRunCommand() *cobra.Command {
 	// in a much smoother way.
 	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio". Can be specified multiple times`)
 	runCmd.Flags().StringArrayVarP(&nicStrings, "nic", "i", []string{}, `Add a NIC to the VM. Format: "type=network,source=some-net-name". Type can also be "bridge", in which case the source is the bridge device name. Additional config options are "model" (default: virtio) and "mac" (default chosen by libvirt). Can be specified multiple times`)
+	runCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
 
 	runCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	runCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")

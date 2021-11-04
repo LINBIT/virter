@@ -35,6 +35,10 @@ fqdn: {{ .VMName }}.{{ .DomainSuffix }}
 {{- else }}
 fqdn: {{ .VMName }}
 {{- end }}
+mounts:
+{{- range .Mount }}
+  - [ "{{ . }}", "{{ . }}", "virtiofs"]
+{{- end }}
 `
 
 func (v *Virter) metaData(vmName string) (string, error) {
@@ -45,7 +49,7 @@ func (v *Virter) metaData(vmName string) (string, error) {
 	return renderTemplate("meta-data", templateMetaData, templateData)
 }
 
-func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys.HostKey) (string, error) {
+func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys.HostKey, mounts []string) (string, error) {
 	privateKey := text.Indent(hostkey.PrivateKey(), "    ")
 	publicKey := text.Indent(hostkey.PublicKey(), "    ")
 
@@ -60,6 +64,7 @@ func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys
 		"SSHPublicKeys":      sshPublicKeys,
 		"IndentedPrivateKey": privateKey,
 		"IndentedPublicKey":  publicKey,
+		"Mount":              mounts,
 	}
 
 	return renderTemplate("user-data", templateUserData, templateData)
@@ -74,7 +79,12 @@ func (v *Virter) createCIData(vmConfig VMConfig, hostkey sshkeys.HostKey) (*RawL
 		return nil, err
 	}
 
-	userData, err := v.userData(vmName, sshPublicKeys, hostkey)
+	mounts := make([]string, len(vmConfig.Mounts))
+	for i, m := range vmConfig.Mounts {
+		mounts[i] = m.GetVMPath()
+	}
+
+	userData, err := v.userData(vmName, sshPublicKeys, hostkey, mounts)
 	if err != nil {
 		return nil, err
 	}

@@ -106,6 +106,12 @@ func fillValues(p map[string]string, v interface{}) error {
 				return fmt.Errorf("failed to convert %s to int type: %w", p[name], err)
 			}
 			fieldVal.SetUint(n)
+		case reflect.Bool:
+			b, err := strconv.ParseBool(p[name])
+			if err != nil {
+				return fmt.Errorf("failed to convert %s to bool type: %w", p[name], err)
+			}
+			fieldVal.SetBool(b)
 		default:
 			u, ok := fieldVal.Interface().(encoding.TextUnmarshaler)
 			if !ok {

@@ -3,6 +3,8 @@ package virter
 import (
 	"encoding/xml"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 	lx "github.com/libvirt/libvirt-go-xml"
@@ -211,6 +213,12 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 		},
 		QEMUCommandline: qemuCommandline,
 	}
+
+	err = addMounts(domain, vm.Mounts...)
+	if err != nil {
+		return "", err
+	}
+
 	return domain.Marshal()
 }
 
@@ -367,4 +375,39 @@ func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {
 	log.Debugf("found these disks for domain '%s': %v", domcfg.Name, result)
 
 	return result, nil
+}
+
+// addMounts adds the virtiofs stanzas required for the specified mounts.
+func addMounts(domain *lx.Domain, mounts ...Mount) error {
+	if len(mounts) == 0 {
+		// Some libvirt versions to not support virtiofs, bail out early so virter is still usable in those cases
+		return nil
+	}
+
+	fsShares := make([]lx.DomainFilesystem, len(mounts))
+	for i, share := range mounts {
+		abs, err := filepath.Abs(share.GetHostPath())
+		if err != nil {
+			return fmt.Errorf("invalid host path: %w", err)
+		}
+
+		err = os.MkdirAll(abs, 0755)
+		if err != nil {
+			return fmt.Errorf("invalid host path: %w", err)
+		}
+
+		fsShares[i].Driver = &lx.DomainFilesystemDriver{Type: "virtiofs"}
+		fsShares[i].Source = &lx.DomainFilesystemSource{Mount: &lx.DomainFilesystemSourceMount{Dir: abs}}
+		fsShares[i].Target = &lx.DomainFilesystemTarget{Dir: share.GetVMPath()}
+	}
+
+	domain.Devices.Filesystems = fsShares
+
+	// Required for virtiofs to work: https://libvirt.org/kbase/virtiofs.html#sharing-a-host-directory-with-a-guest
+	domain.MemoryBacking = &lx.DomainMemoryBacking{
+		MemorySource: &lx.DomainMemorySource{Type: "memfd"},
+		MemoryAccess: &lx.DomainMemoryAccess{Mode: "shared"},
+	}
+
+	return nil
 }
