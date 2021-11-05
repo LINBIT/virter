@@ -109,6 +109,23 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		return fmt.Errorf("could not create new host key: %w", err)
 	}
 
+	meta := &VMMeta{
+		HostKey: hostkey.PublicKey(),
+	}
+
+	vmXML, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Using domain XML: %s", vmXML)
+
+	log.Print("Define VM")
+	d, err := v.libvirt.DomainDefineXML(vmXML)
+	if err != nil {
+		return fmt.Errorf("could not define domain: %w", err)
+	}
+
 	log.Print("Create boot volume")
 	_, err = v.ImageSpawn(vmConfig.Name, vmConfig.Image, vmConfig.BootCapacityKiB)
 	if err != nil {
@@ -127,23 +144,6 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	meta := &VMMeta{
-		HostKey: hostkey.PublicKey(),
-	}
-
-	vmXML, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("Using domain XML: %s", vmXML)
-
-	log.Print("Define VM")
-	d, err := v.libvirt.DomainDefineXML(vmXML)
-	if err != nil {
-		return fmt.Errorf("could not define domain: %w", err)
 	}
 
 	if !vmConfig.StaticDHCP {
@@ -224,26 +224,7 @@ func tryDialSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, host
 }
 
 // VMRm removes a VM.
-func (v *Virter) VMRm(vmName string, staticDHCP bool) error {
-	err := v.vmRmExceptBoot(vmName, !staticDHCP)
-	if err != nil {
-		return err
-	}
-
-	layer, err := v.FindDynamicLayer(vmName)
-	if err != nil {
-		return fmt.Errorf("could not get volume %s: %w", vmName, err)
-	}
-
-	err = layer.DeleteAllIfUnused()
-	if err != nil {
-		return fmt.Errorf("could not delete volume %s: %w", vmName, err)
-	}
-
-	return nil
-}
-
-func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
+func (v *Virter) VMRm(vmName string, removeDHCPEntries bool, removeBoot bool) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		if hasErrorCode(err, libvirt.ErrNoDomain) {
@@ -251,16 +232,6 @@ func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 		}
 
 		return fmt.Errorf("could not get domain: %w", err)
-	}
-
-	disks, err := v.getDisksOfDomain(domain)
-	if err != nil {
-		return err
-	}
-
-	err = v.rmSnapshots(domain)
-	if err != nil {
-		return err
 	}
 
 	active, err := v.libvirt.DomainIsActive(domain)
@@ -273,12 +244,10 @@ func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 		return fmt.Errorf("could not check if domain is persistent: %w", err)
 	}
 
-	err = v.removeDomainDHCP(domain, removeDHCPEntries)
-	if err != nil {
-		return err
-	}
-
-	if active != 0 {
+	// Stop the VM before removing the resources it depends on. But only if
+	// it is active (running). And only if it is persistent, otherwise the
+	// domain is gone and we cannot query what resources it depended on.
+	if active > 0 && persistent > 0 {
 		log.Print("Stop VM")
 		err = v.libvirt.DomainDestroy(domain)
 		if err != nil {
@@ -286,29 +255,64 @@ func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 		}
 	}
 
-	if persistent != 0 {
+	err = v.removeDomainDHCP(domain, removeDHCPEntries)
+	if err != nil {
+		return err
+	}
+
+	err = v.rmSnapshots(domain)
+	if err != nil {
+		return err
+	}
+
+	disks, err := v.getDisksOfDomain(domain)
+	if err != nil {
+		return err
+	}
+
+	for _, disk := range disks {
+		if !removeBoot && disk == DynamicLayerName(vmName) {
+			// do not delete boot volume
+			continue
+		}
+
+		err = v.rmVolume(disk)
+		if err != nil {
+			return err
+		}
+	}
+
+	if persistent > 0 {
 		log.Print("Undefine VM")
 		err = v.libvirt.DomainUndefineFlags(domain, libvirt.DomainUndefineNvram)
 		if err != nil {
 			return fmt.Errorf("could not undefine domain: %w", err)
 		}
+	} else if active > 0 {
+		// Stop the VM if we did not stop it previously.
+		log.Print("Stop VM")
+		err = v.libvirt.DomainDestroy(domain)
+		if err != nil {
+			return fmt.Errorf("could not destroy domain: %w", err)
+		}
 	}
 
-	for _, disk := range disks {
-		if disk == DynamicLayerName(vmName) {
-			// do not delete boot volume
-			continue
+	return nil
+}
+
+func (v *Virter) rmVolume(rawVolumeName string) error {
+	layer, err := v.FindRawLayer(rawVolumeName)
+	if err != nil {
+		if hasErrorCode(err, libvirt.ErrNoStorageVol) {
+			return nil
 		}
 
-		layer, err := v.FindRawLayer(disk)
-		if err != nil {
-			return fmt.Errorf("could not get volume %s: %w", disk, err)
-		}
+		return fmt.Errorf("could not get volume %s: %w", rawVolumeName, err)
+	}
 
-		err = layer.DeleteAllIfUnused()
-		if err != nil {
-			return fmt.Errorf("could not delete volume %s: %w", disk, err)
-		}
+	err = layer.DeleteAllIfUnused()
+	if err != nil {
+		return fmt.Errorf("could not delete volume %s: %w", rawVolumeName, err)
 	}
 
 	return nil
@@ -356,7 +360,7 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		}
 	}
 
-	err = v.vmRmExceptBoot(vmName, !staticDHCP)
+	err = v.VMRm(vmName, !staticDHCP, false)
 	if err != nil {
 		return err
 	}

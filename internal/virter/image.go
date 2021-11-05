@@ -601,7 +601,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, pingConfig, buildConfig, opts...)
 	if err != nil {
 		log.Warn("could not build image, deleting VM")
-		if rmErr := v.VMRm(vmConfig.Name, vmConfig.StaticDHCP); rmErr != nil {
+		if rmErr := v.VMRm(vmConfig.Name, !vmConfig.StaticDHCP, true); rmErr != nil {
 			return fmt.Errorf("could not delete VM: %v, after build failed: %w", rmErr, err)
 		}
 		return err

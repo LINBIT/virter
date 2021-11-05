@@ -16,7 +16,7 @@ func rmMultiple(v *virter.Virter, vms []string) error {
 	staticDHCP := viper.GetBool("libvirt.static_dhcp")
 	var errs error
 	for _, vm := range vms {
-		err := v.VMRm(vm, staticDHCP)
+		err := v.VMRm(vm, !staticDHCP, true)
 		if err != nil {
 			e := fmt.Errorf("failed to remove VM '%s': %w", vm, err)
 			errs = multierror.Append(errs, e)

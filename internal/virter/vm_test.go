@@ -121,16 +121,6 @@ var vmRmTests = []map[string]bool{
 		domainCreated: true,
 	},
 	{
-		ciDataVolume:  true,
-		bootVolume:    true,
-		domainCreated: true,
-	},
-	{
-		ciDataVolume:  true,
-		bootVolume:    true,
-		domainCreated: true,
-	},
-	{
 		ciDataVolume:     true,
 		bootVolume:       true,
 		domainPersistent: true,
@@ -150,9 +140,9 @@ var vmRmTests = []map[string]bool{
 	},
 }
 
-func addDisk(l *FakeLibvirtConnection, vmName, volumeName string) {
-	disks := l.domains[vmName].description.Devices.Disks
-	l.domains[vmName].description.Devices.Disks = append(disks, libvirtxml.DomainDisk{
+func addDisk(domain *FakeLibvirtDomain, vmName, volumeName string) {
+	disks := domain.description.Devices.Disks
+	domain.description.Devices.Disks = append(disks, libvirtxml.DomainDisk{
 		Source: &libvirtxml.DomainDiskSource{
 			Volume: &libvirtxml.DomainDiskSourceVolume{
 				Volume: virter.DynamicLayerName(volumeName),
@@ -171,6 +161,13 @@ func TestVMRm(t *testing.T) {
 				domain := newFakeLibvirtDomain(vmMAC)
 				domain.persistent = r[domainPersistent]
 				domain.active = r[domainCreated]
+
+				// Always add the disks to the description. The
+				// test arguments specify whether the volumes
+				// themselves should exist.
+				addDisk(domain, vmName, vmName)
+				addDisk(domain, vmName, ciDataVolumeName)
+
 				l.domains[vmName] = domain
 
 				fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
@@ -181,13 +178,12 @@ func TestVMRm(t *testing.T) {
 			}
 
 			if r[ciDataVolume] {
-				l.addEmptyRawVol(virter.DynamicLayerName(vmName))
-				addDisk(l, vmName, ciDataVolumeName)
+				l.addEmptyRawVol(virter.DynamicLayerName(ciDataVolumeName))
 			}
 
 			v := virter.New(l, poolName, networkName, newMockKeystore())
 
-			err := v.VMRm(vmName, r[staticDHCP])
+			err := v.VMRm(vmName, !r[staticDHCP], true)
 			assert.NoError(t, err)
 
 			assert.Empty(t, l.vols)
@@ -241,6 +237,7 @@ func TestVMCommit(t *testing.T) {
 		domain := newFakeLibvirtDomain(vmMAC)
 		domain.persistent = true
 		domain.active = r[commitDomainActive]
+		addDisk(domain, vmName, ciDataVolumeName)
 		l.domains[vmName] = domain
 
 		l.vols[virter.DynamicLayerName(vmName)] = &FakeLibvirtStorageVol{
@@ -249,8 +246,7 @@ func TestVMCommit(t *testing.T) {
 				BackingStore: img.description.BackingStore,
 			},
 		}
-		l.vols[virter.DynamicLayerName(ciDataVolumeName)] = &FakeLibvirtStorageVol{description: &libvirtxml.StorageVolume{Name: virter.DynamicLayerName(vmName)}}
-		addDisk(l, vmName, ciDataVolumeName)
+		l.addEmptyRawVol(virter.DynamicLayerName(ciDataVolumeName))
 
 		fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
