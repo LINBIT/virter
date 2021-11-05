@@ -245,67 +245,69 @@ func (v *Virter) VMRm(vmName string, staticDHCP bool) error {
 
 func (v *Virter) vmRmExceptBoot(vmName string, removeDHCPEntries bool) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
-	if !hasErrorCode(err, libvirt.ErrNoDomain) {
+	if err != nil {
+		if hasErrorCode(err, libvirt.ErrNoDomain) {
+			return nil
+		}
+
+		return fmt.Errorf("could not get domain: %w", err)
+	}
+
+	disks, err := v.getDisksOfDomain(domain)
+	if err != nil {
+		return err
+	}
+
+	err = v.rmSnapshots(domain)
+	if err != nil {
+		return err
+	}
+
+	active, err := v.libvirt.DomainIsActive(domain)
+	if err != nil {
+		return fmt.Errorf("could not check if domain is active: %w", err)
+	}
+
+	persistent, err := v.libvirt.DomainIsPersistent(domain)
+	if err != nil {
+		return fmt.Errorf("could not check if domain is persistent: %w", err)
+	}
+
+	err = v.removeDomainDHCP(domain, removeDHCPEntries)
+	if err != nil {
+		return err
+	}
+
+	if active != 0 {
+		log.Print("Stop VM")
+		err = v.libvirt.DomainDestroy(domain)
 		if err != nil {
-			return fmt.Errorf("could not get domain: %w", err)
+			return fmt.Errorf("could not destroy domain: %w", err)
 		}
+	}
 
-		disks, err := v.getDisksOfDomain(domain)
+	if persistent != 0 {
+		log.Print("Undefine VM")
+		err = v.libvirt.DomainUndefineFlags(domain, libvirt.DomainUndefineNvram)
 		if err != nil {
-			return err
+			return fmt.Errorf("could not undefine domain: %w", err)
+		}
+	}
+
+	for _, disk := range disks {
+		if disk == DynamicLayerName(vmName) {
+			// do not delete boot volume
+			continue
 		}
 
-		err = v.rmSnapshots(domain)
+		layer, err := v.FindRawLayer(disk)
 		if err != nil {
-			return err
+			return fmt.Errorf("could not get volume %s: %w", disk, err)
 		}
 
-		active, err := v.libvirt.DomainIsActive(domain)
+		err = layer.DeleteAllIfUnused()
 		if err != nil {
-			return fmt.Errorf("could not check if domain is active: %w", err)
-		}
-
-		persistent, err := v.libvirt.DomainIsPersistent(domain)
-		if err != nil {
-			return fmt.Errorf("could not check if domain is persistent: %w", err)
-		}
-
-		err = v.removeDomainDHCP(domain, removeDHCPEntries)
-		if err != nil {
-			return err
-		}
-
-		if active != 0 {
-			log.Print("Stop VM")
-			err = v.libvirt.DomainDestroy(domain)
-			if err != nil {
-				return fmt.Errorf("could not destroy domain: %w", err)
-			}
-		}
-
-		if persistent != 0 {
-			log.Print("Undefine VM")
-			err = v.libvirt.DomainUndefineFlags(domain, libvirt.DomainUndefineNvram)
-			if err != nil {
-				return fmt.Errorf("could not undefine domain: %w", err)
-			}
-		}
-
-		for _, disk := range disks {
-			if disk == DynamicLayerName(vmName) {
-				// do not delete boot volume
-				continue
-			}
-
-			layer, err := v.FindRawLayer(disk)
-			if err != nil {
-				return fmt.Errorf("could not get volume %s: %w", disk, err)
-			}
-
-			err = layer.DeleteAllIfUnused()
-			if err != nil {
-				return fmt.Errorf("could not delete volume %s: %w", disk, err)
-			}
+			return fmt.Errorf("could not delete volume %s: %w", disk, err)
 		}
 	}
 
