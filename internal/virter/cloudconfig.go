@@ -35,9 +35,11 @@ fqdn: {{ .VMName }}.{{ .DomainSuffix }}
 {{- else }}
 fqdn: {{ .VMName }}
 {{- end }}
+{{- if .Mount }}
 mounts:
 {{- range .Mount }}
   - [ "{{ . }}", "{{ . }}", "virtiofs"]
+{{- end }}
 {{- end }}
 `
 
