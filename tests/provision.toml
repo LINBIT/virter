@@ -1,0 +1,16 @@
+[[steps]]
+[steps.shell]
+script = """
+set -ex
+
+if ! command -v rsync ; then
+    if command -v apt-get ; then
+        apt-get update
+        apt-get install -y rsync
+    elif command -v dnf ; then
+        dnf install -y rsync
+    elif command -v yum ; then
+        yum install -y rsync
+    fi
+fi
+"""

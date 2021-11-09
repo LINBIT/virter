@@ -1,0 +1,59 @@
+[values]
+DockerImage = "ssh"
+
+# Check that rsync steps work
+[[steps]]
+[steps.rsync]
+source = "data/"
+dest = "/virter"
+
+# Check that docker steps work
+[[steps]]
+[steps.docker]
+image = "{{ .DockerImage }}"
+command = ["sh", "-exc", """
+mkdir -p /virter/out
+test -n "$TARGETS"
+IFS=,; for t in $TARGETS; do
+    test "$t" = "$(ssh $t hostname -s)"
+    scp -r $t:/virter/example.txt example.txt
+    sha256sum -c /virter/workspace/data/example.txt.sha256sum
+    mv example.txt /virter/out/example-$t.txt
+done
+"""]
+[steps.docker.copy]
+source = "/virter/out"
+dest = "{{ .OutDir }}"
+
+# Checks that the previous docker step copied files as expected
+[[steps]]
+[steps.docker]
+image = "{{ .DockerImage }}"
+command = ["sh", "-exc", """
+IFS=,; for t in $TARGETS; do
+    test -f "/virter/workspace/{{ .OutDir }}/out/example-$t.txt"
+done
+"""]
+
+# Checks that shell steps work as expected
+[[steps]]
+[steps.shell]
+script = """
+set -ex
+
+test -f /virter/example.txt
+cd /virter
+sha256sum -c example.txt.sha256sum
+
+# CentOS 6 doesn't use systemd, Upstart is a mess, so don't even bother...
+[ command -v systemctl ] || exit 0
+
+while true; do
+	running=$(systemctl is-system-running || true)
+	[ "$running" = initializing -o "$running" = starting ] && { sleep 1; continue; }
+	[ "$running" = running ] && break
+	echo "System in unexpected state '$running'; failed units:" 1>&2
+	systemctl list-units --failed 1>&2
+	exit 1
+done
+"""

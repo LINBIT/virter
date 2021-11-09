@@ -10,6 +10,38 @@ stages:
   - test
   - deploy
 
+variables:
+  VMSHED_VERSION: v0.14.4
+  BUILD_HELPERS_VERSION: a87d4f95c35fa24eebe1a157408ef59cebd1f3f4
+
+prepare-bins:
+  stage: build
+  image: ${LINBIT_DOCKER_REGISTRY}/build-helpers:${BUILD_HELPERS_VERSION}
+  script:
+    - . /usr/local/bin/gitlab-utils.sh
+    - ci_prepare_tools
+    - ci_fetch_binary vmshed vmshed-$VMSHED_VERSION https://github.com/LINBIT/vmshed/releases/download/$VMSHED_VERSION/vmshed-linux-amd64
+  cache:
+    paths:
+      - download
+  artifacts:
+    paths:
+      - download
+      - bin
+
+prepare-docker:
+  stage: build
+  image:
+    # Pinned to 1.6.0 until https://github.com/GoogleContainerTools/kaniko/issues/1790 is resolved
+    name: gcr.io/kaniko-project/executor:v1.6.0-debug
+    entrypoint: [ "" ]
+  script:
+    - set -ex
+    - mkdir -p /kaniko/.docker
+    - ln -snf "$DOCKER_AUTH_CONFIG_FILE" /kaniko/.docker/config.json
+    - /kaniko/executor --registry-mirror $DOCKER_REGISTRY_MIRROR --dockerfile $CI_PROJECT_DIR/tests/Dockerfile --context $CI_PROJECT_DIR/tests --cache --destination ${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG
+
+
 build:
   stage: build
   script:
@@ -52,6 +84,31 @@ lint:
     reports:
       junit:
         - lint.xml
+
+e2e-test:
+  stage: test
+  variables:
+    EXCLUDED: amazonlinux-2
+  tags:
+    - libvirt
+  script:
+    - ln -snf $DOCKER_AUTH_CONFIG_FILE $HOME/.docker/config.json
+    - docker pull ${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG
+    - cp virter bin/virter
+    - export "PATH=$PWD/bin:$PATH"
+    - virter registry update
+    - cd tests/
+    - EXCLUDED_BASE_IMAGES=$EXCLUDED PULL_LOCATION=${LINBIT_DOCKER_REGISTRY}/vm ./all-base-images.sh > vms.toml
+    - vmshed --set values.DockerImage=${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG --nvms ${LINBIT_CI_MAX_CPUS:-20}
+  artifacts:
+    when: always
+    paths:
+      - tests/tests-out/
+    reports:
+      junit:
+        # These reports are created by vmshed, reporting if the test command itself succeeded.
+        - tests/tests-out/test-results/*.xml
+
 
 sync-images:
   stage: deploy

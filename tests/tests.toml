@@ -1,0 +1,12 @@
+test_suite_file = "test-run.toml"
+test_timeout = "1m"
+artifacts = [
+    "/var/log/journal",
+    "/var/log/messages",
+    "/run/log/journal",
+]
+
+[tests]
+[tests.smoke]
+vms = [1]
+needallplatforms = true
