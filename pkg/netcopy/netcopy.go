@@ -94,7 +94,7 @@ func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest 
 
 	cmd := exec.CommandContext(ctx, "rsync", args...)
 	cmd.Env = []string{
-		fmt.Sprintf(`RSYNC_RSH=/usr/bin/ssh -i "%s" -o UserKnownHostsFile=%s`, keyStore.KeyPath(), knownHostsFile.Name()),
+		fmt.Sprintf(`RSYNC_RSH=/usr/bin/ssh -i "%s" -o UserKnownHostsFile=%s -o PubkeyAcceptedKeyTypes=+ssh-rsa`, keyStore.KeyPath(), knownHostsFile.Name()),
 	}
 
 	log.Debugf("executing rsync command:")
