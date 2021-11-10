@@ -500,12 +500,24 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 
 // VMExecDocker runs a docker container against some VMs.
 func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
-	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
 
 	domain, err := v.getDomainSuffix()
+	if err != nil {
+		return err
+	}
+
+	for i := range ips {
+		containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: vmNames[i], IP: ips[i]})
+		if domain != "" {
+			containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: fmt.Sprintf("%s.%s", vmNames[i], domain), IP: ips[i]})
+		}
+	}
+
+	knownHosts, err := v.getKnownHostsFor(vmNames...)
 	if err != nil {
 		return err
 	}

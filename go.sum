@@ -42,8 +42,8 @@ github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/LINBIT/containerapi v0.6.0 h1:YZyqDc72mr2xQbyfHTQzW47j/w1YJCctmRSIDfmnu6s=
-github.com/LINBIT/containerapi v0.6.0/go.mod h1:BDPO1xRrvoeVbt6n92tngIe+lrwZHDZL6aNF/dXAoh4=
+github.com/LINBIT/containerapi v0.7.0 h1:ZXPJ2Al/E2JYMa14AFQbk6yl2BlmZvr1bzWAWWSDCBs=
+github.com/LINBIT/containerapi v0.7.0/go.mod h1:FBmF4Fk/lmNKi6R07zWpzmLC+cQdhcZ+yR2htOGWmjY=
 github.com/LINBIT/gosshclient v0.3.1 h1:5XM7k1gKL8708LhHyfRDrcDbUVPX6BlIy8K64LxVwws=
 github.com/LINBIT/gosshclient v0.3.1/go.mod h1:sHoqDy3IMxkdYCXSLgJqQeGrp35g6y80NQG0jvSTw/8=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=

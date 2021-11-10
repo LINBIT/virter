@@ -62,6 +62,10 @@ func (c *MockContainerProvider) Close() error {
 	return nil
 }
 
+func (c *MockContainerProvider) Command() string {
+	return "mock"
+}
+
 func (c *MockContainerProvider) AssertExpectations(t *testing.T) {
 	assert.True(t, c.createCalled)
 	assert.True(t, c.startCalled)
