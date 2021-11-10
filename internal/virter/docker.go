@@ -82,7 +82,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	// Note: With incredible (bad) luck, you can start a container but cancel the context just in time to not get a
 	// successful response on Start(). Since Stop() is idempotent, we can just defer it before the Start() call.
 	defer func() {
-		killTimeout := 200 * time.Millisecond
+		killTimeout := 2 * time.Second
 		err := containerProvider.Stop(cleanupContext, containerID, &killTimeout)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err, "container": containerID}).Warn("failed to stop container")
