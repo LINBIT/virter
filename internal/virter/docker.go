@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/LINBIT/virter/pkg/overtime"
 	"github.com/LINBIT/virter/pkg/sshkeys"
 
 	"github.com/LINBIT/containerapi"
@@ -30,8 +29,6 @@ const (
 func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
-	cleanupContext, cleanupCancel := overtime.WithOvertimeContext(ctx, 10*time.Second)
-	defer cleanupCancel()
 
 	knownHostsFile, err := ioutil.TempFile("", "virter-container-known-hosts-*")
 	if err != nil {
@@ -71,7 +68,9 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	}
 
 	defer func() {
-		err := containerProvider.Remove(cleanupContext, containerID)
+		removeCtx, removeCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer removeCancel()
+		err := containerProvider.Remove(removeCtx, containerID)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err, "container": containerID}).Warn("failed to remove container")
 		}
@@ -82,8 +81,10 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	// Note: With incredible (bad) luck, you can start a container but cancel the context just in time to not get a
 	// successful response on Start(). Since Stop() is idempotent, we can just defer it before the Start() call.
 	defer func() {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer stopCancel()
 		killTimeout := 2 * time.Second
-		err := containerProvider.Stop(cleanupContext, containerID, &killTimeout)
+		err := containerProvider.Stop(stopCtx, containerID, &killTimeout)
 		if err != nil {
 			log.WithFields(log.Fields{"err": err, "container": containerID}).Warn("failed to stop container")
 		}
