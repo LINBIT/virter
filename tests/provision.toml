@@ -13,4 +13,9 @@ if ! command -v rsync ; then
         yum install -y rsync
     fi
 fi
+
+if command -v snap ; then
+    # Snap likes to block VM shutdown
+    apt-get remove -y snapd
+fi
 """
