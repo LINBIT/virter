@@ -10,7 +10,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/google/go-containerregistry v0.5.1
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/helm/helm v2.16.6+incompatible
+	github.com/helm/helm v2.17.0+incompatible
 	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
