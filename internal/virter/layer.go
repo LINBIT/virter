@@ -121,20 +121,47 @@ func (v *Virter) FindVolumeLayer(name string) (*VolumeLayer, error) {
 }
 
 // NewLayerOption can be passed when creating a new layer to make changes on the libvirt storage volume object.
-type NewLayerOption = func(volume *lx.StorageVolume)
+type NewLayerOption = func(volume *lx.StorageVolume) error
 
 // WithBackingLayer sets the backing layer.
 func WithBackingLayer(layer *VolumeLayer) NewLayerOption {
-	return func(volume *lx.StorageVolume) {
+	return func(volume *lx.StorageVolume) error {
+		if layer == nil {
+			return nil
+		}
+
 		volume.BackingStore = layer.asBackingStore()
+		desc, err := layer.Descriptor()
+		if err != nil {
+			return err
+		}
+
+		if desc.Capacity != nil {
+			if desc.Capacity.Unit != "bytes" {
+				return fmt.Errorf("backing volume capacity in '%s' instead of expected 'bytes'", desc.Capacity.Unit)
+			}
+
+			// NB: We _always_ use bytes, so comparing the values is fine.
+			if volume.Capacity.Value < desc.Capacity.Value {
+				volume.Capacity.Value = desc.Capacity.Value
+				volume.Capacity.Unit = "bytes"
+			}
+		}
+
+		return nil
 	}
 }
 
 // WithCapacity sets the minimal capacity of the new layer in KibiByte.
 func WithCapacity(minCapKib uint64) NewLayerOption {
-	return func(volume *lx.StorageVolume) {
-		volume.Capacity.Value = minCapKib
-		volume.Capacity.Unit = "KiB"
+	return func(volume *lx.StorageVolume) error {
+		// NB: We _always_ use bytes, so comparing the values is fine.
+		if volume.Capacity.Value < minCapKib*1024 {
+			volume.Capacity.Value = minCapKib * 1024
+			volume.Capacity.Unit = "bytes"
+		}
+
+		return nil
 	}
 }
 
@@ -142,8 +169,9 @@ func WithCapacity(minCapKib uint64) NewLayerOption {
 //
 // Supported values are "qcow2" and "raw".
 func WithFormat(fmt string) NewLayerOption {
-	return func(volume *lx.StorageVolume) {
+	return func(volume *lx.StorageVolume) error {
 		volume.Target.Format = &lx.StorageVolumeTargetFormat{Type: fmt}
+		return nil
 	}
 }
 
@@ -368,7 +396,7 @@ func (rl *RawLayer) CloneAs(name string, opts ...LayerOperationOption) (*RawLaye
 		Target: &lx.StorageVolumeTarget{
 			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
 		},
-		Capacity:     &lx.StorageVolumeSize{Value: 0, Unit: "B"},
+		Capacity:     &lx.StorageVolumeSize{Value: 0, Unit: "bytes"},
 		BackingStore: original.BackingStore,
 	}
 
@@ -732,14 +760,17 @@ func (vl *VolumeLayer) Squashed() (*RawLayer, error) {
 func (v *Virter) emptyVolume(rawname string, opts ...NewLayerOption) (libvirt.StorageVol, error) {
 	volumeDescriptor := &lx.StorageVolume{
 		Name:     rawname,
-		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "B"},
+		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "bytes"},
 		Target: &lx.StorageVolumeTarget{
 			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
 		},
 	}
 
 	for i := range opts {
-		opts[i](volumeDescriptor)
+		err := opts[i](volumeDescriptor)
+		if err != nil {
+			return libvirt.StorageVol{}, err
+		}
 	}
 
 	encoded, err := volumeDescriptor.Marshal()
