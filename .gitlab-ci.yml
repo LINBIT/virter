@@ -122,7 +122,9 @@ sync-images:
   script:
     - ln -snf $DOCKER_AUTH_CONFIG_FILE $HOME/.docker/config.json
     - ./virter registry update
+    - EXIT=0
     - while read name url; do
-    -  ./virter image pull $name $url
-    -  ./virter image push $name ${LINBIT_DOCKER_REGISTRY}/vm/${name}:latest
+    -  ./virter image pull "$name" "$url" || { EXIT=1 ; echo "Failed to pull $name from $url" >&2 ; continue ; }
+    -  ./virter image push $name ${LINBIT_DOCKER_REGISTRY}/vm/${name}:latest || { EXIT=1 ; echo "Failed to push $name to ${LINBIT_DOCKER_REGISTRY}/vm/${name}:latest" >&2 ; }
     - done < <(./virter image ls --available | tail -n +2)
+    - exit $EXIT
