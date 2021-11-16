@@ -11,7 +11,7 @@ url = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd
 url = "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2"
 
 [debian-10]
-url = "https://cloud.debian.org/images/cloud/buster/20210329-591/debian-10-generic-amd64-20210329-591.qcow2"
+url = "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-amd64.qcow2"
 
 [debian-9]
 # There is no publicly available "generic" image, but the OpenStack one works
@@ -30,7 +30,7 @@ url = "https://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud.qco
 url = "https://cdn.amazonlinux.com/os-images/2.0.20211001.1/kvm/amzn2-kvm-2.0.20211001.1-x86_64.xfs.gpt.qcow2"
 
 [rocky-8]
-url = "https://download.rockylinux.org/pub/rocky/8/images/Rocky-8-GenericCloud-8.4-20210620.0.x86_64.qcow2"
+url = "https://download.rockylinux.org/pub/rocky/8.5/images/Rocky-8-GenericCloud-8.5-20211114.2.x86_64.qcow2"
 
 [alma-8]
 url = "https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
