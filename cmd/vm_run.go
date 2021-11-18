@@ -226,12 +226,7 @@ func vmRunCommand() *cobra.Command {
 					}
 
 					if waitSSH {
-						sshPingConfig := virter.SSHPingConfig{
-							SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
-							SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
-						}
-
-						err = v.PingSSH(ctx, SSHClientBuilder{}, thisVMName, sshPingConfig)
+						err = v.WaitVmReady(ctx, SSHClientBuilder{}, thisVMName, getReadyConfig())
 						if err != nil {
 							return fmt.Errorf("Failed to connect to VM %d over SSH: %w", id, err)
 						}

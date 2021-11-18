@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
+	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/sshkeys"
 )
 
@@ -207,5 +208,14 @@ func initSSHFromConfig() {
 	_, err := sshkeys.NewKeyStore(privatePath, publicPath)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func getReadyConfig() virter.VmReadyConfig {
+	// The config keys are kept for compatibility.
+	// Note that viper.RegisterAlias sounds like it could be used, but I couldn't make it work.
+	return virter.VmReadyConfig{
+		Retries:      viper.GetInt("time.ssh_ping_count"),
+		CheckTimeout: viper.GetDuration("time.ssh_ping_period"),
 	}
 }

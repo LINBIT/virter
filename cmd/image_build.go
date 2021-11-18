@@ -184,11 +184,6 @@ func imageBuildCommand() *cobra.Command {
 				Mounts:             mounts,
 			}
 
-			sshPingConfig := virter.SSHPingConfig{
-				SSHPingCount:  viper.GetInt("time.ssh_ping_count"),
-				SSHPingPeriod: viper.GetDuration("time.ssh_ping_period"),
-			}
-
 			containerName := "virter-build-" + newImageName
 
 			if provisionConfig.NeedsContainers() {
@@ -210,7 +205,7 @@ func imageBuildCommand() *cobra.Command {
 
 			p = mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			err = v.ImageBuild(ctx, tools, vmConfig, sshPingConfig, buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
+			err = v.ImageBuild(ctx, tools, vmConfig, getReadyConfig(), buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatalf("Failed to build image: %v", err)
 			}

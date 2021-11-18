@@ -152,10 +152,10 @@ type VMMeta struct {
 	HostKey string `xml:"hostkey"`
 }
 
-// SSHPingConfig contains the configuration for pinging a VM via SSH
-type SSHPingConfig struct {
-	SSHPingCount  int
-	SSHPingPeriod time.Duration
+// VmReadyConfig contains the configuration for waiting for a VM to be ready.
+type VmReadyConfig struct {
+	Retries      int
+	CheckTimeout time.Duration
 }
 
 func checkDisks(vmConfig VMConfig) error {

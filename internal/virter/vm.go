@@ -169,8 +169,8 @@ func diskVolumeName(vmName, diskName string) string {
 	return vmName + "-" + diskName
 }
 
-// PingSSH repeatedly tries to connect to a VM via SSH until it succeeds
-func (v *Virter) PingSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, pingConfig SSHPingConfig) error {
+// WaitVmReady repeatedly tries to connect to a VM and checks if it's ready to be used.
+func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig) error {
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -190,41 +190,37 @@ func (v *Virter) PingSSH(ctx context.Context, shellClientBuilder ShellClientBuil
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
-		Timeout:           pingConfig.SSHPingPeriod,
+		Timeout:           readyConfig.CheckTimeout,
 		User:              "root",
 		HostKeyCallback:   hostkeyCheck,
 		HostKeyAlgorithms: supportedAlgos,
 	}
 
-	sshTry := func() error {
-		return tryDialSSH(ctx, shellClientBuilder, hostPort, sshConfig)
+	readyFunc := func() error {
+		sshClient := shellClientBuilder.NewShellClient(hostPort, sshConfig)
+		if err := sshClient.DialContext(ctx); err != nil {
+			log.Debugf("SSH dial attempt failed: %v", err)
+			return err
+		}
+		defer sshClient.Close()
+		if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
+			log.Debugf("cloud-init not done: %v", err)
+			return err
+		}
+
+		return nil
 	}
 
-	log.Print("Wait for SSH port to open")
+	log.Print("Wait for VM to get ready")
 
 	// Using ActualTime breaks the expectation of the unit tests
 	// that this code does not sleep, but we work around that by
 	// always making the first ping successful in tests
-	if err := (actualtime.ActualTime{}.Ping(ctx, pingConfig.SSHPingCount, pingConfig.SSHPingPeriod, sshTry)); err != nil {
-		return fmt.Errorf("unable to connect to SSH port: %w", err)
+	if err := (actualtime.ActualTime{}.Ping(ctx, readyConfig.Retries, readyConfig.CheckTimeout, readyFunc)); err != nil {
+		return fmt.Errorf("VM not ready: %w", err)
 	}
 
-	log.Print("Successfully connected to SSH port")
-	return nil
-}
-
-func tryDialSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, hostPort string, sshConfig ssh.ClientConfig) error {
-	sshClient := shellClientBuilder.NewShellClient(hostPort, sshConfig)
-	if err := sshClient.DialContext(ctx); err != nil {
-		log.Debugf("SSH dial attempt failed: %v", err)
-		return err
-	}
-	defer sshClient.Close()
-	if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
-		log.Debugf("cloud-init not done: %v", err)
-		return err
-	}
-
+	log.Print("Successfully connected to ready VM")
 	return nil
 }
 

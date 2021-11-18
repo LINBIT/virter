@@ -76,15 +76,15 @@ func TestVMRun(t *testing.T) {
 	assert.True(t, domain.active)
 }
 
-func TestSSHPing(t *testing.T) {
+func TestWaitVmReady(t *testing.T) {
 	shell := new(mocks.ShellClient)
 	shell.On("DialContext", mock.Anything).Return(nil)
 	shell.On("Close").Return(nil)
 	shell.On("ExecScript", mock.Anything).Return(nil)
 
-	sshPingConfig := virter.SSHPingConfig{
-		SSHPingCount:  1,
-		SSHPingPeriod: time.Second, // ignored
+	readyConfig := virter.VmReadyConfig{
+		Retries:      1,
+		CheckTimeout: time.Second, // ignored
 	}
 
 	l := newFakeLibvirtConnection()
@@ -96,7 +96,7 @@ func TestSSHPing(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	err := v.PingSSH(context.Background(), MockShellClientBuilder{shell}, vmName, sshPingConfig)
+	err := v.WaitVmReady(context.Background(), MockShellClientBuilder{shell}, vmName, readyConfig)
 	assert.NoError(t, err)
 
 	shell.AssertExpectations(t)
