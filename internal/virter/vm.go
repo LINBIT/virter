@@ -219,7 +219,12 @@ func tryDialSSH(ctx context.Context, shellClientBuilder ShellClientBuilder, host
 		log.Debugf("SSH dial attempt failed: %v", err)
 		return err
 	}
-	sshClient.Close()
+	defer sshClient.Close()
+	if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
+		log.Debugf("cloud-init not done: %v", err)
+		return err
+	}
+
 	return nil
 }
 

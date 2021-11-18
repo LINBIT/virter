@@ -80,6 +80,7 @@ func TestSSHPing(t *testing.T) {
 	shell := new(mocks.ShellClient)
 	shell.On("DialContext", mock.Anything).Return(nil)
 	shell.On("Close").Return(nil)
+	shell.On("ExecScript", mock.Anything).Return(nil)
 
 	sshPingConfig := virter.SSHPingConfig{
 		SSHPingCount:  1,
