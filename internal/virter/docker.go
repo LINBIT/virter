@@ -108,7 +108,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	// container. In these cases, the container itself is still valid.
 	if copyStep != nil {
 		// Use a fresh Context here because ctx may have been canceled
-		copyCtx, copyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		copyCtx, copyCancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer copyCancel()
 		err = containerCopy(copyCtx, containerProvider, containerID, copyStep)
 		if err != nil {
