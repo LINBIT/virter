@@ -74,6 +74,10 @@ func imageLsCommand() *cobra.Command {
 					log.WithError(err).Fatalf("Error listing images")
 				}
 
+				sort.Slice(images, func(i, j int) bool {
+					return images[i].Name() < images[j].Name()
+				})
+
 				now := time.Now()
 
 				t := table.New("Name", "Top Layer", "Created")
