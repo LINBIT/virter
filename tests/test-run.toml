@@ -15,8 +15,9 @@ command = ["sh", "-exc", """
 mkdir -p /virter/out
 test -n "$TARGETS"
 IFS=,; for t in $TARGETS; do
-    test "$t" = "$(ssh $t hostname -s)"
-    scp -r $t:/virter/example.txt example.txt
+    # Some old SSH versions only support the now deprecated ssh-rsa signature
+    test "$t" = "$(ssh -o "PubkeyAcceptedKeyTypes +ssh-rsa" -o "HostKeyAlgorithms +ssh-rsa" $t hostname -s)"
+    scp -o "PubkeyAcceptedKeyTypes +ssh-rsa" -o "HostKeyAlgorithms +ssh-rsa" -r $t:/virter/example.txt example.txt
     sha256sum -c /virter/workspace/data/example.txt.sha256sum
     mv example.txt /virter/out/example-$t.txt
 done
