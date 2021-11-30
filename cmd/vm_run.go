@@ -215,6 +215,7 @@ func vmRunCommand() *cobra.Command {
 						ExtraSSHPublicKeys: extraAuthorizedKeys,
 						ConsolePath:        consolePath,
 						Disks:              disks,
+						DiskCache:          viper.GetString("libvirt.disk_cache"),
 						Mounts:             mounts,
 						ExtraNics:          nics,
 						GDBPort:            thisGDBPort,

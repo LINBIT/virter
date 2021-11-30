@@ -181,6 +181,7 @@ func imageBuildCommand() *cobra.Command {
 				StaticDHCP:         viper.GetBool("libvirt.static_dhcp"),
 				ExtraSSHPublicKeys: extraAuthorizedKeys,
 				ConsolePath:        consolePath,
+				DiskCache:          viper.GetString("libvirt.disk_cache"),
 				Mounts:             mounts,
 			}
 

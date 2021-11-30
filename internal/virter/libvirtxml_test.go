@@ -12,6 +12,7 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 	cases := []struct {
 		descr       string
 		input       []VMDisk
+		cache       string
 		expect      []lx.DomainDisk
 		expectError bool
 	}{
@@ -21,11 +22,13 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 				VMDisk{device: VMDiskDeviceDisk, poolName: "pool", volumeName: "vol1", bus: "virtio", format: "qcow2"},
 				VMDisk{device: VMDiskDeviceCDROM, poolName: "pool", volumeName: "vol2", bus: "ide", format: "raw"},
 			},
+			cache: "unsafe",
 			expect: []lx.DomainDisk{
 				lx.DomainDisk{
 					Device: "disk",
 					Driver: &lx.DomainDiskDriver{
 						Name:    "qemu",
+						Cache:   "unsafe",
 						Discard: "unmap",
 						Type:    "qcow2",
 					},
@@ -43,8 +46,9 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 				lx.DomainDisk{
 					Device: "cdrom",
 					Driver: &lx.DomainDiskDriver{
-						Name: "qemu",
-						Type: "raw",
+						Name:  "qemu",
+						Cache: "unsafe",
+						Type:  "raw",
 					},
 					Source: &lx.DomainDiskSource{
 						Volume: &lx.DomainDiskSourceVolume{
@@ -68,7 +72,7 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		actual, err := vmDisksToLibvirtDisks(c.input)
+		actual, err := vmDisksToLibvirtDisks(c.input, c.cache)
 		if !c.expectError && err != nil {
 			t.Errorf("on input '%s':", c.input)
 			t.Fatalf("unexpected error: %+v", err)

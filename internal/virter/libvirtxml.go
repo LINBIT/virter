@@ -40,7 +40,7 @@ type VMDisk struct {
 	format     string
 }
 
-func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
+func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk, error) {
 	devCounts := map[string]*driveletter.DriveLetter{}
 
 	var result []lx.DomainDisk
@@ -48,12 +48,14 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk) ([]lx.DomainDisk, error) {
 		driver := map[VMDiskDevice]lx.DomainDiskDriver{
 			VMDiskDeviceDisk: lx.DomainDiskDriver{
 				Name:    "qemu",
+				Cache:   diskCache,
 				Discard: "unmap",
 				Type:    d.format,
 			},
 			VMDiskDeviceCDROM: lx.DomainDiskDriver{
-				Name: "qemu",
-				Type: d.format,
+				Name:  "qemu",
+				Cache: diskCache,
+				Type:  d.format,
 			},
 		}[d.device]
 
@@ -104,7 +106,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 	}
 
 	log.Debugf("input are these vmdisks: %+v", vmDisks)
-	disks, err := vmDisksToLibvirtDisks(vmDisks)
+	disks, err := vmDisksToLibvirtDisks(vmDisks, vm.DiskCache)
 	if err != nil {
 		return "", fmt.Errorf("failed to build libvirt disks: %w", err)
 	}

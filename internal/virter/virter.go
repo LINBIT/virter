@@ -142,6 +142,7 @@ type VMConfig struct {
 	ExtraSSHPublicKeys []string
 	ConsolePath        string
 	Disks              []Disk
+	DiskCache          string
 	ExtraNics          []NIC
 	Mounts             []Mount
 	GDBPort            uint
