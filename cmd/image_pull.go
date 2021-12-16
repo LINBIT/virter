@@ -7,6 +7,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v7"
+
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 func imagePullCommand() *cobra.Command {
@@ -36,7 +38,7 @@ will be used.`,
 			ctx, cancel := onInterruptWrap(context.Background())
 			defer cancel()
 
-			image, err := GetLocalImage(ctx, dest, source, v, PullPolicyAlways, DefaultProgressFormat(p))
+			image, err := GetLocalImage(ctx, dest, source, v, pullpolicy.Always, DefaultProgressFormat(p))
 			if err != nil {
 				log.WithError(err).Fatal("failed to pull image")
 			}

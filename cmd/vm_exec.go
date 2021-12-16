@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/netcopy"
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 
 	"github.com/spf13/cobra"
 )
@@ -17,6 +19,8 @@ import (
 func vmExecCommand() *cobra.Command {
 	var provisionFile string
 	var provisionOverrides []string
+
+	var containerPullPolicy pullpolicy.PullPolicy
 
 	execCmd := &cobra.Command{
 		Use:   "exec vm_name [vm_name...]",
@@ -28,8 +32,9 @@ func vmExecCommand() *cobra.Command {
 			defer cancel()
 
 			provOpt := virter.ProvisionOption{
-				FilePath:  provisionFile,
-				Overrides: provisionOverrides,
+				FilePath:           provisionFile,
+				Overrides:          provisionOverrides,
+				OverridePullPolicy: containerPullPolicy,
 			}
 			if err := execProvision(ctx, provOpt, args); err != nil {
 				log.Fatal(err)
@@ -40,6 +45,7 @@ func vmExecCommand() *cobra.Command {
 
 	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	execCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
+	execCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 
 	return execCmd
 }
@@ -87,7 +93,7 @@ func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDocker
 		s.Image,
 		s.Env,
 		containerapi.WithCommand(s.Command...),
-		containerapi.WithPullConfig(containerapi.PullIfNotExists),
+		containerapi.WithPullConfig(s.Pull.ForContainer()),
 	)
 
 	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, s.Copy)

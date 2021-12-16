@@ -18,32 +18,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/LINBIT/virter/internal/virter"
-)
-
-type PullPolicy string
-
-func (p *PullPolicy) String() string {
-	return string(*p)
-}
-
-func (p *PullPolicy) Set(s string) error {
-	switch strings.ToLower(s) {
-	case strings.ToLower(string(PullPolicyNever)), strings.ToLower(string(PullPolicyIfNotExist)), strings.ToLower(string(PullPolicyAlways)):
-		*p = PullPolicy(s)
-		return nil
-	default:
-		return fmt.Errorf("unknown pull policy. [%s, %s, %s]", PullPolicyAlways, PullPolicyIfNotExist, PullPolicyNever)
-	}
-}
-
-func (p *PullPolicy) Type() string {
-	return "pullPolicy"
-}
-
-const (
-	PullPolicyAlways     PullPolicy = "Always"
-	PullPolicyIfNotExist PullPolicy = "IfNotExist"
-	PullPolicyNever      PullPolicy = "Never"
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 // LocalImageName returns the local name for the user-supplied image name.
@@ -92,11 +67,11 @@ func LocalImageName(img string) string {
 // * A local image name.
 // * A name matching an alias in the legacy image registry.
 // * A container registry reference, which will be converted into a compatible local volume name.
-func GetLocalImage(ctx context.Context, imageName string, source string, v *virter.Virter, policy PullPolicy, p virter.ProgressOpt) (*virter.LocalImage, error) {
+func GetLocalImage(ctx context.Context, imageName string, source string, v *virter.Virter, policy pullpolicy.PullPolicy, p virter.ProgressOpt) (*virter.LocalImage, error) {
 	localName := LocalImageName(imageName)
 
 	switch policy {
-	case PullPolicyNever, PullPolicyIfNotExist:
+	case pullpolicy.Never, pullpolicy.IfNotExist:
 		localImg, err := v.FindImage(localName, virter.WithProgress(p))
 		if err != nil {
 			return nil, err
@@ -106,11 +81,11 @@ func GetLocalImage(ctx context.Context, imageName string, source string, v *virt
 			return localImg, nil
 		}
 
-		if policy == PullPolicyNever {
+		if policy == pullpolicy.Never {
 			return nil, fmt.Errorf("image %s not present in local storage", imageName)
 		}
 		// PullPolicyIfNotExist -> try to pull
-	case PullPolicyAlways:
+	case pullpolicy.Always:
 		// Skip to pulling
 	default:
 		return nil, fmt.Errorf("unknown pull policy %s", policy)

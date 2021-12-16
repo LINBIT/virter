@@ -564,7 +564,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 				s.Docker.Image,
 				s.Docker.Env,
 				containerapi.WithCommand(s.Docker.Command...),
-				containerapi.WithPullConfig(containerapi.PullIfNotExists),
+				containerapi.WithPullConfig(s.Docker.Pull.ForContainer()),
 			)
 			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, nil)
 		} else if s.Shell != nil {

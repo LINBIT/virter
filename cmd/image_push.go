@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v7"
+
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 func imagePushCommand() *cobra.Command {
@@ -38,7 +40,7 @@ func imagePushCommand() *cobra.Command {
 
 			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			img, err := GetLocalImage(ctx, source, source, v, PullPolicyNever, DefaultProgressFormat(p))
+			img, err := GetLocalImage(ctx, source, source, v, pullpolicy.Never, DefaultProgressFormat(p))
 			if err != nil {
 				log.WithError(err).Fatal("failed to get image")
 			}

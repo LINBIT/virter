@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v7"
 	"golang.org/x/term"
+
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 func imageSaveCommand() *cobra.Command {
@@ -53,7 +55,7 @@ squashed into a single file.`,
 
 			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			imgRef, err := GetLocalImage(ctx, image, image, v, PullPolicyNever, DefaultProgressFormat(p))
+			imgRef, err := GetLocalImage(ctx, image, image, v, pullpolicy.Never, DefaultProgressFormat(p))
 			if err != nil {
 				log.WithError(err).Fatalf("error searching image %s", image)
 			}

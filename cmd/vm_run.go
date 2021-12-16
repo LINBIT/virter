@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/LINBIT/virter/internal/virter"
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 var sizeUnits = func() map[string]int64 {
@@ -93,7 +94,8 @@ func vmRunCommand() *cobra.Command {
 	var provisionFile string
 	var provisionOverrides []string
 
-	pullPolicy := PullPolicyIfNotExist
+	vmPullPolicy := pullpolicy.IfNotExist
+	var containerPullPolicy pullpolicy.PullPolicy
 
 	runCmd := &cobra.Command{
 		Use:   "run image",
@@ -149,7 +151,7 @@ func vmRunCommand() *cobra.Command {
 			}
 
 			p := mpb.New(DefaultContainerOpt())
-			image, err := GetLocalImage(ctx, args[0], args[0], v, pullPolicy, DefaultProgressFormat(p))
+			image, err := GetLocalImage(ctx, args[0], args[0], v, vmPullPolicy, DefaultProgressFormat(p))
 			if err != nil {
 				log.Fatalf("Error while getting image: %v", err)
 			}
@@ -241,8 +243,9 @@ func vmRunCommand() *cobra.Command {
 
 			if provision {
 				provOpt := virter.ProvisionOption{
-					FilePath:  provisionFile,
-					Overrides: provisionOverrides,
+					FilePath:           provisionFile,
+					Overrides:          provisionOverrides,
+					OverridePullPolicy: containerPullPolicy,
 				}
 				if err := execProvision(ctx, provOpt, vmNames); err != nil {
 					log.Fatal(err)
@@ -290,7 +293,9 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	runCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 
-	runCmd.Flags().VarP(&pullPolicy, "pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", PullPolicyAlways, PullPolicyIfNotExist, PullPolicyNever))
+	runCmd.Flags().VarP(&vmPullPolicy, "pull-policy", "", "Whether or not to pull the source image.")
+	runCmd.Flags().VarP(&vmPullPolicy, "vm-pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
+	runCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 
 	return runCmd
 }

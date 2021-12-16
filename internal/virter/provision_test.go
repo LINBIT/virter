@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
+
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 func TestNewProvisionConfig(t *testing.T) {
@@ -145,6 +147,7 @@ ShellEnv = "default-value"
 [[steps]]
 [steps.docker]
 image = "{{.DockerImage}}"
+pull = "Always"
 command = ["echo", "{{.DockerCommandArg}}"]
 [steps.docker.env]
 foo = "hello {{.DockerEnv}}"
@@ -195,6 +198,7 @@ foo = "{{.ShellEnv"
 						Image:   "some-image",
 						Command: []string{"exit", "0"},
 						Env:     map[string]string{"foo": "bar"},
+						Pull:    pullpolicy.IfNotExist,
 					},
 				},
 				ProvisionStep{
@@ -227,6 +231,7 @@ foo = "{{.ShellEnv"
 						Image:   "template-image",
 						Command: []string{"echo", "template-arg"},
 						Env:     map[string]string{"foo": "hello template-value"},
+						Pull:    pullpolicy.Always,
 					},
 				},
 				ProvisionStep{

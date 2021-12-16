@@ -10,11 +10,14 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/helm/helm/pkg/strvals"
 	"github.com/mitchellh/mapstructure"
+
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 // ProvisionDockerStep is a single provisioniong step executed in a docker container
 type ProvisionDockerStep struct {
 	Image   string                   `toml:"image"`
+	Pull    pullpolicy.PullPolicy    `toml:"pull"`
 	Env     map[string]string        `toml:"env"`
 	Command []string                 `toml:"command"`
 	Copy    *ProvisionDockerCopyStep `toml:"copy"`
@@ -88,8 +91,9 @@ func EnvmapToSlice(envMap map[string]string) []string {
 
 // ProvisionOption sumarizes all the options used for generating the final ProvisionConfig
 type ProvisionOption struct {
-	FilePath  string
-	Overrides []string
+	FilePath           string
+	Overrides          []string
+	OverridePullPolicy pullpolicy.PullPolicy
 }
 
 // NewProvisionConfig returns a ProvisionConfig from a ProvisionOption
@@ -147,6 +151,14 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 				if copyStep.Dest, err = executeTemplate(copyStep.Dest, pc.Values); err != nil {
 					return pc, fmt.Errorf("failed to execute template for docker.copy.dest for step %d: %w", i, err)
 				}
+			}
+
+			if s.Docker.Pull == "" {
+				s.Docker.Pull = pullpolicy.IfNotExist
+			}
+
+			if provOpt.OverridePullPolicy != "" {
+				s.Docker.Pull = provOpt.OverridePullPolicy
 			}
 		} else if s.Shell != nil {
 			s.Shell.Env = mergeEnv(&pc.Env, &s.Shell.Env)

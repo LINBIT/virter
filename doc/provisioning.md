@@ -25,6 +25,7 @@ A `docker` provisioning step allows specifying a Docker image to run provisionin
 
 The Docker provisioning step can be parameterized using the following configuration options:
 * `image` is the Docker image used to provision the VM. It follows the standard Docker format of `<repository>/<image>:<tag>`. This is a Go template.
+* `pull` specifies when the above image should be pulled. Valid values are `Always`, `IfNotExist` or `Never`. If not specified, the default is `IfNotExist`. Can be overridden during execution using `--container-pull-policy`.
 * `env` is a map of environment variables to be passed to the Docker container, in `KEY=value` format. The values are Go templates.
 
   Note that Virter already passes two environment variables by default:

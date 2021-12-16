@@ -20,6 +20,7 @@ import (
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/pkg/actualtime"
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
 func imageBuildCommand() *cobra.Command {
@@ -47,7 +48,8 @@ func imageBuildCommand() *cobra.Command {
 	var mountStrings []string
 	var mounts []virter.Mount
 
-	pullPolicy := PullPolicyIfNotExist
+	vmPullPolicy := pullpolicy.IfNotExist
+	var containerPullPolicy pullpolicy.PullPolicy
 
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
@@ -122,7 +124,7 @@ func imageBuildCommand() *cobra.Command {
 
 			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			baseImage, err := GetLocalImage(ctx, baseImageName, baseImageName, v, pullPolicy, DefaultProgressFormat(p))
+			baseImage, err := GetLocalImage(ctx, baseImageName, baseImageName, v, vmPullPolicy, DefaultProgressFormat(p))
 			if err != nil {
 				log.Fatalf("Error while getting image: %v", err)
 			}
@@ -130,8 +132,9 @@ func imageBuildCommand() *cobra.Command {
 			p.Wait()
 
 			provOpt := virter.ProvisionOption{
-				FilePath:  provisionFile,
-				Overrides: provisionOverrides,
+				FilePath:           provisionFile,
+				Overrides:          provisionOverrides,
+				OverridePullPolicy: containerPullPolicy,
 			}
 
 			provisionConfig, err := virter.NewProvisionConfig(provOpt)
@@ -152,7 +155,7 @@ func imageBuildCommand() *cobra.Command {
 
 					p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-					_, err := GetLocalImage(ctx, newImageName, args[1], v, PullPolicyAlways, DefaultProgressFormat(p))
+					_, err := GetLocalImage(ctx, newImageName, args[1], v, pullpolicy.Always, DefaultProgressFormat(p))
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -261,11 +264,15 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().VarP(bootCapacity, "bootcap", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
 	buildCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	buildCmd.Flags().BoolVar(&resetMachineID, "reset-machine-id", true, "Whether or not to clear the /etc/machine-id file after provisioning")
-	buildCmd.Flags().VarP(&pullPolicy, "pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", PullPolicyAlways, PullPolicyIfNotExist, PullPolicyNever))
+	buildCmd.Flags().VarP(&vmPullPolicy, "pull-policy", "", "Whether or not to pull the source image.")
+	buildCmd.Flags().VarP(&vmPullPolicy, "vm-pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
+	buildCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	buildCmd.Flags().BoolVarP(&push, "push", "", false, "Push the image after building")
 	buildCmd.Flags().BoolVarP(&noCache, "no-cache", "", false, "Disable caching for the image build")
 	buildCmd.Flags().StringVarP(&buildId, "build-id", "", "", "Build ID used to determine if an image needs to be rebuild.")
 	buildCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
+
+	buildCmd.Flag("pull-policy").Deprecated = "use --vm-pull-policy"
 
 	return buildCmd
 }
