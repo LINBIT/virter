@@ -198,7 +198,7 @@ foo = "{{.ShellEnv"
 						Image:   "some-image",
 						Command: []string{"exit", "0"},
 						Env:     map[string]string{"foo": "bar"},
-						Pull:    pullpolicy.IfNotExist,
+						Pull:    "",
 					},
 				},
 				ProvisionStep{

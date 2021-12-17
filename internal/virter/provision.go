@@ -93,6 +93,7 @@ func EnvmapToSlice(envMap map[string]string) []string {
 type ProvisionOption struct {
 	FilePath           string
 	Overrides          []string
+	DefaultPullPolicy  pullpolicy.PullPolicy
 	OverridePullPolicy pullpolicy.PullPolicy
 }
 
@@ -154,7 +155,7 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 			}
 
 			if s.Docker.Pull == "" {
-				s.Docker.Pull = pullpolicy.IfNotExist
+				s.Docker.Pull = provOpt.DefaultPullPolicy
 			}
 
 			if provOpt.OverridePullPolicy != "" {

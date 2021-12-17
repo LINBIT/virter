@@ -134,6 +134,7 @@ func imageBuildCommand() *cobra.Command {
 			provOpt := virter.ProvisionOption{
 				FilePath:           provisionFile,
 				Overrides:          provisionOverrides,
+				DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 				OverridePullPolicy: containerPullPolicy,
 			}
 

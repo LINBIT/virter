@@ -245,6 +245,7 @@ func vmRunCommand() *cobra.Command {
 				provOpt := virter.ProvisionOption{
 					FilePath:           provisionFile,
 					Overrides:          provisionOverrides,
+					DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 					OverridePullPolicy: containerPullPolicy,
 				}
 				if err := execProvision(ctx, provOpt, vmNames); err != nil {

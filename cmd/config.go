@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
+	"github.com/LINBIT/virter/pkg/pullpolicy"
 	"github.com/LINBIT/virter/pkg/sshkeys"
 )
 
@@ -92,6 +93,10 @@ user_public_key = "{{ get "auth.user_public_key" }}"
 [container]
 # provider is the container engine used. Can be either podman or docker.
 provider = "{{ get "container.provider" }}"
+
+# default pull policy to apply if non was specified. Can be 'Always', 'IfNotExist' or 'Never'.
+# Default value: "{{ get "container.pull" }}"
+pull = "{{ get "container.pull" }}"
 `
 
 // initConfig reads in config file and ENV variables if set.
@@ -105,6 +110,7 @@ func initConfig() {
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
 	viper.SetDefault("auth.user_public_key", "")
 	viper.SetDefault("container.provider", "docker")
+	viper.SetDefault("container.pull", "IfNotExist")
 
 	viper.SetConfigType("toml")
 	if cfgFile != "" {
@@ -224,4 +230,20 @@ func getReadyConfig() virter.VmReadyConfig {
 		Retries:      viper.GetInt("time.ssh_ping_count"),
 		CheckTimeout: viper.GetDuration("time.ssh_ping_period"),
 	}
+}
+
+func getDefaultContainerPullPolicy() pullpolicy.PullPolicy {
+	opt := viper.GetString("container.pull")
+
+	if opt == "" {
+		return pullpolicy.IfNotExist
+	}
+
+	var policy pullpolicy.PullPolicy
+	err := policy.UnmarshalText([]byte(opt))
+	if err != nil {
+		log.WithError(err).Fatal("invalid default pull policy")
+	}
+
+	return policy
 }
