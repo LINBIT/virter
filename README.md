@@ -23,6 +23,11 @@ virter vm ssh centos-7-hello
 virter vm rm centos-7-hello
 ```
 
+To see a list of available images run the following:
+```
+virter image ls --available
+```
+
 Depending on your host distribution and libvirt installation, you may need to:
 * [Set up a storage pool](#libvirt-storage-pool); and/or
 * [Configure AppArmor](#apparmor).
