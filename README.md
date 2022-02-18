@@ -17,16 +17,14 @@ Virter is packaged as a single binary, so just put that into `/usr/local/bin` an
 you are ready to use Virter:
 
 ```
-virter image pull centos-7 # also would be auto-pulled in next step
-virter vm run --name centos-7-hello --id 100 --wait-ssh centos-7
-virter vm ssh centos-7-hello
-virter vm rm centos-7-hello
+virter image pull alma-8 # also would be auto-pulled in next step
+virter vm run --name alma-8-hello --id 100 --wait-ssh alma-8
+virter vm ssh alma-8-hello
+virter vm rm alma-8-hello
 ```
-
-To see a list of available images run the following:
-```
-virter image ls --available
-```
+In the above example, the virter "ID" is the index into the possible IPs
+within the IP range of the network definition.  For a typical 192.x.y.z/24
+net definition, the virter "ID" would be z, or 100 in this case.
 
 Depending on your host distribution and libvirt installation, you may need to:
 * [Set up a storage pool](#libvirt-storage-pool); and/or
@@ -36,7 +34,22 @@ Depending on your host distribution and libvirt installation, you may need to:
 
 For usage just run `virter help`.
 
-Some examples are provided in the [examples](./examples) directory. See the
+Additional options that may be helpful when using `virter vm run`:
+
+* List all available images: `virter image ls --available`
+
+* Using a provisioning file: `--provision /root/alma8.toml`
+
+* Adding additional disk(s):
+`--disk "name=disk1,size=20GiB,format=qcow2,bus=virtio"`
+
+* Adding a bridged interface
+`--nic "type=bridge,source=br0,mac=1a:2b:3c:4d:5e:01"`
+
+* Adding a NAT'ed interface:
+`--nic "type=network,source=default,mac=1a:2b:3c:4d:5e:01"`
+
+Other examples are provided in the [examples](./examples) directory. See the
 README files for the individual examples.
 
 There is also additional [documentation for the provisioning
