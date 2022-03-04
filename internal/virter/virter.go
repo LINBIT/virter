@@ -50,7 +50,7 @@ type LibvirtConnection interface {
 	DomainListAllSnapshots(Dom libvirt.Domain, NeedResults int32, Flags uint32) (rSnapshots []libvirt.DomainSnapshot, rRet int32, err error)
 	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
 	Disconnect() error
-	ConnectGetLibVersion() (uint64, error)
+	ConnectSupportsFeature(Feature int32) (int32, error)
 	ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags uint32) (rCapabilities string, err error)
 }
 

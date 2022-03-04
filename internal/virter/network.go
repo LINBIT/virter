@@ -142,3 +142,36 @@ func (v *Virter) NetworkListAttached(netname string) ([]VMNic, error) {
 
 	return vmnics, nil
 }
+
+// DrvFeatureNetworkUpdateHasCorrectOrder determines wheter the argument order for NetworkUpdate is fixed
+// From https://github.com/libvirt/libvirt/blob/cac9608c172e9439d9cba350579af59b649b77e7/src/libvirt_internal.h#L133
+const DrvFeatureNetworkUpdateHasCorrectOrder = 16
+
+// patchedNetworkUpdate calls libvirt's NetworkUpdate(), with the right order of arguments.
+func (v *Virter) patchedNetworkUpdate(network libvirt.Network, command libvirt.NetworkUpdateCommand, section libvirt.NetworkUpdateSection, xml string) error {
+	hasCorrectOrder, err := v.libvirt.ConnectSupportsFeature(DrvFeatureNetworkUpdateHasCorrectOrder)
+	if err != nil {
+		return fmt.Errorf("failed to check for fixed network update argument order: %w", err)
+	}
+
+	argCommand := uint32(command)
+	argSection := uint32(section)
+
+	if hasCorrectOrder != 1 {
+		argCommand = uint32(section)
+		argSection = uint32(command)
+	}
+
+	err = v.libvirt.NetworkUpdate(
+		network,
+		argCommand,
+		argSection,
+		-1,
+		xml,
+		libvirt.NetworkUpdateAffectLive|libvirt.NetworkUpdateAffectConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

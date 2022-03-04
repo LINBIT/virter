@@ -19,6 +19,10 @@ type FakeLibvirtConnection struct {
 	domains  map[string]*FakeLibvirtDomain
 }
 
+func (l *FakeLibvirtConnection) ConnectSupportsFeature(Feature int32) (int32, error) {
+	return 1, nil
+}
+
 func (l *FakeLibvirtConnection) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) ([]libvirt.Network, uint32, error) {
 	nets := make([]libvirt.Network, 0, len(l.networks))
 	for k := range l.networks {
@@ -255,17 +259,7 @@ func (l *FakeLibvirtConnection) NetworkGetXMLDesc(Net libvirt.Network, Flags uin
 	return string(xmldesc), nil
 }
 
-func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, Command, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error) {
-	// the following 2 arguments are swapped until version 7.2.0; see
-	// https://github.com/digitalocean/go-libvirt/issues/87
-	version, _ := l.ConnectGetLibVersion()
-	var section = Section
-	var command = Command
-	if version < 7002000 {
-		section = Command
-		command = Section
-	}
-
+func (l *FakeLibvirtConnection) NetworkUpdate(Net libvirt.Network, command, section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error) {
 	if section != uint32(libvirt.NetworkSectionIPDhcpHost) {
 		return errors.New("unknown section")
 	}
@@ -418,10 +412,6 @@ func (l *FakeLibvirtConnection) DomainUndefineFlags(Dom libvirt.Domain, Flags li
 	gcDomain(l.domains, Dom.Name, domain)
 
 	return nil
-}
-
-func (l *FakeLibvirtConnection) ConnectGetLibVersion() (uint64, error) {
-	return 7000000, nil
 }
 
 func (l *FakeLibvirtConnection) ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags uint32) (string, error) {
