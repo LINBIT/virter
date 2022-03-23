@@ -146,6 +146,7 @@ type VMConfig struct {
 	ExtraNics          []NIC
 	Mounts             []Mount
 	GDBPort            uint
+	SecureBoot         bool
 }
 
 // VMMeta is additional metadata stored with each VM

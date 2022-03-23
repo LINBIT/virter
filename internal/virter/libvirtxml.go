@@ -221,6 +221,16 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 		return "", err
 	}
 
+	if vm.SecureBoot {
+		if domain.OS.Loader == nil {
+			domain.OS.Loader = &lx.DomainLoader{}
+		}
+
+		domain.OS.Loader.Secure = "yes"
+		domain.OS.Firmware = "efi"
+		domain.Features.SMM = &lx.DomainFeatureSMM{}
+	}
+
 	return domain.Marshal()
 }
 

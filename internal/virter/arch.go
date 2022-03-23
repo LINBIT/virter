@@ -75,52 +75,14 @@ func (c *CpuArch) QemuArch() string {
 }
 
 func (c *CpuArch) OSDomain() *lx.DomainOS {
-	arch := c.get()
-
-	if arch == CpuArchNative {
-		return &lx.DomainOS{
-			Type: &lx.DomainOSType{
-				Arch: c.QemuArch(),
-				Type: "hvm",
-			},
-			Firmware:    c.Firmware(),
-			BootDevices: []lx.DomainBootDevice{{Dev: "hd"}},
-		}
-	}
-
-	switch arch {
-	case CpuArchAMD64:
-		return &lx.DomainOS{
-			Type: &lx.DomainOSType{
-				Arch:    c.QemuArch(),
-				Type:    "hvm",
-				Machine: "q35",
-			},
-			Firmware:    c.Firmware(),
-			BootDevices: []lx.DomainBootDevice{{Dev: "hd"}},
-		}
-	case CpuArchARM64:
-		return &lx.DomainOS{
-			Type: &lx.DomainOSType{
-				Arch:    c.QemuArch(),
-				Type:    "hvm",
-				Machine: "virt",
-			},
-			Firmware:    c.Firmware(),
-			BootDevices: []lx.DomainBootDevice{{Dev: "hd"}},
-		}
-	case CpuArchPPC64LE:
-		return &lx.DomainOS{
-			Type: &lx.DomainOSType{
-				Arch:    c.QemuArch(),
-				Type:    "hvm",
-				Machine: "pseries",
-			},
-			Firmware:    c.Firmware(),
-			BootDevices: []lx.DomainBootDevice{{Dev: "hd"}},
-		}
-	default:
-		return nil
+	return &lx.DomainOS{
+		Type: &lx.DomainOSType{
+			Arch:    c.QemuArch(),
+			Type:    "hvm",
+			Machine: c.Machine(),
+		},
+		Firmware:    c.Firmware(),
+		BootDevices: []lx.DomainBootDevice{{Dev: "hd"}},
 	}
 }
 
@@ -174,6 +136,19 @@ func (c *CpuArch) CPU() *lx.DomainCPU {
 		}
 	default:
 		return nil
+	}
+}
+
+func (c *CpuArch) Machine() string {
+	switch c.get() {
+	case CpuArchAMD64:
+		return "q35"
+	case CpuArchARM64:
+		return "virt"
+	case CpuArchPPC64LE:
+		return "pseries"
+	default:
+		return ""
 	}
 }
 
