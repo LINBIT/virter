@@ -88,7 +88,7 @@ lint:
 e2e-test:
   stage: test
   variables:
-    EXCLUDED: amazonlinux-2
+    EXCLUDED: amazonlinux-2|centos-6
   tags:
     - libvirt
   script:
