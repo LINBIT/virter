@@ -162,7 +162,13 @@ This leads to messages in dmesg along the lines of:
 This can be circumvented by overriding the AppArmor abstraction for that directory:
 
 ```
-echo '/var/lib/libvirt/images/* rwk,' >> /etc/apparmor.d/local/abstractions/libvirt-qemu
+cat <<EOF >> /etc/apparmor.d/local/abstractions/libvirt-qemu
+/var/lib/libvirt/images/* rwk,
+# required for QEMU accessing UEFI nvram variables
+/usr/share/OVMF/* rk,
+owner /var/lib/libvirt/qemu/nvram/*_VARS.fd rwk,
+owner /var/lib/libvirt/qemu/nvram/*_VARS.ms.fd rwk,
+EOF
 systemctl restart apparmor.service
 systemctl restart libvirtd.service
 ```
