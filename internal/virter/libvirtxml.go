@@ -149,7 +149,7 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 		},
 		VCPU: &lx.DomainVCPU{
 			Placement: "static",
-			Value:     int(vm.VCPUs),
+			Value:     vm.VCPUs,
 		},
 		OS: vm.CpuArch.OSDomain(),
 		Features: &lx.DomainFeatureList{

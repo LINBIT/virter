@@ -14,7 +14,7 @@ require (
 	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
 	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
-	github.com/libvirt/libvirt-go-xml v6.1.0+incompatible
+	github.com/libvirt/libvirt-go-xml v7.4.0+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/rck/unit v0.0.3
