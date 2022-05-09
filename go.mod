@@ -16,7 +16,7 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/libvirt/libvirt-go-xml v7.4.0+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.4.3
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/rck/unit v0.0.3
 	github.com/rodaine/table v1.0.1
 	github.com/sethvargo/go-signalcontext v0.1.0
