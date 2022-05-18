@@ -88,7 +88,10 @@ lint:
 e2e-test:
   stage: test
   variables:
-    EXCLUDED: amazonlinux-2|centos-6
+    # amazonlinux: times out because it starts updates on boot
+    # centos-6: repos offline
+    # centos-8: repos offline
+    EXCLUDED: amazonlinux-2|centos-6|centos-8
   tags:
     - libvirt
   script:
