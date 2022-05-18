@@ -3,15 +3,16 @@
 script = """
 set -ex
 
-if ! command -v rsync ; then
-    if command -v apt-get ; then
-        apt-get update
-        apt-get install -y rsync
-    elif command -v dnf ; then
-        dnf install -y rsync
-    elif command -v yum ; then
-        yum install -y rsync
-    fi
+# Install dependencies:
+# * rsync: for copy steps
+# * hostname: for ssh access tests
+if command -v apt-get ; then
+    apt-get update
+    apt-get install -y rsync hostname
+elif command -v dnf ; then
+    dnf install -y rsync hostname
+elif command -v yum ; then
+    yum install -y rsync hostname
 fi
 
 if command -v snap ; then
