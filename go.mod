@@ -8,7 +8,7 @@ require (
 	github.com/LINBIT/gosshclient v0.3.1
 	github.com/digitalocean/go-libvirt v0.0.0-20210615174804-eaff166426e3
 	github.com/docker/go-units v0.4.0
-	github.com/google/go-containerregistry v0.8.0
+	github.com/google/go-containerregistry v0.9.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/helm/helm v2.17.0+incompatible
 	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
@@ -27,7 +27,7 @@ require (
 	github.com/vbauerster/mpb/v7 v7.4.1
 	github.com/vektra/mockery v1.1.2
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
