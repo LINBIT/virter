@@ -43,9 +43,12 @@ prepare-docker:
 
 
 build:
+  image: golang:1.17
   stage: build
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.mygo
   script:
-    - GOPATH=$(pwd)/.mygo go build
+    - go build
   artifacts:
     paths:
       - virter
@@ -53,16 +56,16 @@ build:
 
 test:
   stage: test
+  image: golang:1.17
   cache:
     paths:
       - .mygo/pkg/mod
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.mygo
   script:
-    - GOPATH=$(pwd)/.mygo go version
-    - GOPATH=$(pwd)/.mygo go install github.com/jstemmer/go-junit-report@latest
-    - GOPATH=$(pwd)/.mygo go get github.com/vektra/mockery/.../
-    - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
-    - GOPATH=$(pwd)/.mygo go test -v -coverprofile .testCoverage.txt ./... 2>&1 | $(pwd)/.mygo/bin/go-junit-report -set-exit-code > test.xml
-    - GOPATH=$(pwd)/.mygo go tool cover -func=.testCoverage.txt
+    - go generate ./...
+    - go test -v -coverprofile .testCoverage.txt ./... 2>&1 | go run github.com/jstemmer/go-junit-report@latest -set-exit-code > test.xml
+    - go tool cover -func=.testCoverage.txt
   artifacts:
     reports:
       junit: test.xml
@@ -71,10 +74,11 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: golangci/golangci-lint:v1.39-alpine
+  image: golangci/golangci-lint:v1.46-alpine
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.mygo
   script:
-    - GOPATH=$(pwd)/.mygo go get github.com/vektra/mockery/.../
-    - GOPATH=$(pwd)/.mygo PATH=$PATH:$(go env GOPATH)/bin go generate ./...
+    - go generate ./...
     - golangci-lint version
     - echo "Linting new code relative to branch $CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME

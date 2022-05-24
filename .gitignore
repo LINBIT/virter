@@ -1,4 +1,5 @@
-mocks
+/internal/virter/mocks
+!/internal/virter/mocks/mocks.go
 
 /virter
 

@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Set up Go 1.16
+    - name: Set up Go 1.17
       uses: actions/setup-go@v1
       with:
-        go-version: 1.16
+        go-version: 1.17
       id: go
 
     - name: Check out code into the Go module directory
@@ -27,8 +27,7 @@ jobs:
 
     - name: Test
       run: |
-        go get github.com/vektra/mockery/.../
-        PATH=$PATH:$(go env GOPATH)/bin go generate ./...
+        go generate ./...
         go test ./internal/virter/
 
     - name: Vet
