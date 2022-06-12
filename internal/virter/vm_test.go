@@ -96,7 +96,7 @@ func TestWaitVmReady(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	err := v.WaitVmReady(context.Background(), MockShellClientBuilder{shell}, vmName, readyConfig)
+	err := v.WaitVmReady(context.Background(), MockShellClientBuilder{shell}, vmName, readyConfig, "root")
 	assert.NoError(t, err)
 
 	shell.AssertExpectations(t)

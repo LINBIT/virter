@@ -537,11 +537,11 @@ type ImageBuildConfig struct {
 	ResetMachineID  bool
 }
 
-func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, readyConfig VmReadyConfig, buildConfig ImageBuildConfig, opts ...LayerOperationOption) error {
+func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, readyConfig VmReadyConfig, buildConfig ImageBuildConfig, user string, opts ...LayerOperationOption) error {
 	vmNames := []string{vmConfig.Name}
 	var err error
 
-	err = v.WaitVmReady(ctx, tools.ShellClientBuilder, vmConfig.Name, readyConfig)
+	err = v.WaitVmReady(ctx, tools.ShellClientBuilder, vmConfig.Name, readyConfig, user)
 	if err != nil {
 		return err
 	}
@@ -568,7 +568,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 			)
 			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, nil)
 		} else if s.Shell != nil {
-			err = v.VMExecShell(ctx, vmNames, s.Shell)
+			err = v.VMExecShell(ctx, vmNames, s.Shell, user)
 		} else if s.Rsync != nil {
 			copier := netcopy.NewRsyncNetworkCopier()
 			err = v.VMExecRsync(ctx, copier, vmNames, s.Rsync)
@@ -588,7 +588,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 }
 
 // ImageBuild builds an image by running a VM and provisioning it.
-func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, readyConfig VmReadyConfig, buildConfig ImageBuildConfig, opts ...LayerOperationOption) error {
+func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, readyConfig VmReadyConfig, buildConfig ImageBuildConfig, user string, opts ...LayerOperationOption) error {
 	// VMRun is responsible to call CheckVMConfig here!
 	// TODO(): currently we can not know why VM run failed, so we don't clean up in this stage,
 	//         it could have been an existing VM, we don't want to delete it.
@@ -598,7 +598,7 @@ func (v *Virter) ImageBuild(ctx context.Context, tools ImageBuildTools, vmConfig
 	}
 
 	// from here on it is safe to rm the VM if something fails
-	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, readyConfig, buildConfig, opts...)
+	err = v.imageBuildProvisionCommit(ctx, tools, vmConfig, readyConfig, buildConfig, user, opts...)
 	if err != nil {
 		log.Warn("could not build image, deleting VM")
 		if rmErr := v.VMRm(vmConfig.Name, !vmConfig.StaticDHCP, true); rmErr != nil {

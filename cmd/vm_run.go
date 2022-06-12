@@ -95,6 +95,8 @@ func vmRunCommand() *cobra.Command {
 	var provisionFile string
 	var provisionOverrides []string
 
+	var user string
+
 	vmPullPolicy := pullpolicy.IfNotExist
 	var containerPullPolicy pullpolicy.PullPolicy
 
@@ -231,7 +233,7 @@ func vmRunCommand() *cobra.Command {
 					}
 
 					if waitSSH {
-						err = v.WaitVmReady(ctx, SSHClientBuilder{}, thisVMName, getReadyConfig())
+						err = v.WaitVmReady(ctx, SSHClientBuilder{}, thisVMName, getReadyConfig(), user)
 						if err != nil {
 							return fmt.Errorf("Failed to connect to VM %d over SSH: %w", id, err)
 						}
@@ -250,7 +252,7 @@ func vmRunCommand() *cobra.Command {
 					DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 					OverridePullPolicy: containerPullPolicy,
 				}
-				if err := execProvision(ctx, provOpt, vmNames); err != nil {
+				if err := execProvision(ctx, provOpt, vmNames, user); err != nil {
 					log.Fatal(err)
 				}
 			}
@@ -300,6 +302,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().VarP(&vmPullPolicy, "pull-policy", "", "Whether or not to pull the source image.")
 	runCmd.Flags().VarP(&vmPullPolicy, "vm-pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	runCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
+        runCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
 
 	return runCmd
 }

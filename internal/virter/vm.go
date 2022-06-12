@@ -170,7 +170,7 @@ func diskVolumeName(vmName, diskName string) string {
 }
 
 // WaitVmReady repeatedly tries to connect to a VM and checks if it's ready to be used.
-func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig) error {
+func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig, remoteUser string) error {
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -191,7 +191,7 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
 		Timeout:           readyConfig.CheckTimeout,
-		User:              "root",
+		User:              remoteUser,
 		HostKeyCallback:   hostkeyCheck,
 		HostKeyAlgorithms: supportedAlgos,
 	}
@@ -542,7 +542,7 @@ func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerap
 }
 
 // VMSSHSession runs an interactive shell session in a VM
-func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
+func (v *Virter) VMSSHSession(ctx context.Context, vmName string, remoteUser string) error {
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -560,7 +560,7 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
-		User:              "root",
+		User:              remoteUser,
 		HostKeyCallback:   hostkeyCheck,
 		HostKeyAlgorithms: supportedAlgos,
 	}
@@ -576,7 +576,7 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 }
 
 // VMExecShell runs a simple shell command against some VMs.
-func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *ProvisionShellStep) error {
+func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *ProvisionShellStep, remoteUser string) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
@@ -591,7 +591,7 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
-		User:              "root",
+		User:              remoteUser,
 		HostKeyCallback:   hostkeyCheck,
 		HostKeyAlgorithms: supportedAlgos,
 	}

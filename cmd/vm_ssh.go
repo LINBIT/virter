@@ -8,6 +8,8 @@ import (
 )
 
 func vmSSHCommand() *cobra.Command {
+	var user string
+
 	sshCmd := &cobra.Command{
 		Use:   "ssh vm_name",
 		Short: "Run an interactive ssh shell in a VM",
@@ -20,11 +22,13 @@ func vmSSHCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			if err := v.VMSSHSession(context.TODO(), args[0]); err != nil {
+			if err := v.VMSSHSession(context.TODO(), args[0], user); err != nil {
 				log.Fatal(err)
 			}
 		},
 		ValidArgsFunction: suggestVmNames,
 	}
+	sshCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
+
 	return sshCmd
 }

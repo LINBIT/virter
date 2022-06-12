@@ -51,6 +51,8 @@ func imageBuildCommand() *cobra.Command {
 	vmPullPolicy := pullpolicy.IfNotExist
 	var containerPullPolicy pullpolicy.PullPolicy
 
+	var user string
+
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
 		Short: "Build an image",
@@ -210,7 +212,7 @@ func imageBuildCommand() *cobra.Command {
 
 			p = mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			err = v.ImageBuild(ctx, tools, vmConfig, getReadyConfig(), buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
+			err = v.ImageBuild(ctx, tools, vmConfig, getReadyConfig(), buildConfig, user, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatalf("Failed to build image: %v", err)
 			}
@@ -272,6 +274,7 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().BoolVarP(&noCache, "no-cache", "", false, "Disable caching for the image build")
 	buildCmd.Flags().StringVarP(&buildId, "build-id", "", "", "Build ID used to determine if an image needs to be rebuild.")
 	buildCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
+	buildCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
 
 	buildCmd.Flag("pull-policy").Deprecated = "use --vm-pull-policy"
 
