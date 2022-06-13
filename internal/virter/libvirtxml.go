@@ -134,6 +134,14 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 		return "", fmt.Errorf("failed to create metadata xml: %w", err)
 	}
 
+	var vncGraphics *lx.DomainGraphicVNC
+	if vm.VNCEnabled {
+		vncGraphics = &lx.DomainGraphicVNC {
+			Port: vm.VNCPort,
+			Listen: "0.0.0.0",
+		}
+	}
+
 	domain := &lx.Domain{
 		Type: vm.CpuArch.DomainType(),
 		Name: vm.Name,
@@ -195,6 +203,9 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 			),
 			Consoles: []lx.DomainConsole{
 				libvirtConsole(vm),
+			},
+			Graphics: []lx.DomainGraphic{
+				{VNC: vncGraphics},
 			},
 			// For some reason, debian stretch doesn't boot without a video card. The virtio model seems to stable
 			// enough, even for multi-arch scenarios.

@@ -147,6 +147,8 @@ type VMConfig struct {
 	Mounts             []Mount
 	GDBPort            uint
 	SecureBoot         bool
+	VNCEnabled	   bool
+	VNCPort            int
 }
 
 // VMMeta is additional metadata stored with each VM
@@ -185,6 +187,8 @@ func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
 		return vmConfig, fmt.Errorf("cannot start a VM with reserved ID (i.e., IP) 'x.y.z.%d'", vmConfig.ID)
 	} else if err := checkDisks(vmConfig); err != nil {
 		return vmConfig, fmt.Errorf("cannot start VM: %w", err)
+	} else if vmConfig.VNCEnabled && (vmConfig.VNCPort < 5900 || vmConfig.VNCPort > 65535) {
+		return vmConfig, fmt.Errorf("VNC port must be in the range [5900 65535]: port is %v", vmConfig.VNCPort)
 	}
 
 	return vmConfig, nil
