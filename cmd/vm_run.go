@@ -234,6 +234,7 @@ func vmRunCommand() *cobra.Command {
 						VNCEnabled:         vncEnabled,
 						VNCPort:	    vncPort,
 						VNCIPv4BindAddress: vncIPv4BindAddress,
+						SSHUserName:        user,
 					}
 
 					err = v.VMRun(c)
@@ -242,7 +243,7 @@ func vmRunCommand() *cobra.Command {
 					}
 
 					if waitSSH {
-						err = v.WaitVmReady(ctx, SSHClientBuilder{}, thisVMName, getReadyConfig(), user)
+						err = v.WaitVmReady(ctx, SSHClientBuilder{}, thisVMName, getReadyConfig())
 						if err != nil {
 							return fmt.Errorf("Failed to connect to VM %d over SSH: %w", id, err)
 						}
@@ -261,7 +262,7 @@ func vmRunCommand() *cobra.Command {
 					DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 					OverridePullPolicy: containerPullPolicy,
 				}
-				if err := execProvision(ctx, provOpt, vmNames, user); err != nil {
+				if err := execProvision(ctx, provOpt, vmNames); err != nil {
 					log.Fatal(err)
 				}
 			}

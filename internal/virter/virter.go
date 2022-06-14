@@ -150,11 +150,13 @@ type VMConfig struct {
 	VNCEnabled	   bool
 	VNCPort            int
 	VNCIPv4BindAddress string
+	SSHUserName        string
 }
 
 // VMMeta is additional metadata stored with each VM
 type VMMeta struct {
-	HostKey string `xml:"hostkey"`
+	HostKey     string `xml:"hostkey"`
+	SSHUserName string `xml:"ssh-user-name"`
 }
 
 // VmReadyConfig contains the configuration for waiting for a VM to be ready.

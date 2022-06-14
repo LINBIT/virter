@@ -111,6 +111,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 
 	meta := &VMMeta{
 		HostKey: hostkey.PublicKey(),
+		SSHUserName: vmConfig.SSHUserName,
 	}
 
 	vmXML, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
@@ -170,7 +171,7 @@ func diskVolumeName(vmName, diskName string) string {
 }
 
 // WaitVmReady repeatedly tries to connect to a VM and checks if it's ready to be used.
-func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig, remoteUser string) error {
+func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig) error {
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -187,6 +188,11 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 	}
 
 	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
+
+	remoteUser,err := v.getSSHUserName(vmName)
+	if err != nil {
+		return fmt.Errorf("Failed to get SSH user name for VM %v : %w", vmName, err)
+	}
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
@@ -499,6 +505,14 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 	return knownHosts, nil
 }
 
+func (v *Virter) getSSHUserName(vmName string) (string, error) {
+	meta, err := v.getMetaForVM(vmName)
+	if err != nil {
+		return "", err
+	}
+	return meta.SSHUserName, nil
+}
+
 // VMExecDocker runs a docker container against some VMs.
 func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
 	ips, err := v.getIPs(vmNames)
@@ -542,7 +556,7 @@ func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerap
 }
 
 // VMSSHSession runs an interactive shell session in a VM
-func (v *Virter) VMSSHSession(ctx context.Context, vmName string, remoteUser string) error {
+func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -557,6 +571,11 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, remoteUser str
 	}
 
 	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
+
+	remoteUser,err := v.getSSHUserName(vmName)
+	if err != nil {
+		return fmt.Errorf("Failed to get SSH user name for VM %v : %w", vmName, err)
+	}
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
@@ -576,7 +595,7 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string, remoteUser str
 }
 
 // VMExecShell runs a simple shell command against some VMs.
-func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *ProvisionShellStep, remoteUser string) error {
+func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *ProvisionShellStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
@@ -591,7 +610,6 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
-		User:              remoteUser,
 		HostKeyCallback:   hostkeyCheck,
 		HostKeyAlgorithms: supportedAlgos,
 	}
@@ -600,6 +618,13 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 	for i, ip := range ips {
 		ip := ip
 		vmName := vmNames[i]
+
+		remoteUser,err := v.getSSHUserName(vmName)
+		if err != nil {
+			return err
+		}
+		sshConfig.User = remoteUser
+
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
 		g.Go(func() error {
 			return runSSHCommand(ctx, &sshConfig, vmName, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))

@@ -19,7 +19,6 @@ import (
 func vmExecCommand() *cobra.Command {
 	var provisionFile string
 	var provisionOverrides []string
-	var user string
 
 	var containerPullPolicy pullpolicy.PullPolicy
 
@@ -38,7 +37,7 @@ func vmExecCommand() *cobra.Command {
 				DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 				OverridePullPolicy: containerPullPolicy,
 			}
-			if err := execProvision(ctx, provOpt, args, user); err != nil {
+			if err := execProvision(ctx, provOpt, args); err != nil {
 				log.Fatal(err)
 			}
 		},
@@ -48,12 +47,11 @@ func vmExecCommand() *cobra.Command {
 	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
 	execCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 	execCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
-        execCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
 
 	return execCmd
 }
 
-func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames []string, user string) error {
+func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames []string) error {
 	pc, err := virter.NewProvisionConfig(provOpt)
 	if err != nil {
 		return err
@@ -70,7 +68,7 @@ func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames 
 				return err
 			}
 		} else if s.Shell != nil {
-			if err := v.VMExecShell(ctx, vmNames, s.Shell, user); err != nil {
+			if err := v.VMExecShell(ctx, vmNames, s.Shell); err != nil {
 				return err
 			}
 		} else if s.Rsync != nil {

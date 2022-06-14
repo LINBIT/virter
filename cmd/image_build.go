@@ -189,6 +189,7 @@ func imageBuildCommand() *cobra.Command {
 				ConsolePath:        consolePath,
 				DiskCache:          viper.GetString("libvirt.disk_cache"),
 				Mounts:             mounts,
+				SSHUserName:        user,
 			}
 
 			containerName := "virter-build-" + newImageName
@@ -212,7 +213,7 @@ func imageBuildCommand() *cobra.Command {
 
 			p = mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			err = v.ImageBuild(ctx, tools, vmConfig, getReadyConfig(), buildConfig, user, virter.WithProgress(DefaultProgressFormat(p)))
+			err = v.ImageBuild(ctx, tools, vmConfig, getReadyConfig(), buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatalf("Failed to build image: %v", err)
 			}
