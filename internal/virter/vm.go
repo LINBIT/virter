@@ -189,10 +189,7 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 
 	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
 
-	remoteUser,err := v.getSSHUserName(vmName)
-	if err != nil {
-		return fmt.Errorf("Failed to get SSH user name for VM %v : %w", vmName, err)
-	}
+	remoteUser := v.getSSHUserName(vmName)
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
@@ -505,12 +502,12 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 	return knownHosts, nil
 }
 
-func (v *Virter) getSSHUserName(vmName string) (string, error) {
+func (v *Virter) getSSHUserName(vmName string) string {
 	meta, err := v.getMetaForVM(vmName)
 	if err != nil {
-		return "", err
+		return "root"
 	}
-	return meta.SSHUserName, nil
+	return meta.SSHUserName
 }
 
 // VMExecDocker runs a docker container against some VMs.
@@ -572,10 +569,7 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 
 	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
 
-	remoteUser,err := v.getSSHUserName(vmName)
-	if err != nil {
-		return fmt.Errorf("Failed to get SSH user name for VM %v : %w", vmName, err)
-	}
+	remoteUser := v.getSSHUserName(vmName)
 
 	sshConfig := ssh.ClientConfig{
 		Auth:              v.sshkeys.Auth(),
@@ -608,22 +602,19 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 
 	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
 
-	sshConfig := ssh.ClientConfig{
-		Auth:              v.sshkeys.Auth(),
-		HostKeyCallback:   hostkeyCheck,
-		HostKeyAlgorithms: supportedAlgos,
-	}
-
 	var g errgroup.Group
 	for i, ip := range ips {
 		ip := ip
 		vmName := vmNames[i]
 
-		remoteUser,err := v.getSSHUserName(vmName)
-		if err != nil {
-			return err
+		remoteUser := v.getSSHUserName(vmName)
+		sshConfig := ssh.ClientConfig{
+			Auth:              v.sshkeys.Auth(),
+			User:		   remoteUser,
+			HostKeyCallback:   hostkeyCheck,
+			HostKeyAlgorithms: supportedAlgos,
 		}
-		sshConfig.User = remoteUser
+
 
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
 		g.Go(func() error {
