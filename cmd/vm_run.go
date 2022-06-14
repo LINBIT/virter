@@ -98,6 +98,7 @@ func vmRunCommand() *cobra.Command {
 	var user string
 	var vncEnabled bool
 	var vncPort int
+	var vncIPv4BindAddress string
 
 	vmPullPolicy := pullpolicy.IfNotExist
 	var containerPullPolicy pullpolicy.PullPolicy
@@ -232,6 +233,7 @@ func vmRunCommand() *cobra.Command {
 						SecureBoot:         secureBoot,
 						VNCEnabled:         vncEnabled,
 						VNCPort:	    vncPort,
+						VNCIPv4BindAddress: vncIPv4BindAddress,
 					}
 
 					err = v.VMRun(c)
@@ -312,6 +314,7 @@ func vmRunCommand() *cobra.Command {
         runCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
 	runCmd.Flags().BoolVarP(&vncEnabled, "vnc", "", false, "whether to configure VNC (remote GUI access) for the VM (defaults to false)")
 	runCmd.Flags().IntVar(&vncPort, "vnc-port", 0, "VNC port. Defaults to 6000+id of this VM")
+	runCmd.Flags().StringVar(&vncIPv4BindAddress, "vnc-bind-ip", "127.0.0.1", "VNC IPv4 address to bind VNC listening socket to")
 
 	return runCmd
 }

@@ -149,6 +149,7 @@ type VMConfig struct {
 	SecureBoot         bool
 	VNCEnabled	   bool
 	VNCPort            int
+	VNCIPv4BindAddress string
 }
 
 // VMMeta is additional metadata stored with each VM
