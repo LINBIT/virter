@@ -653,6 +653,8 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 		sources[i] = netcopy.ParseHostPath(srcSpec)
 
 		if !sources[i].Local() {
+			sources[i].User = v.getSSHUserName(sources[i].Host)
+
 			vmNames = append(vmNames, sources[i].Host)
 			// Replace hostname with ip
 			ip, err := v.getIP(sources[i].Host, nil)
@@ -665,6 +667,8 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 
 	dest := netcopy.ParseHostPath(destSpec)
 	if !dest.Local() {
+		dest.User = v.getSSHUserName(dest.Host)
+
 		vmNames = append(vmNames, dest.Host)
 		ip, err := v.getIP(dest.Host, nil)
 		if err != nil {

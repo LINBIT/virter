@@ -25,6 +25,7 @@ type RsyncNetworkCopier struct{}
 
 // HostPath stores a path with host information
 type HostPath struct {
+	User string
 	Path string
 	Host string
 }
@@ -113,5 +114,5 @@ func formatRsyncArg(spec HostPath) string {
 		return spec.Path
 	}
 
-	return fmt.Sprintf("root@%s:%s", spec.Host, spec.Path)
+	return fmt.Sprintf("%s@%s:%s", spec.User, spec.Host, spec.Path)
 }

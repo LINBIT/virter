@@ -329,7 +329,7 @@ func TestVMExecRsync(t *testing.T) {
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: filepath.Join(dir, "file1.txt")},
 		{Path: filepath.Join(dir, "file2.txt")},
-	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
+	}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 
 	err = v.VMExecRsync(context.Background(), copier, []string{vmName}, step)
 	assert.NoError(t, err)
@@ -339,7 +339,7 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier2 := new(mocks.NetworkCopier)
-	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
+	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	copierCall.RunFn = func(args mock.Arguments) {
 		paths := args[1].([]netcopy.HostPath)
 		for _, f := range paths {
@@ -354,7 +354,7 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier3 := new(mocks.NetworkCopier)
-	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
+	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	err = v.VMExecRsync(context.Background(), copier3, []string{vmName}, step)
 	assert.NoError(t, err)
 
@@ -363,7 +363,7 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 	copier4 := new(mocks.NetworkCopier)
-	copier4.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
+	copier4.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	err = v.VMExecRsync(context.Background(), copier3, []string{"NoVm"}, step)
 	assert.Error(t, err)
 }
@@ -387,9 +387,9 @@ func TestVMExecCopy(t *testing.T) {
 	copier := new(mocks.NetworkCopier)
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: filepath.Join(dir, "file1.txt")},
-	}, netcopy.HostPath{Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
+	}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
-		{Path: "/tmp", Host: "192.168.122.42"},
+		{User: "root", Path: "/tmp", Host: "192.168.122.42"},
 	}, netcopy.HostPath{Path: filepath.Join(dir, "file1.txt")}, mock.Anything, mock.Anything).Return(nil)
 
 	existingRemotePath := vmName + ":/tmp"
