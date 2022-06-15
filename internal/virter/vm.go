@@ -504,9 +504,12 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 
 func (v *Virter) getSSHUserName(vmName string) string {
 	meta, err := v.getMetaForVM(vmName)
-	if err != nil {
+
+		/* VM created with an older virter? */
+	if err != nil || meta.SSHUserName == "" {
 		return "root"
 	}
+
 	return meta.SSHUserName
 }
 
