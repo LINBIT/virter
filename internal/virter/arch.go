@@ -14,6 +14,7 @@ const (
 	CpuArchAMD64   = CpuArch("amd64")
 	CpuArchARM64   = CpuArch("arm64")
 	CpuArchPPC64LE = CpuArch("ppc64le")
+	CpuArchS390x   = CpuArch("s390x")
 	CpuArchNative  = CpuArch(runtime.GOARCH)
 )
 
@@ -30,6 +31,8 @@ func (c *CpuArch) Set(s string) error {
 		*c = CpuArchARM64
 	case CpuArchPPC64LE:
 		*c = CpuArchPPC64LE
+	case CpuArchS390x:
+		*c = CpuArchS390x
 	case "":
 		*c = CpuArchNative
 	default:
@@ -69,6 +72,8 @@ func (c *CpuArch) QemuArch() string {
 		return "aarch64"
 	case CpuArchPPC64LE:
 		return "ppc64"
+	case CpuArchS390x:
+		return "s390x"
 	default:
 		return ""
 	}
@@ -147,6 +152,8 @@ func (c *CpuArch) Machine() string {
 		return "virt"
 	case CpuArchPPC64LE:
 		return "pseries"
+	case CpuArchS390x:
+		return "s390-ccw-virtio"
 	default:
 		return ""
 	}
