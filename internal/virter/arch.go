@@ -139,6 +139,15 @@ func (c *CpuArch) CPU() *lx.DomainCPU {
 				Fallback: "forbid",
 			},
 		}
+	case CpuArchS390x:
+		return &lx.DomainCPU{
+			Mode:  "custom",
+			Match: "exact",
+			Model: &lx.DomainCPUModel{
+				Value:    "max",
+				Fallback: "forbid",
+			},
+		}
 	default:
 		return nil
 	}
