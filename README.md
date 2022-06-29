@@ -97,6 +97,8 @@ If you require DNS resolution from your VMs to return correct FQDNs, add the
 
 By default, Virter uses the libvirt network named `default`.
 
+Check out [`doc/networks.md`](./doc/networks.md) for more details on VM networking.
+
 ### DHCP Leases
 
 Libvirt produces some weird behavior when MAC or IP addresses are reused while

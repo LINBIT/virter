@@ -10,3 +10,5 @@ artifacts = [
 [tests.smoke]
 vms = [1]
 needallplatforms = true
+[[tests.smoke.networks]]
+dhcp = true
