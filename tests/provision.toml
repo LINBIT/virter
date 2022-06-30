@@ -9,11 +9,14 @@ set -ex
 if command -v apt-get ; then
     apt-get update
     apt-get install -y rsync hostname
+    apt-get purge -y apparmor
 elif command -v dnf ; then
     dnf install -y rsync hostname
 elif command -v yum ; then
     yum install -y rsync hostname
 fi
+
+systemctl mask kdump.service
 
 if command -v snap ; then
     # Snap likes to block VM shutdown

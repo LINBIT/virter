@@ -100,7 +100,8 @@ e2e-test:
     # amazonlinux: times out because it starts updates on boot
     # centos-6: repos offline
     # centos-8: repos offline
-    EXCLUDED: amazonlinux-2|centos-6|centos-8
+    # debian-9: no longer supported, and cloud-init so old it crashes when a network-config is provided
+    EXCLUDED: amazonlinux-2|centos-6|centos-8|debian-9
   tags:
     - libvirt
   script:

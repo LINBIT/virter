@@ -46,8 +46,10 @@ test -f /virter/example.txt
 cd /virter
 sha256sum -c example.txt.sha256sum
 
-# CentOS 6 doesn't use systemd, Upstart is a mess, so don't even bother...
-command -v systemctl || exit 0
+command -v systemctl || exit 1
+
+# Need to reset this state, as ifup fails when devices are configured that do not exist on the node.
+systemctl reset-failed "network*.service" || true
 
 while true; do
 	running=$(systemctl is-system-running || true)
@@ -62,16 +64,13 @@ NR_ADDRS=0
 while read IDX NAME ; do
     case "$NAME" in
     lo)
-      # Skip loopback
-      # Default interface, must have IP and should be up
-      ip -oneline -4 addr show dev $NAME | grep -q "inet" || exit 1
-      ip -oneline link show dev $NAME | grep -q "state UP" || exit 1
+      # skip loopback interface
       ;;
     eth*|enp*s0)
       # Should have IP address, and be online
       ip -oneline -4 addr show dev $NAME | grep -q "inet" || exit 1
       ip -oneline link show dev $NAME | grep -q "state UP" || exit 1
-      NR_ADDRS=$(($NR_ADDRS + 1)
+      NR_ADDRS=$(($NR_ADDRS + 1))
       ;;
     *)
       echo Unexpected network interface $NAME 1>&2
