@@ -39,6 +39,7 @@ In addition, every container binds the following paths:
 * The current working directory of Virter, exposed read only at `/virter/workspace`
 * The SSH private key Virter used to connect to the machine as root at `/root/.ssh/id_rsa`
 * The SSH known hosts file, prefilled for connecting to the machine at `/root/.ssh/known_hosts`
+* A SSH config file that contains a mapping from VMs to user names to be used for ssh connections (to support platforms where the "root" user does not exist). This file is mapped under `/etc/ssh/ssh_config.virter`. Use `ssh -F /etc/ssh/ssh_config.virter <ip-address-or-hostname>` to use this file (without specifying user name explicitly).
 
 ### Shell
 The `shell` provisioning step allows running arbitrary commands on the target VM over SSH. This is easier to use than the `docker` step, but also less flexible.

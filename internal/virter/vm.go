@@ -513,12 +513,24 @@ func (v *Virter) getSSHUserName(vmName string) string {
 	return meta.SSHUserName
 }
 
+func (v *Virter) getSSHUserNames(vmNames []string) []string {
+	var vmSSHUserNames []string
+
+	for _, vmName := range vmNames {
+		SSHUserName := v.getSSHUserName(vmName)
+		vmSSHUserNames = append(vmSSHUserNames, SSHUserName)
+	}
+	return vmSSHUserNames
+}
+
 // VMExecDocker runs a docker container against some VMs.
 func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
 	}
+
+	vmSSHUserNames := v.getSSHUserNames(vmNames)
 
 	domain, err := v.getDomainSuffix()
 	if err != nil {
@@ -547,7 +559,7 @@ func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerap
 	}
 	containerCfg.AddDNSServer(dnsserver)
 
-	err = containerRun(ctx, containerProvider, containerCfg, vmNames, v.sshkeys, knownHosts, copyStep)
+	err = containerRun(ctx, containerProvider, containerCfg, vmNames, vmSSHUserNames, v.sshkeys, knownHosts, copyStep)
 	if err != nil {
 		return fmt.Errorf("failed to run container provisioning: %w", err)
 	}

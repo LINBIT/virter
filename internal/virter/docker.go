@@ -26,7 +26,7 @@ const (
 	colorReset   = "\u001b[0m"
 )
 
-func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
+func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, vmSSHUserNames []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 
@@ -47,6 +47,26 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		return fmt.Errorf("failed to close known hosts file: %w", err)
 	}
 
+	sshConfigFile, err := ioutil.TempFile("", "virter-container-ssh-config-*")
+	if err != nil {
+		return fmt.Errorf("failed to create ssh config file: %w", err)
+	}
+
+	defer os.Remove(sshConfigFile.Name())
+	for i := range vmNames {
+		_, err := sshConfigFile.WriteString(
+			"Host " + vmNames[i] + "\n" +
+				"\tUser " + vmSSHUserNames[i] + "\n\n")
+		if err != nil {
+			return fmt.Errorf("failed to write to ssh config file: %w", err)
+		}
+	}
+
+	err = sshConfigFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close ssh config file: %w", err)
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to find current working directory: %w", err)
@@ -54,6 +74,11 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 
 	containerCfg.AddMount(containerapi.Mount{HostPath: keyStore.KeyPath(), ContainerPath: "/root/.ssh/id_rsa", ReadOnly: true})
 	containerCfg.AddMount(containerapi.Mount{HostPath: knownHostsFile.Name(), ContainerPath: "/root/.ssh/known_hosts"})
+
+	/* This file must be referenced as config file override
+	 * when doing ssh sessions: ssh -F /etc/ssh/ssh_config.virter .. */
+
+	containerCfg.AddMount(containerapi.Mount{HostPath: sshConfigFile.Name(), ContainerPath: "/etc/ssh/ssh_config.virter", ReadOnly: true})
 	containerCfg.AddMount(containerapi.Mount{HostPath: wd, ContainerPath: "/virter/workspace", ReadOnly: true})
 
 	containerCfg.SetEnv("TARGETS", strings.Join(vmNames, ","))

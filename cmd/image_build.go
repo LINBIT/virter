@@ -175,6 +175,9 @@ func imageBuildCommand() *cobra.Command {
 				ShellClientBuilder: SSHClientBuilder{},
 				AfterNotifier:      actualtime.ActualTime{},
 			}
+			if vncEnabled && vncPort == 0 {
+				vncPort = 6000 + int(vmID)
+			}
 
 			vmConfig := virter.VMConfig{
 				Image:              baseImage,
