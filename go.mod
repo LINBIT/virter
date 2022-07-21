@@ -8,7 +8,7 @@ require (
 	github.com/LINBIT/gosshclient v0.3.1
 	github.com/digitalocean/go-libvirt v0.0.0-20210615174804-eaff166426e3
 	github.com/docker/go-units v0.4.0
-	github.com/google/go-containerregistry v0.10.0
+	github.com/google/go-containerregistry v0.11.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/helm/helm v2.17.0+incompatible
 	github.com/kdomanski/iso9660 v0.0.0-20200428203439-00eb28aa394d
@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/vbauerster/mpb/v7 v7.4.2
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
@@ -39,9 +39,9 @@ require (
 	github.com/alessio/shellescape v1.2.2 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/cli v20.10.16+incompatible // indirect
+	github.com/docker/cli v20.10.17+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v20.10.16+incompatible // indirect
+	github.com/docker/docker v20.10.17+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/subosito/gotenv v1.3.0 // indirect
 	go.mongodb.org/mongo-driver v1.4.6 // indirect
-	golang.org/x/net v0.0.0-20220524220425-1d687d428aca // indirect
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
