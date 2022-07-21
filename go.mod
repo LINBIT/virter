@@ -3,7 +3,7 @@ module github.com/LINBIT/virter
 go 1.17
 
 require (
-	github.com/BurntSushi/toml v1.1.0
+	github.com/BurntSushi/toml v1.2.0
 	github.com/LINBIT/containerapi v0.7.0
 	github.com/LINBIT/gosshclient v0.3.1
 	github.com/digitalocean/go-libvirt v0.0.0-20210615174804-eaff166426e3
