@@ -66,11 +66,19 @@ func networkAddCommand() *cobra.Command {
 				}
 			}
 
+			var dnsDesc *libvirtxml.NetworkDNS
+			if domain == "" && forward == "" {
+				dnsDesc = &libvirtxml.NetworkDNS{
+					Enable: "no",
+				}
+			}
+
 			desc := libvirtxml.Network{
 				Name:    args[0],
 				Forward: forwardDesc,
 				IPs:     addressesDesc,
 				Domain:  domainDesc,
+				DNS:     dnsDesc,
 			}
 
 			err = v.NetworkAdd(desc)
