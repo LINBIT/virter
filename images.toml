@@ -32,6 +32,9 @@ url = "https://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud.qco
 [amazonlinux-2]
 url = "https://cdn.amazonlinux.com/os-images/2.0.20220606.1/kvm/amzn2-kvm-2.0.20220606.1-x86_64.xfs.gpt.qcow2"
 
+[rocky-9]
+url = "https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
+
 [rocky-8]
 url = "https://download.rockylinux.org/pub/rocky/8/images/Rocky-8-GenericCloud-8.6-20220515.x86_64.qcow2"
 
