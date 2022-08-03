@@ -4,6 +4,7 @@ workflow:
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == 'master'
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
 
 stages:
   - build
@@ -16,6 +17,8 @@ variables:
 
 prepare-bins:
   stage: build
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
   image: ${LINBIT_DOCKER_REGISTRY}/build-helpers:${BUILD_HELPERS_VERSION}
   script:
     - . /usr/local/bin/gitlab-utils.sh
@@ -31,6 +34,8 @@ prepare-bins:
 
 prepare-docker:
   stage: build
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
   image:
     # Pinned to 1.6.0 until https://github.com/GoogleContainerTools/kaniko/issues/1790 is resolved
     name: gcr.io/kaniko-project/executor:v1.6.0-debug
@@ -56,6 +61,8 @@ build:
 
 test:
   stage: test
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
   image: golang:1.17
   cache:
     paths:
@@ -103,6 +110,8 @@ e2e-test:
     # debian-9: no longer supported, and cloud-init so old it crashes when a network-config is provided
     # rocky-9: requires "--secure-boot=true" but we do not yet have a way of specifying that
     EXCLUDED: amazonlinux-2|centos-6|centos-8|debian-9|rocky-9
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
   tags:
     - libvirt
   script:
