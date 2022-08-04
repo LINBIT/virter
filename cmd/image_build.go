@@ -52,6 +52,9 @@ func imageBuildCommand() *cobra.Command {
 	var containerPullPolicy pullpolicy.PullPolicy
 
 	var user string
+	var vncEnabled bool
+	var vncPort int
+	var vncIPv4BindAddress string
 
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
@@ -192,6 +195,10 @@ func imageBuildCommand() *cobra.Command {
 				ConsolePath:        consolePath,
 				DiskCache:          viper.GetString("libvirt.disk_cache"),
 				Mounts:             mounts,
+
+				VNCEnabled:         vncEnabled,
+				VNCPort:            vncPort,
+				VNCIPv4BindAddress: vncIPv4BindAddress,
 				SSHUserName:        user,
 			}
 
@@ -279,6 +286,9 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().StringVarP(&buildId, "build-id", "", "", "Build ID used to determine if an image needs to be rebuild.")
 	buildCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
 	buildCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
+	buildCmd.Flags().BoolVarP(&vncEnabled, "vnc", "", false, "whether to configure VNC (remote GUI access) for the VM (defaults to false)")
+	buildCmd.Flags().IntVar(&vncPort, "vnc-port", 0, "VNC port. Defaults to 6000+id of this VM")
+	buildCmd.Flags().StringVar(&vncIPv4BindAddress, "vnc-bind-ip", "127.0.0.1", "VNC IPv4 address to bind VNC listening socket to")
 
 	buildCmd.Flag("pull-policy").Deprecated = "use --vm-pull-policy"
 
