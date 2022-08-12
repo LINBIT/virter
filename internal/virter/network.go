@@ -8,6 +8,26 @@ import (
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 )
 
+func (v *Virter) NetworkGet(netname string) (*libvirtxml.Network, error) {
+	net, err := v.libvirt.NetworkLookupByName(netname)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup network '%s': %w", netname, err)
+	}
+
+	desc, err := v.libvirt.NetworkGetXMLDesc(net, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch network xml '%s': %w", netname, err)
+	}
+
+	var result libvirtxml.Network
+	err = xml.Unmarshal([]byte(desc), &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert network '%s' xml to go object: %w", netname, err)
+	}
+
+	return &result, err
+}
+
 func (v *Virter) NetworkList() ([]libvirtxml.Network, error) {
 	networks, _, err := v.libvirt.ConnectListAllNetworks(-1, 0)
 	if err != nil {

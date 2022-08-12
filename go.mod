@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/LINBIT/containerapi v0.7.0
 	github.com/LINBIT/gosshclient v0.3.1
+	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/digitalocean/go-libvirt v0.0.0-20210615174804-eaff166426e3
 	github.com/docker/go-units v0.5.0
 	github.com/google/go-containerregistry v0.11.0

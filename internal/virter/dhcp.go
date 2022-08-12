@@ -6,7 +6,8 @@ import (
 	"net"
 	"os/exec"
 
-	libvirt "github.com/digitalocean/go-libvirt"
+	"github.com/apparentlymart/go-cidr/cidr"
+	"github.com/digitalocean/go-libvirt"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 )
@@ -21,11 +22,12 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 		return err
 	}
 
-	networkBaseIP := ipNet.IP.Mask(ipNet.Mask)
-	ip := AddToIP(networkBaseIP, id)
+	// Normalize network, as the IP returned is the one of the host interface by default
+	ipNet.IP = ipNet.IP.Mask(ipNet.Mask)
 
-	if !ipNet.Contains(ip) {
-		return fmt.Errorf("computed IP %v is not in network", ip)
+	ip, err := cidr.Host(ipNet, int(id))
+	if err != nil {
+		return fmt.Errorf("failed to compute IP for network: %w", err)
 	}
 
 	log.Printf("Add DHCP entry from %v to %v", mac, ip)
@@ -67,32 +69,6 @@ func (v *Virter) getDomainSuffix() (string, error) {
 	return net.Domain.Name, nil
 }
 
-func AddToIP(ip net.IP, addend uint) net.IP {
-	i := ip.To4()
-	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])
-	v += addend
-	v0 := byte((v >> 24) & 0xFF)
-	v1 := byte((v >> 16) & 0xFF)
-	v2 := byte((v >> 8) & 0xFF)
-	v3 := byte(v & 0xFF)
-	return net.IPv4(v0, v1, v2, v3)
-}
-
-// ipToID converts an IP address(with network) to a ID
-func ipToID(ipnet net.IPNet, ip net.IP) (uint, error) {
-	if !ipnet.Contains(ip) {
-		return 0, fmt.Errorf("computed IP %v is not in network", ip)
-	}
-
-	si := ipnet.IP.To4()
-	sv := uint(si[0])<<24 + uint(si[1])<<16 + uint(si[2])<<8 + uint(si[3])
-
-	i := ip.To4()
-	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])
-
-	return v - sv, nil
-}
-
 // QemuMAC calculates a MAC address for a given id
 func QemuMAC(id uint) string {
 	mac, err := AddToMAC(QemuBaseMAC(), id)
@@ -130,43 +106,50 @@ func AddToMAC(mac net.HardwareAddr, addend uint) (net.HardwareAddr, error) {
 	return out, nil
 }
 
-func (v *Virter) getIPNet(network libvirt.Network) (net.IPNet, error) {
-	ipNet := net.IPNet{}
-
+func (v *Virter) getIPNet(network libvirt.Network) (*net.IPNet, error) {
 	networkDescription, err := getNetworkDescription(v.libvirt, network)
 	if err != nil {
-		return ipNet, err
-	}
-	if len(networkDescription.IPs) < 1 {
-		return ipNet, fmt.Errorf("no IPs in network")
+		return nil, err
 	}
 
-	ipDescription := networkDescription.IPs[0]
-	if ipDescription.Address == "" {
-		return ipNet, fmt.Errorf("could not find address in network XML")
-	}
-	if ipDescription.Netmask == "" {
-		return ipNet, fmt.Errorf("could not find netmask in network XML")
+	for i := range networkDescription.IPs {
+		desc := networkDescription.IPs[i]
+		if desc.Family != "" && desc.Family != "ipv4" {
+			continue
+		}
+
+		if desc.Address == "" {
+			return nil, fmt.Errorf("could not find address in network XML: '%v'", desc)
+		}
+
+		ip := net.ParseIP(desc.Address)
+		if ip == nil {
+			return nil, fmt.Errorf("could not parse network IP address '%s'", desc.Address)
+		}
+
+		if ip.To4() == nil {
+			return nil, fmt.Errorf("not an IPv4 '%s'", ip)
+		}
+
+		if desc.Netmask == "" {
+			return nil, fmt.Errorf("could not find netmask in network XML")
+		}
+
+		networkMaskIP := net.ParseIP(desc.Netmask)
+		if networkMaskIP == nil {
+			return nil, fmt.Errorf("could not parse network mask IP address")
+		}
+
+		networkMaskIPv4 := networkMaskIP.To4()
+		if networkMaskIPv4 == nil {
+			return nil, fmt.Errorf("network mask is not IPv4 address")
+		}
+
+		mask := net.IPMask(networkMaskIPv4)
+		return &net.IPNet{IP: ip, Mask: mask}, nil
 	}
 
-	ipNet.IP = net.ParseIP(ipDescription.Address)
-	if ipNet.IP == nil {
-		return ipNet, fmt.Errorf("could not parse network IP address")
-	}
-
-	networkMaskIP := net.ParseIP(ipDescription.Netmask)
-	if networkMaskIP == nil {
-		return ipNet, fmt.Errorf("could not parse network mask IP address")
-	}
-
-	networkMaskIPv4 := networkMaskIP.To4()
-	if networkMaskIPv4 == nil {
-		return ipNet, fmt.Errorf("network mask is not IPv4 address")
-	}
-
-	ipNet.Mask = net.IPMask(networkMaskIPv4)
-
-	return ipNet, nil
+	return nil, fmt.Errorf("no IPs in network")
 }
 
 // RemoveMACDHCPEntries removes DHCP host entries associated with the given
@@ -313,28 +296,27 @@ func (v *Virter) getNICs(domain libvirt.Domain) ([]nic, error) {
 	return nics, nil
 }
 
-// getDHCPHosts returns a array of used dhcp entry hosts
+// getDHCPHosts returns an array of used dhcp entry hosts
 func (v *Virter) getDHCPHosts(network libvirt.Network) ([]libvirtxml.NetworkDHCPHost, error) {
-	hosts := []libvirtxml.NetworkDHCPHost{}
+	var hosts []libvirtxml.NetworkDHCPHost
 
 	networkDescription, err := getNetworkDescription(v.libvirt, network)
 	if err != nil {
 		return hosts, err
 	}
-	if len(networkDescription.IPs) < 1 {
-		// No IPs == no DHCP entries
-		return hosts, nil
-	}
 
-	ipDescription := networkDescription.IPs[0]
+	for i := range networkDescription.IPs {
+		desc := networkDescription.IPs[i]
 
-	dhcpDescription := ipDescription.DHCP
-	if dhcpDescription == nil {
-		return hosts, fmt.Errorf("no DHCP in network")
-	}
+		if desc.Family != "" && desc.Family != "ipv4" {
+			continue
+		}
 
-	for _, host := range dhcpDescription.Hosts {
-		hosts = append(hosts, host)
+		if desc.DHCP == nil {
+			continue
+		}
+
+		hosts = append(hosts, desc.DHCP.Hosts...)
 	}
 
 	return hosts, nil
@@ -357,79 +339,61 @@ func (v *Virter) findIPs(network libvirt.Network, mac string) ([]string, error) 
 	return ips, nil
 }
 
-// cidr returns the network size of a oldstyle netmask. e.g.: 255.255.255.0 -> 24
-func cidr(mask net.IP) uint {
-	addr := mask.To4()
-	sz, _ := net.IPv4Mask(addr[0], addr[1], addr[2], addr[3]).Size()
-	return uint(sz)
-}
-
 // GetVMID returns wantedID if it is not 0 and free.
 // If wantedID is 0 GetVMID searches for an unused ID and returns the first it can find.
 // For searching it uses the set libvirt network and already reserved DHCP entries.
 func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
-	hosts, err := v.getDHCPHosts(v.provisionNetwork)
-	if err != nil {
-		return 0, err
-	}
-
-	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
-	if err != nil {
-		return 0, err
-	}
-
-	// get the network mask of the libvirt network
-	_, ipNet, err := net.ParseCIDR(
-		fmt.Sprintf("%s/%d", networkDescription.IPs[0].Address, cidr(net.ParseIP(networkDescription.IPs[0].Netmask))))
-	if err != nil {
-		return 0, err
-	}
-
-	// build a map of already used ID's
-	usedIds := make(map[uint]bool, len(hosts))
-	for _, host := range hosts {
-		id, err := ipToID(*ipNet, net.ParseIP(host.IP))
-		if err != nil {
-			return 0, err
-		}
-		usedIds[id] = true
-	}
-
 	if expectDHCPEntry {
 		if wantedID == 0 {
 			return 0, fmt.Errorf("ID must be set in static DHCP mode")
 		}
 
-		if !usedIds[wantedID] {
+		mac := QemuMAC(wantedID)
+		ips, err := v.findIPs(v.provisionNetwork, mac)
+		if err != nil {
+			return 0, err
+		}
+
+		if len(ips) < 1 {
 			return 0, fmt.Errorf("DHCP host entry for ID '%d' not found (static DHCP mode)", wantedID)
 		}
 
 		return wantedID, nil
 	}
 
-	if wantedID != 0 { // one was already set
-		if usedIds[wantedID] {
-			return 0, fmt.Errorf("preset ID '%d' already used", wantedID)
-		}
-		// not used, we can hand it back
-		return wantedID, nil
+	ipnet, err := v.getIPNet(v.provisionNetwork)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get access network: %w", err)
 	}
 
-	// try to find a free one
+	prefix, size := ipnet.Mask.Size()
 
-	// from the netmask the number of avialable hosts
-	maskSize, _ := ipNet.Mask.Size()
-	availableHosts := uint((1 << (32 - maskSize)) - 2)
+	start := uint(2)
+	end := (uint(1) << (size - prefix)) - 2
+
+	if wantedID != 0 {
+		end = wantedID
+		start = wantedID
+	}
 
 	// we start from top of avialable host id's and check if they are already used and find one
-	for i := availableHosts; i > 0; i-- {
-		_, exists := usedIds[i]
-		if !exists {
+	for i := end; i >= start; i-- {
+		mac := QemuMAC(wantedID)
+		ips, err := v.findIPs(v.provisionNetwork, mac)
+		if err != nil {
+			return 0, err
+		}
+
+		if len(ips) == 0 {
 			return i, nil
 		}
 	}
 
-	return 0, fmt.Errorf("could not find unused VM id")
+	if wantedID != 0 {
+		return 0, fmt.Errorf("preset ID '%d' already used", wantedID)
+	} else {
+		return 0, fmt.Errorf("could not find unused VM id")
+	}
 }
 
 func (v *Virter) tryReleaseDHCP(network libvirt.Network, mac string, addrs []string) error {

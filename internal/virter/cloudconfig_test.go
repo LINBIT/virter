@@ -29,7 +29,7 @@ func (f fakeNetworkNic) GetMAC() string {
 
 var testNetworks = map[string][]libvirtxml.NetworkIP{
 	"dhcp1":  {{DHCP: &libvirtxml.NetworkDHCP{}}},
-	"dhcp2":  {{DHCP: &libvirtxml.NetworkDHCP{}}},
+	"dhcp2":  {{DHCP: &libvirtxml.NetworkDHCP{}}, {Family: "ipv6", DHCP: &libvirtxml.NetworkDHCP{}}},
 	"nodhcp": {{}},
 	"noip":   nil,
 }
@@ -70,8 +70,10 @@ ethernets:
     dhcp4: true
   eth2:
     dhcp4: true
+    dhcp6: true
   enp3s0:
     dhcp4: true
+    dhcp6: true
 `,
 		},
 		{

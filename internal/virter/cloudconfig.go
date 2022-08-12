@@ -15,11 +15,21 @@ const templateMetaData = `instance-id: {{ .VMName }}
 local-hostname: {{ .VMName }}
 `
 
+// Template used to configure DHCP clients for VMs with multiple NICs.
+//
+// Note: some distributions can't deal with setting some of these values to false. Instead
+// we just remove them from the rendered output completely.
+// Format: https://cloudinit.readthedocs.io/en/latest/topics/network-config-format-v2.html
 const templateNetworkConfig = `version: 2
 ethernets:
 {{- range . }}
-  {{ . }}:
+  {{ .Name }}:
+{{- if .DhcpV4 }}
     dhcp4: true
+{{- end }}
+{{- if .DhcpV6 }}
+    dhcp6: true
+{{- end }}
 {{- end }}
 `
 
@@ -64,19 +74,35 @@ func (v *Virter) metaData(vmName string) (string, error) {
 //
 // See the end of ./doc/networks.md for limitations.
 func (v *Virter) NetworkConfig(nics []NIC) (string, error) {
-	if len(nics) == 0 {
+	type NicCfg struct {
+		Name   string
+		DhcpV4 bool
+		DhcpV6 bool
+	}
+
+	accessNet, err := v.NetworkGet(v.provisionNetwork.Name)
+	if err != nil {
+		return "", fmt.Errorf("failed to load access network: %w", err)
+	}
+
+	if len(nics) == 0 && !hasDhcpV6(accessNet) {
 		// We know the default configuration works, so no need to make it worse in case some old cloud-init version
 		// doesn't work with this type of network configuration...
 		return "", nil
 	}
 
-	configuredNics := make([]string, 0, len(nics)+2)
-	configuredNics = append(configuredNics, "eth0", "enp1s0")
-
-	allNets, err := v.NetworkList()
-	if err != nil {
-		return "", err
-	}
+	configuredNics := make([]NicCfg, 0, len(nics)+2)
+	configuredNics = append(configuredNics,
+		NicCfg{
+			Name:   "eth0",
+			DhcpV4: hasDhcpV4(accessNet),
+			DhcpV6: hasDhcpV6(accessNet),
+		},
+		NicCfg{
+			Name:   "enp1s0",
+			DhcpV4: hasDhcpV4(accessNet),
+			DhcpV6: hasDhcpV6(accessNet),
+		})
 
 	for i, nic := range nics {
 		if nic.GetType() != NICTypeNetwork {
@@ -84,28 +110,30 @@ func (v *Virter) NetworkConfig(nics []NIC) (string, error) {
 			return "", nil
 		}
 
-		var net *lx.Network
-		for i := range allNets {
-			if allNets[i].Name == nic.GetSource() {
-				net = &allNets[i]
-			}
+		net, err := v.NetworkGet(nic.GetSource())
+		if err != nil {
+			return "", fmt.Errorf("NIC assigned to unknown network: %w", err)
 		}
 
-		if net == nil {
-			return "", fmt.Errorf("NIC assigned to unknown network '%s'", nic.GetSource())
-		}
+		dhcpV4 := hasDhcpV4(net)
+		dhcpV6 := hasDhcpV6(net)
 
-		if len(net.IPs) < 1 {
-			// No IPs configure -> no DHCP configured, can't enable more than the default NIC
-			return "", nil
-		}
-
-		if net.IPs[0].DHCP == nil {
+		if !dhcpV4 && !dhcpV6 {
 			// No DHCP configured, can't enable more than the default NIC
 			return "", nil
 		}
 
-		configuredNics = append(configuredNics, fmt.Sprintf("eth%d", i+1), fmt.Sprintf("enp%ds0", i+2))
+		configuredNics = append(configuredNics,
+			NicCfg{
+				Name:   fmt.Sprintf("eth%d", i+1),
+				DhcpV4: dhcpV4,
+				DhcpV6: dhcpV6,
+			},
+			NicCfg{
+				Name:   fmt.Sprintf("enp%ds0", i+2),
+				DhcpV4: dhcpV4,
+				DhcpV6: dhcpV6,
+			})
 	}
 
 	return renderTemplate("network-config", templateNetworkConfig, configuredNics)
@@ -209,4 +237,24 @@ func GenerateISO(files map[string][]byte) ([]byte, error) {
 	}
 
 	return wab.Bytes(), nil
+}
+
+func hasDhcpV4(net *lx.Network) bool {
+	for i := range net.IPs {
+		if net.IPs[i].Family == "" || net.IPs[i].Family == "ipv4" {
+			return net.IPs[i].DHCP != nil
+		}
+	}
+
+	return false
+}
+
+func hasDhcpV6(net *lx.Network) bool {
+	for i := range net.IPs {
+		if net.IPs[i].Family == "ipv6" {
+			return net.IPs[i].DHCP != nil
+		}
+	}
+
+	return false
 }

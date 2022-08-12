@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"fmt"
 	"net"
 
+	"github.com/apparentlymart/go-cidr/cidr"
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -18,6 +18,7 @@ func networkAddCommand() *cobra.Command {
 	var dhcpID uint
 	var dhcpCount uint
 	var network string
+	var networkV6 string
 	var domain string
 
 	addCmd := &cobra.Command{
@@ -37,6 +38,12 @@ func networkAddCommand() *cobra.Command {
 				forwardDesc = &libvirtxml.NetworkForward{
 					Mode: forward,
 				}
+
+				if forward == "nat" && networkV6 != "" {
+					forwardDesc.NAT = &libvirtxml.NetworkForwardNAT{
+						IPv6: "yes",
+					}
+				}
 			}
 
 			var addressesDesc []libvirtxml.NetworkIP
@@ -54,6 +61,28 @@ func networkAddCommand() *cobra.Command {
 				addressesDesc = append(addressesDesc, libvirtxml.NetworkIP{
 					Address: ip.String(),
 					Netmask: net.IP(n.Mask).String(),
+					DHCP:    dhcpDesc,
+				})
+			}
+
+			if networkV6 != "" {
+				ip, n, err := net.ParseCIDR(networkV6)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				var dhcpDesc *libvirtxml.NetworkDHCP
+				if dhcp {
+					// DHCPv6 is complicated, especially since you can't use the mac address of a VM to assign a fixed
+					// IP. so disable that for now
+					dhcpDesc = buildNetworkDHCP(ip, n, dhcpMAC, dhcpID, 0)
+				}
+
+				prefix, _ := n.Mask.Size()
+				addressesDesc = append(addressesDesc, libvirtxml.NetworkIP{
+					Family:  "ipv6",
+					Address: ip.String(),
+					Prefix:  uint(prefix),
 					DHCP:    dhcpDesc,
 				})
 			}
@@ -91,6 +120,7 @@ func networkAddCommand() *cobra.Command {
 
 	addCmd.Flags().StringVarP(&forward, "forward-mode", "m", "", "Set the forward mode, for example 'nat'")
 	addCmd.Flags().StringVarP(&network, "network-cidr", "n", "", "Configure the network range (IPv4) in CIDR notation. The IP will be assigned to the host device.")
+	addCmd.Flags().StringVarP(&networkV6, "network-v6-cidr", "6", "", "Configure the network range (IPv6) in CIDR notation. The IP will be assigned to the host device.")
 	addCmd.Flags().BoolVarP(&dhcp, "dhcp", "p", false, "Configure DHCP. Use together with '--network-cidr'. DHCP range is configured starting from --network-cidr+1 until the broadcast address")
 	addCmd.Flags().StringVarP(&dhcpMAC, "dhcp-mac", "", virter.QemuBaseMAC().String(), "Base MAC address to which ID is added. The default can be used to populate a virter access network")
 	addCmd.Flags().UintVarP(&dhcpID, "dhcp-id", "", 0, "ID which determines the MAC and IP addresses to associate")
@@ -100,15 +130,23 @@ func networkAddCommand() *cobra.Command {
 }
 
 func buildNetworkDHCP(ip net.IP, n *net.IPNet, dhcpMAC string, dhcpID uint, dhcpCount uint) *libvirtxml.NetworkDHCP {
-	start := nextIP(ip)
-	end := previousIP(broadcastAddress(n))
+	start := cidr.Inc(ip)
+	_, end := cidr.AddressRange(n)
+
+	prefix, hostBits := n.Mask.Size()
+	// libvirt does not support more than 2^16-1 hosts in the dhcp range
+	if hostBits-prefix >= 16 {
+		end, _ = cidr.Host(n, 65535)
+	} else {
+		end = cidr.Dec(end)
+	}
 
 	baseMAC, err := net.ParseMAC(dhcpMAC)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	networkBaseIP := ip.Mask(n.Mask)
+	current := start
 	hosts := make([]libvirtxml.NetworkDHCPHost, dhcpCount)
 	for i := uint(0); i < dhcpCount; i++ {
 		id := dhcpID + i
@@ -117,47 +155,13 @@ func buildNetworkDHCP(ip net.IP, n *net.IPNet, dhcpMAC string, dhcpID uint, dhcp
 			log.Fatal(err)
 		}
 
-		hosts[i] = libvirtxml.NetworkDHCPHost{
-			MAC: mac.String(),
-			IP:  fmt.Sprint(virter.AddToIP(networkBaseIP, id)),
-		}
+		hosts[i].MAC = mac.String()
+		hosts[i].IP = current.String()
+		current = cidr.Inc(current)
 	}
 
 	return &libvirtxml.NetworkDHCP{
 		Ranges: []libvirtxml.NetworkDHCPRange{{Start: start.String(), End: end.String()}},
 		Hosts:  hosts,
 	}
-}
-
-func nextIP(ip net.IP) net.IP {
-	dup := make(net.IP, len(ip))
-	copy(dup, ip)
-	for j := len(dup) - 1; j >= 0; j-- {
-		dup[j]++
-		if dup[j] > 0 {
-			break
-		}
-	}
-	return dup
-}
-
-func previousIP(ip net.IP) net.IP {
-	dup := make(net.IP, len(ip))
-	copy(dup, ip)
-	for j := len(dup) - 1; j >= 0; j-- {
-		dup[j]--
-		if dup[j] < 255 {
-			break
-		}
-	}
-	return dup
-}
-
-func broadcastAddress(ipnet *net.IPNet) net.IP {
-	dup := make(net.IP, len(ipnet.IP))
-	copy(dup, ipnet.IP)
-	for i := range dup {
-		dup[i] = dup[i] | ^ipnet.Mask[i]
-	}
-	return dup
 }
