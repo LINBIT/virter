@@ -85,7 +85,7 @@ func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest 
 		return fmt.Errorf("failed to close known hosts file: %w", err)
 	}
 
-	args := []string{"--recursive", "--perms", "--times"}
+	args := []string{"--recursive", "--perms", "--times", "--protect-args"}
 
 	for _, src := range sources {
 		args = append(args, formatRsyncArg(src))
