@@ -1,6 +1,7 @@
 package virter
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -19,6 +20,14 @@ import (
 	"github.com/LINBIT/virter/pkg/netcopy"
 	"github.com/LINBIT/virter/pkg/sshkeys"
 )
+
+func (v *Virter) VMExists(vmName string) error {
+	if _, err := v.getMetaForVM(vmName); err != nil {
+		return fmt.Errorf("failed to get VM metadata: %w", err)
+	}
+
+	return nil
+}
 
 func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	vmName := vmConfig.Name
@@ -500,6 +509,19 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 	}
 
 	return knownHosts, nil
+}
+
+func (v *Virter) VMGetKnownHosts(vmName string) (string, error) {
+	knownHosts, err := v.getKnownHostsFor(vmName)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch host keys: %w", err)
+	}
+
+	buf := new(bytes.Buffer)
+	if err := knownHosts.AsKnownHostsFile(buf); err != nil {
+		return "", fmt.Errorf("failed to write known hosts file: %w", err)
+	}
+	return buf.String(), nil
 }
 
 func (v *Virter) getSSHUserName(vmName string) string {

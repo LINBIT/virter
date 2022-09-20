@@ -99,6 +99,11 @@ By default, Virter uses the libvirt network named `default`.
 
 Check out [`doc/networks.md`](./doc/networks.md) for more details on VM networking.
 
+### Connecting with `ssh`
+
+SSH can be configured for convenient access to virtual machines created by Virter.
+See [`doc/ssh.md`](./doc/ssh.md) for details.
+
 ### DHCP Leases
 
 Libvirt produces some weird behavior when MAC or IP addresses are reused while
