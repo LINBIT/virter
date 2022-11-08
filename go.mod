@@ -28,7 +28,7 @@ require (
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/crypto v0.1.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/term v0.1.0
+	golang.org/x/term v0.2.0
 )
 
 require (
@@ -85,7 +85,7 @@ require (
 	go.mongodb.org/mongo-driver v1.4.6 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/net v0.1.0 // indirect
-	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
