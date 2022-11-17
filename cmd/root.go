@@ -20,6 +20,15 @@ var defaultLogLevel = log.InfoLevel.String()
 
 var cfgFile string
 var logLevel string
+var logFormat string
+
+type ShortFormatter struct {
+	LevelDesc []string
+}
+
+func (f *ShortFormatter) Format(entry *log.Entry) ([]byte, error) {
+	return []byte(fmt.Sprintf("%s %s\n", f.LevelDesc[entry.Level], entry.Message)), nil
+}
 
 func rootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
@@ -36,12 +45,18 @@ and resetting, for a stable test environment.`,
 				log.Fatal(err)
 			}
 			log.SetLevel(level)
+			if logFormat == "short" {
+				shortFormatter := new(ShortFormatter)
+				shortFormatter.LevelDesc = []string{"PANC", "FATL", "ERRO", "WARN", "INFO", "DEBG"}
+				log.SetFormatter(shortFormatter)
+			}
 		},
 	}
 
 	configName := filepath.Join(configPath(), "virter.toml")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", defaultLogLevel, "Log level")
+	rootCmd.PersistentFlags().StringVar(&logFormat, "logformat", "default", "Log format, current options: short")
 
 	rootCmd.AddCommand(versionCommand())
 	rootCmd.AddCommand(imageCommand())
