@@ -36,7 +36,7 @@ url = "https://cdn.amazonlinux.com/os-images/2.0.20221004.0/kvm/amzn2-kvm-2.0.20
 url = "https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
 
 [rocky-8]
-url = "https://download.rockylinux.org/pub/rocky/8/images/Rocky-8-GenericCloud-8.6-20220515.x86_64.qcow2"
+url = "https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2"
 
 [alma-9]
 url = "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
