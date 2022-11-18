@@ -30,7 +30,7 @@ url = "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qco
 url = "https://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud.qcow2"
 
 [amazonlinux-2]
-url = "https://cdn.amazonlinux.com/os-images/2.0.20221004.0/kvm/amzn2-kvm-2.0.20221004.0-x86_64.xfs.gpt.qcow2"
+url = "https://cdn.amazonlinux.com/os-images/2.0.20221103.3/kvm/amzn2-kvm-2.0.20221103.3-x86_64.xfs.gpt.qcow2"
 
 [rocky-9]
 url = "https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
