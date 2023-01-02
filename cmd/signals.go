@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"context"
+	"os/signal"
 	"syscall"
-
-	"github.com/sethvargo/go-signalcontext"
 )
 
 func onInterruptWrap(ctx context.Context) (context.Context, context.CancelFunc) {
-	return signalcontext.Wrap(ctx, syscall.SIGINT, syscall.SIGTERM)
+	return signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 }
