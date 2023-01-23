@@ -44,6 +44,12 @@ network = "{{ get "libvirt.network" }}"
 # Default value: "{{ get "libvirt.static_dhcp" }}"
 static_dhcp = "{{ get "libvirt.static_dhcp" }}"
 
+# dnsmasq_options is an array of dnsmasq options passed when creating a new
+# network. Options are strings, corresponding to the long flags described
+# here: https://dnsmasq.org/docs/dnsmasq-man.html
+# Default value: {{ get "libvirt.dnsmasq_options" }}
+dnsmasq_options = {{ get "libvirt.dnsmasq_options" }}
+
 # disk_cache is passed to libvirt as the disk driver cache attribute. See
 # https://libvirt.org/formatdomain.html#hard-drives-floppy-disks-cdroms.
 # Default value: "{{ get "libvirt.disk_cache" }}"
@@ -104,6 +110,7 @@ func initConfig() {
 	viper.SetDefault("libvirt.pool", "default")
 	viper.SetDefault("libvirt.network", "default")
 	viper.SetDefault("libvirt.static_dhcp", false)
+	viper.SetDefault("libvirt.dnsmasq_options", []string{})
 	viper.SetDefault("libvirt.disk_cache", "")
 	viper.SetDefault("time.ssh_ping_count", 60)
 	viper.SetDefault("time.ssh_ping_period", time.Second)

@@ -7,6 +7,7 @@ import (
 	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
 )
@@ -102,12 +103,20 @@ func networkAddCommand() *cobra.Command {
 				}
 			}
 
+			var options []libvirtxml.NetworkDnsmasqOption
+			for _, opt := range viper.GetStringSlice("libvirt.dnsmasq_options") {
+				options = append(options, libvirtxml.NetworkDnsmasqOption{Value: opt})
+			}
+
 			desc := libvirtxml.Network{
 				Name:    args[0],
 				Forward: forwardDesc,
 				IPs:     addressesDesc,
 				Domain:  domainDesc,
 				DNS:     dnsDesc,
+				DnsmasqOptions: &libvirtxml.NetworkDnsmasqOptions{
+					Option: options,
+				},
 			}
 
 			err = v.NetworkAdd(desc)
