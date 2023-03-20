@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net/http"
 
@@ -84,8 +83,7 @@ func imageBuildCommand() *cobra.Command {
 				vmName = newImageName
 			}
 
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
+			ctx := cmd.Context()
 
 			v, err := InitVirter()
 			if err != nil {

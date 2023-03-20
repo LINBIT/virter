@@ -617,7 +617,7 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 
 	hostPort := net.JoinHostPort(ips[0], "22")
 	sshClient := sshclient.NewSSHClient(hostPort, sshConfig)
-	if err := sshClient.Dial(); err != nil {
+	if err := sshClient.DialContext(ctx); err != nil {
 		return err
 	}
 	defer sshClient.Close()

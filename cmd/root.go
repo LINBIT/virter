@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 
@@ -68,9 +71,12 @@ and resetting, for a stable test environment.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately
 func Execute() {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	cobra.OnInitialize(initConfig, initSSHFromConfig)
 
-	if err := rootCommand().Execute(); err != nil {
+	if err := rootCommand().ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 }

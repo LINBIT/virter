@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -20,7 +18,7 @@ func vmSSHCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			if err := v.VMSSHSession(context.TODO(), args[0]); err != nil {
+			if err := v.VMSSHSession(cmd.Context(), args[0]); err != nil {
 				log.Fatal(err)
 			}
 		},

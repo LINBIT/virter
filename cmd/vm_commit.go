@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/vbauerster/mpb/v7"
 
@@ -37,8 +35,7 @@ the virtual machine name if no other value is given.`,
 				imageName = args[1]
 			}
 
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
+			ctx := cmd.Context()
 
 			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 

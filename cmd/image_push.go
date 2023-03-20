@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -29,8 +28,7 @@ func imagePushCommand() *cobra.Command {
 				dest = args[1]
 			}
 
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
+			ctx := cmd.Context()
 
 			v, err := InitVirter()
 			if err != nil {

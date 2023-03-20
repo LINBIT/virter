@@ -28,16 +28,13 @@ func vmExecCommand() *cobra.Command {
 		Long:  `Run provisioning steps. For instance, shell scripts directly on VMs, or from a container with connections to VMs.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
-
 			provOpt := virter.ProvisionOption{
 				FilePath:           provisionFile,
 				Overrides:          provisionOverrides,
 				DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 				OverridePullPolicy: containerPullPolicy,
 			}
-			if err := execProvision(ctx, provOpt, args); err != nil {
+			if err := execProvision(cmd.Context(), provOpt, args); err != nil {
 				log.Fatal(err)
 			}
 		},

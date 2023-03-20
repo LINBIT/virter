@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -22,8 +21,7 @@ func imageSaveCommand() *cobra.Command {
 squashed into a single file.`,
 		Args: cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
+			ctx := cmd.Context()
 
 			v, err := InitVirter()
 			if err != nil {

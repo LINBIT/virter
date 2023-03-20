@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -35,10 +34,7 @@ will be used.`,
 
 			p := mpb.New(DefaultContainerOpt())
 
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
-
-			image, err := GetLocalImage(ctx, dest, source, v, pullpolicy.Always, DefaultProgressFormat(p))
+			image, err := GetLocalImage(cmd.Context(), dest, source, v, pullpolicy.Always, DefaultProgressFormat(p))
 			if err != nil {
 				log.WithError(err).Fatal("failed to pull image")
 			}

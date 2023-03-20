@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -142,8 +141,7 @@ func vmRunCommand() *cobra.Command {
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ctx, cancel := onInterruptWrap(context.Background())
-			defer cancel()
+			ctx := cmd.Context()
 
 			v, err := InitVirter()
 			if err != nil {
