@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/LINBIT/virter/pkg/netcopy"
 
 	log "github.com/sirupsen/logrus"
@@ -27,7 +25,7 @@ func vmCpCommand() *cobra.Command {
 
 			copier := netcopy.NewRsyncNetworkCopier()
 
-			if err := v.VMExecCopy(context.TODO(), copier, sourceSpec, destSpec); err != nil {
+			if err := v.VMExecCopy(cmd.Context(), copier, sourceSpec, destSpec); err != nil {
 				log.Fatal(err)
 			}
 		},
