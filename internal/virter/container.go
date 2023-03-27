@@ -26,7 +26,7 @@ const (
 	colorReset   = "\u001b[0m"
 )
 
-func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, vmSSHUserNames []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionDockerCopyStep) error {
+func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, vmSSHUserNames []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionContainerCopyStep) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 
@@ -153,8 +153,8 @@ func streamLogs(ctx context.Context, containerProvider containerapi.ContainerPro
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go logLines(&wg, "Docker", false, stdout)
-	go logLines(&wg, "Docker", true, stderr)
+	go logLines(&wg, "Container", false, stdout)
+	go logLines(&wg, "Container", true, stderr)
 
 	wg.Wait()
 	return nil
@@ -203,7 +203,7 @@ func containerWait(statusCh <-chan int64, errCh <-chan error) error {
 	}
 }
 
-func containerCopy(ctx context.Context, provider containerapi.ContainerProvider, containerID string, step *ProvisionDockerCopyStep) error {
+func containerCopy(ctx context.Context, provider containerapi.ContainerProvider, containerID string, step *ProvisionContainerCopyStep) error {
 	destDir, err := filepath.Abs(step.Dest)
 	if err != nil {
 		return fmt.Errorf("failed to determine absolute path of destination %q: %w", step.Dest, err)

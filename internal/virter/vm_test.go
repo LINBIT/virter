@@ -283,7 +283,7 @@ func TestVMCommit(t *testing.T) {
 	}
 }
 
-func TestVMExecDocker(t *testing.T) {
+func TestVMExecContainer(t *testing.T) {
 	l := newFakeLibvirtConnection()
 
 	domain := newFakeLibvirtDomain(vmMAC)
@@ -293,15 +293,15 @@ func TestVMExecDocker(t *testing.T) {
 
 	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
-	docker := mockContainerProvider()
+	container := mockContainerProvider()
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	containerCfg := containerapi.NewContainerConfig("test", dockerImageName, nil)
-	err := v.VMExecDocker(context.Background(), docker, []string{vmName}, containerCfg, nil)
+	containerCfg := containerapi.NewContainerConfig("test", containerImageName, nil)
+	err := v.VMExecContainer(context.Background(), container, []string{vmName}, containerCfg, nil)
 	assert.NoError(t, err)
 
-	docker.AssertExpectations(t)
+	container.AssertExpectations(t)
 }
 
 func TestVMExecRsync(t *testing.T) {
@@ -425,12 +425,12 @@ func mockAfter(an *mocks.AfterNotifier, timeout <-chan time.Time) {
 }
 
 const (
-	vmName           = "some-vm"
-	vmID             = 42
-	vmMAC            = "01:23:45:67:89:ab"
-	vmIP             = "192.168.122.42"
-	ciDataVolumeName = vmName + "-cidata"
-	sshPublicKey     = "some-key"
-	shutdownTimeout  = time.Second
-	dockerImageName  = "some-docker-image"
+	vmName             = "some-vm"
+	vmID               = 42
+	vmMAC              = "01:23:45:67:89:ab"
+	vmIP               = "192.168.122.42"
+	ciDataVolumeName   = vmName + "-cidata"
+	sshPublicKey       = "some-key"
+	shutdownTimeout    = time.Second
+	containerImageName = "some-container-image"
 )

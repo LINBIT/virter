@@ -14,18 +14,18 @@ import (
 	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
-const CurrentProvisionFileVersion = 0
+const CurrentProvisionFileVersion = 1
 
-// ProvisionDockerStep is a single provisioniong step executed in a docker container
-type ProvisionDockerStep struct {
-	Image   string                   `toml:"image"`
-	Pull    pullpolicy.PullPolicy    `toml:"pull"`
-	Env     map[string]string        `toml:"env"`
-	Command []string                 `toml:"command"`
-	Copy    *ProvisionDockerCopyStep `toml:"copy"`
+// ProvisionContainerStep is a single provisioning step executed in a container
+type ProvisionContainerStep struct {
+	Image   string                      `toml:"image"`
+	Pull    pullpolicy.PullPolicy       `toml:"pull"`
+	Env     map[string]string           `toml:"env"`
+	Command []string                    `toml:"command"`
+	Copy    *ProvisionContainerCopyStep `toml:"copy"`
 }
 
-type ProvisionDockerCopyStep struct {
+type ProvisionContainerCopyStep struct {
 	Source string `toml:"source"`
 	Dest   string `toml:"dest"`
 }
@@ -42,11 +42,11 @@ type ProvisionRsyncStep struct {
 	Dest   string `toml:"dest"`
 }
 
-// ProvisionStep is a single provisioniong step
+// ProvisionStep is a single provisioning step
 type ProvisionStep struct {
-	Docker *ProvisionDockerStep `toml:"docker,omitempty"`
-	Shell  *ProvisionShellStep  `toml:"shell,omitempty"`
-	Rsync  *ProvisionRsyncStep  `toml:"rsync,omitempty"`
+	Container *ProvisionContainerStep `toml:"container,omitempty"`
+	Shell     *ProvisionShellStep     `toml:"shell,omitempty"`
+	Rsync     *ProvisionRsyncStep     `toml:"rsync,omitempty"`
 }
 
 // ProvisionConfig holds the configuration of the whole provisioning
@@ -57,10 +57,10 @@ type ProvisionConfig struct {
 	Steps   []ProvisionStep   `toml:"steps"`
 }
 
-// NeedsContainers checks if there is a provision step that requires a docker client
+// NeedsContainers checks if there is a provision step that requires a container provider (like Docker or Podman)
 func (p *ProvisionConfig) NeedsContainers() bool {
 	for _, s := range p.Steps {
-		if s.Docker != nil {
+		if s.Container != nil {
 			return true
 		}
 	}
@@ -140,33 +140,33 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 	}
 
 	for i, s := range pc.Steps {
-		if s.Docker != nil {
-			s.Docker.Env = mergeEnv(&pc.Env, &s.Docker.Env)
+		if s.Container != nil {
+			s.Container.Env = mergeEnv(&pc.Env, &s.Container.Env)
 
-			if s.Docker.Image, err = executeTemplate(s.Docker.Image, pc.Values); err != nil {
-				return pc, fmt.Errorf("failed to execute template for docker.image for step %d: %w", i, err)
+			if s.Container.Image, err = executeTemplate(s.Container.Image, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute template for container.image for step %d: %w", i, err)
 			}
 
-			if err := executeTemplateMap(s.Docker.Env, pc.Values); err != nil {
-				return pc, fmt.Errorf("failed to execute template for docker.env for step %d: %w", i, err)
+			if err := executeTemplateMap(s.Container.Env, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute template for container.env for step %d: %w", i, err)
 			}
 
-			if err := executeTemplateArray(s.Docker.Command, pc.Values); err != nil {
-				return pc, fmt.Errorf("failed to execute tempalte for docker.command for step %d: %w", i, err)
+			if err := executeTemplateArray(s.Container.Command, pc.Values); err != nil {
+				return pc, fmt.Errorf("failed to execute tempalte for container.command for step %d: %w", i, err)
 			}
 
-			if copyStep := s.Docker.Copy; copyStep != nil {
+			if copyStep := s.Container.Copy; copyStep != nil {
 				if copyStep.Dest, err = executeTemplate(copyStep.Dest, pc.Values); err != nil {
-					return pc, fmt.Errorf("failed to execute template for docker.copy.dest for step %d: %w", i, err)
+					return pc, fmt.Errorf("failed to execute template for container.copy.dest for step %d: %w", i, err)
 				}
 			}
 
-			if s.Docker.Pull == "" {
-				s.Docker.Pull = provOpt.DefaultPullPolicy
+			if s.Container.Pull == "" {
+				s.Container.Pull = provOpt.DefaultPullPolicy
 			}
 
 			if provOpt.OverridePullPolicy != "" {
-				s.Docker.Pull = provOpt.OverridePullPolicy
+				s.Container.Pull = provOpt.OverridePullPolicy
 			}
 		} else if s.Shell != nil {
 			s.Shell.Env = mergeEnv(&pc.Env, &s.Shell.Env)

@@ -119,7 +119,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	meta := &VMMeta{
-		HostKey: hostkey.PublicKey(),
+		HostKey:     hostkey.PublicKey(),
 		SSHUserName: vmConfig.SSHUserName,
 	}
 
@@ -527,7 +527,7 @@ func (v *Virter) VMGetKnownHosts(vmName string) (string, error) {
 func (v *Virter) getSSHUserName(vmName string) string {
 	meta, err := v.getMetaForVM(vmName)
 
-		/* VM created with an older virter? */
+	/* VM created with an older virter? */
 	if err != nil || meta.SSHUserName == "" {
 		return "root"
 	}
@@ -545,8 +545,9 @@ func (v *Virter) getSSHUserNames(vmNames []string) []string {
 	return vmSSHUserNames
 }
 
-// VMExecDocker runs a docker container against some VMs.
-func (v *Virter) VMExecDocker(ctx context.Context, containerProvider containerapi.ContainerProvider, vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionDockerCopyStep) error {
+// VMExecContainer runs a container against some VMs.
+func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containerapi.ContainerProvider,
+	vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionContainerCopyStep) error {
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
@@ -647,11 +648,10 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 		remoteUser := v.getSSHUserName(vmName)
 		sshConfig := ssh.ClientConfig{
 			Auth:              v.sshkeys.Auth(),
-			User:		   remoteUser,
+			User:              remoteUser,
 			HostKeyCallback:   hostkeyCheck,
 			HostKeyAlgorithms: supportedAlgos,
 		}
-
 
 		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
 		g.Go(func() error {

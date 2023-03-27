@@ -15,7 +15,7 @@ func imagePullCommand() *cobra.Command {
 		Use:   "pull name [tag|url]",
 		Short: "Pull an image",
 		Long: `Pull an image into a libvirt storage pool. If a URL or
-Docker tag is explicitly given, the image will be fetched from there.
+Container tag is explicitly given, the image will be fetched from there.
 Otherwise the URL for the specified name from the local image registry 
 will be used.`,
 		Args: cobra.RangeArgs(1, 2),

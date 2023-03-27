@@ -1,5 +1,5 @@
 [values]
-DockerImage = "ssh"
+ContainerImage = "ssh"
 
 # Check that rsync steps work
 [[steps]]
@@ -7,10 +7,10 @@ DockerImage = "ssh"
 source = "data/"
 dest = "/virter"
 
-# Check that docker steps work
+# Check that container steps work
 [[steps]]
-[steps.docker]
-image = "{{ .DockerImage }}"
+[steps.container]
+image = "{{ .ContainerImage }}"
 command = ["sh", "-exc", """
 mkdir -p /virter/out
 test -n "$TARGETS"
@@ -22,14 +22,14 @@ IFS=,; for t in $TARGETS; do
     mv example.txt /virter/out/example-$t.txt
 done
 """]
-[steps.docker.copy]
+[steps.container.copy]
 source = "/virter/out"
 dest = "{{ .OutDir }}"
 
-# Checks that the previous docker step copied files as expected
+# Checks that the previous container step copied files as expected
 [[steps]]
-[steps.docker]
-image = "{{ .DockerImage }}"
+[steps.container]
+image = "{{ .ContainerImage }}"
 command = ["sh", "-exc", """
 IFS=,; for t in $TARGETS; do
     test -f "/virter/workspace/{{ .OutDir }}/out/example-$t.txt"

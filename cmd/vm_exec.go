@@ -60,8 +60,8 @@ func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames 
 	defer v.ForceDisconnect()
 
 	for _, s := range pc.Steps {
-		if s.Docker != nil {
-			if err := execDocker(ctx, v, s.Docker, vmNames); err != nil {
+		if s.Container != nil {
+			if err := execContainer(ctx, v, s.Container, vmNames); err != nil {
 				return err
 			}
 		} else if s.Shell != nil {
@@ -79,7 +79,7 @@ func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames 
 	return nil
 }
 
-func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDockerStep, vmNames []string) error {
+func execContainer(ctx context.Context, v *virter.Virter, s *virter.ProvisionContainerStep, vmNames []string) error {
 	containerProvider, err := containerapi.NewProvider(ctx, containerProvider())
 	if err != nil {
 		return err
@@ -94,5 +94,5 @@ func execDocker(ctx context.Context, v *virter.Virter, s *virter.ProvisionDocker
 		containerapi.WithPullConfig(s.Pull.ForContainer()),
 	)
 
-	return v.VMExecDocker(ctx, containerProvider, vmNames, containerCfg, s.Copy)
+	return v.VMExecContainer(ctx, containerProvider, vmNames, containerCfg, s.Copy)
 }

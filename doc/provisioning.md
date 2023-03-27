@@ -20,13 +20,15 @@ $ virter vm exec -p provisioning.toml centos-1 centos-2 centos-3
 
 The following provisioning types are supported.
 
-### `docker`
-A `docker` provisioning step allows specifying a Docker image to run provisioning steps in. This image will be executed on the host, so it will need to connect to the target VM and run its provisioning commands over SSH (or use a provisioning tool such as Ansible).
+### `container`
+A `container` provisioning step allows specifying a container image to run provisioning steps in.
+This image will be executed on the host using the provider configured in `container.provider` (such as Docker or Podman).
+It will need to connect to the target VM and run its provisioning commands over SSH (or use a provisioning tool such as Ansible).
 
-The Docker provisioning step can be parameterized using the following configuration options:
-* `image` is the Docker image used to provision the VM. It follows the standard Docker format of `<repository>/<image>:<tag>`. This is a Go template.
+The container provisioning step can be parameterized using the following configuration options:
+* `image` is the container image used to provision the VM. It follows the standard format of `<repository>/<image>:<tag>`. This is a Go template.
 * `pull` specifies when the above image should be pulled. Valid values are `Always`, `IfNotExist` or `Never`. If not specified, the default is `IfNotExist`. Can be overridden during execution using `--container-pull-policy`.
-* `env` is a map of environment variables to be passed to the Docker container, in `KEY=value` format. The values are Go templates.
+* `env` is a map of environment variables to be passed to the container, in `KEY=value` format. The values are Go templates.
 
   Note that Virter already passes two environment variables by default:
   * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
@@ -42,7 +44,7 @@ In addition, every container binds the following paths:
 * A SSH config file that contains a mapping from VMs to user names to be used for ssh connections (to support platforms where the "root" user does not exist). This file is mapped under `/etc/ssh/ssh_config.virter`. Use `ssh -F /etc/ssh/ssh_config.virter <ip-address-or-hostname>` to use this file (without specifying user name explicitly).
 
 ### Shell
-The `shell` provisioning step allows running arbitrary commands on the target VM over SSH. This is easier to use than the `docker` step, but also less flexible.
+The `shell` provisioning step allows running arbitrary commands on the target VM over SSH. This is easier to use than the `container` step, but also less flexible.
 
 The `shell` provisioning step accepts the following parameters:
 * `script` is a string containing the command(s) to be run.
@@ -89,13 +91,13 @@ Image = "virter-hello-text"
 foo = "rck"
 
 [[steps]]
-[steps.docker]
+[steps.container]
 # Go templating can be used for many values
 image = "{{.Image}}"
-[steps.docker.env]
+[steps.container.env]
 TEXT = "foo"
 VAR_BAR = "hi"
-[steps.docker.copy]
+[steps.container.copy]
 source = "/tmp/somefile"
 dest = "."
 

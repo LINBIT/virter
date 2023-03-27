@@ -121,7 +121,7 @@ e2e-test:
     - virter registry update
     - cd tests/
     - EXCLUDED_BASE_IMAGES=$EXCLUDED PULL_LOCATION=${LINBIT_DOCKER_REGISTRY}/vm ./all-base-images.sh > vms.toml
-    - vmshed --set values.DockerImage=${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG --nvms ${LINBIT_CI_MAX_CPUS:-20}
+    - vmshed --set values.ContainerImage=${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG --nvms ${LINBIT_CI_MAX_CPUS:-20}
   artifacts:
     when: always
     paths:

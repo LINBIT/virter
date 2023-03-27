@@ -558,15 +558,15 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 	}
 
 	for _, s := range buildConfig.ProvisionConfig.Steps {
-		if s.Docker != nil {
+		if s.Container != nil {
 			containerCfg := containerapi.NewContainerConfig(
 				buildConfig.ContainerName,
-				s.Docker.Image,
-				s.Docker.Env,
-				containerapi.WithCommand(s.Docker.Command...),
-				containerapi.WithPullConfig(s.Docker.Pull.ForContainer()),
+				s.Container.Image,
+				s.Container.Env,
+				containerapi.WithCommand(s.Container.Command...),
+				containerapi.WithPullConfig(s.Container.Pull.ForContainer()),
 			)
-			err = v.VMExecDocker(ctx, tools.ContainerProvider, vmNames, containerCfg, nil)
+			err = v.VMExecContainer(ctx, tools.ContainerProvider, vmNames, containerCfg, nil)
 		} else if s.Shell != nil {
 			err = v.VMExecShell(ctx, vmNames, s.Shell)
 		} else if s.Rsync != nil {

@@ -122,10 +122,10 @@ func envEqual(env, expected []string) bool {
 func TestNewProvisionConfigTemplate(t *testing.T) {
 	noTemplate := `
 [[steps]]
-[steps.docker]
+[steps.container]
 image = "some-image"
 command = ["exit", "0"]
-[steps.docker.env]
+[steps.container.env]
 foo = "bar"
 
 [[steps]]
@@ -145,12 +145,12 @@ dest = "some-dest"
 ShellEnv = "default-value"
 
 [[steps]]
-[steps.docker]
-image = "{{.DockerImage}}"
+[steps.container]
+image = "{{.ContainerImage}}"
 pull = "Always"
-command = ["echo", "{{.DockerCommandArg}}"]
-[steps.docker.env]
-foo = "hello {{.DockerEnv}}"
+command = ["echo", "{{.ContainerCommandArg}}"]
+[steps.container.env]
+foo = "hello {{.ContainerEnv}}"
 
 [[steps]]
 [steps.shell]
@@ -194,7 +194,7 @@ foo = "{{.ShellEnv"
 		{
 			"no-template", noTemplate, true, ProvisionOption{}, []ProvisionStep{
 				ProvisionStep{
-					Docker: &ProvisionDockerStep{
+					Container: &ProvisionContainerStep{
 						Image:   "some-image",
 						Command: []string{"exit", "0"},
 						Env:     map[string]string{"foo": "bar"},
@@ -219,15 +219,15 @@ foo = "{{.ShellEnv"
 			"all-template", allTemplate, true,
 			ProvisionOption{
 				Overrides: []string{
-					"values.DockerImage=template-image",
-					"values.DockerEnv=template-value",
-					"values.DockerCommandArg=template-arg",
+					"values.ContainerImage=template-image",
+					"values.ContainerEnv=template-value",
+					"values.ContainerCommandArg=template-arg",
 					"values.RsyncSource=template-source",
 				},
 			},
 			[]ProvisionStep{
 				ProvisionStep{
-					Docker: &ProvisionDockerStep{
+					Container: &ProvisionContainerStep{
 						Image:   "template-image",
 						Command: []string{"echo", "template-arg"},
 						Env:     map[string]string{"foo": "hello template-value"},
