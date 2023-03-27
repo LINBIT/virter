@@ -84,6 +84,8 @@ $ virter vm exec my-vm -p examples/hello-world/hello-world.toml --set values.Ima
 
 ## Example
 ```
+version = 1
+
 [values]
 Image = "virter-hello-text"
 

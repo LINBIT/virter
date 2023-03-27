@@ -12,6 +12,8 @@ import (
 
 func TestNewProvisionConfig(t *testing.T) {
 	validGlobalOnly := `
+version = 1
+
 [env]
 foo="bar"
 bar="baz"
@@ -22,6 +24,8 @@ script = "echo rck"
 `
 
 	validLocalOnly := `
+version = 1
+
 [[steps]]
 [steps.shell]
 script = "echo rck"
@@ -31,6 +35,8 @@ bar="baz=lala"
 `
 
 	bothDistinct := `
+version = 1
+
 [env]
 foo="bar"
 bar="baz"
@@ -44,6 +50,8 @@ here=""
 `
 
 	bothOverride := `
+version = 1
+
 [env]
 foo="bar"
 bar="baz"
@@ -56,7 +64,7 @@ rck="was"
 foo="rck"
 `
 
-	// IMPORTANT: this asumes 1 shell step!
+	// IMPORTANT: this assumes 1 shell step!
 	tests := []struct {
 		input    string
 		valid    bool
@@ -67,10 +75,10 @@ foo="rck"
 		{validLocalOnly, true, ProvisionOption{Overrides: []string{}}, []string{"foo=bar", "bar=baz=lala"}},
 		{bothDistinct, true, ProvisionOption{Overrides: []string{}}, []string{"foo=bar", "bar=baz", "rck=was", "here="}},
 		{bothOverride, true, ProvisionOption{Overrides: []string{}}, []string{"foo=rck", "bar=baz", "rck=was"}},
-		{"", true, ProvisionOption{
+		{"version = 1", true, ProvisionOption{
 			Overrides: []string{"steps[0].shell.script=env", "steps[0].shell.env.foo=bar"},
 		}, []string{"foo=bar"}},
-		{"", true, ProvisionOption{
+		{"version = 1", true, ProvisionOption{
 			Overrides: []string{"steps[0].shell.script=env", "env.foo=bar", "steps[0].shell.env.foo=rck"},
 		}, []string{"foo=rck"}},
 		{bothOverride, true, ProvisionOption{
@@ -121,6 +129,8 @@ func envEqual(env, expected []string) bool {
 
 func TestNewProvisionConfigTemplate(t *testing.T) {
 	noTemplate := `
+version = 1
+
 [[steps]]
 [steps.container]
 image = "some-image"
@@ -141,6 +151,8 @@ dest = "some-dest"
 `
 
 	allTemplate := `
+version = 1
+
 [values]
 ShellEnv = "default-value"
 
@@ -165,6 +177,8 @@ dest = "some-dest"
 `
 
 	globalEnvTemplate := `
+version = 1
+
 [env]
 foo = "{{.Env}}"
 blah = "{{.MoreEnv}}"
@@ -177,6 +191,8 @@ foo = "bar"
 `
 
 	brokenTemplate := `
+version = 1
+
 [[steps]]
 [steps.shell]
 script = "echo jrc"
