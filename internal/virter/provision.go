@@ -14,6 +14,8 @@ import (
 	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
+const CurrentProvisionFileVersion = 0
+
 // ProvisionDockerStep is a single provisioniong step executed in a docker container
 type ProvisionDockerStep struct {
 	Image   string                   `toml:"image"`
@@ -49,9 +51,10 @@ type ProvisionStep struct {
 
 // ProvisionConfig holds the configuration of the whole provisioning
 type ProvisionConfig struct {
-	Values map[string]string `toml:"values"`
-	Env    map[string]string `toml:"env"`
-	Steps  []ProvisionStep   `toml:"steps"`
+	Version int               `toml:"version"`
+	Values  map[string]string `toml:"values"`
+	Env     map[string]string `toml:"env"`
+	Steps   []ProvisionStep   `toml:"steps"`
 }
 
 // NeedsContainers checks if there is a provision step that requires a docker client
@@ -130,6 +133,10 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 	}
 	if err := mapstructure.Decode(m, &pc); err != nil {
 		return pc, err
+	}
+
+	if pc.Version != CurrentProvisionFileVersion {
+		return pc, fmt.Errorf("unsupported provision file version %d (want %d)", pc.Version, CurrentProvisionFileVersion)
 	}
 
 	for i, s := range pc.Steps {
