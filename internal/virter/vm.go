@@ -653,7 +653,7 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 			HostKeyAlgorithms: supportedAlgos,
 		}
 
-		log.Println("Provisioning via SSH:", shellStep.Script, "in", ip)
+		log.Debugln("Provisioning via SSH:", shellStep.Script, "in", ip)
 		g.Go(func() error {
 			return runSSHCommand(ctx, &sshConfig, vmName, net.JoinHostPort(ip, "22"), shellStep.Script, EnvmapToSlice(shellStep.Env))
 		})
