@@ -10,6 +10,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/helm/helm/pkg/strvals"
 	"github.com/mitchellh/mapstructure"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
@@ -121,9 +122,14 @@ func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (Pr
 	var pc ProvisionConfig
 
 	if provReader != nil {
-		_, err := toml.DecodeReader(provReader, &pc)
+		decoder := toml.NewDecoder(provReader)
+		md, err := decoder.Decode(&pc)
 		if err != nil {
 			return pc, err
+		}
+
+		for _, k := range md.Undecoded() {
+			log.WithField("key", k).Warn("Unknown key in provisioning")
 		}
 	}
 
