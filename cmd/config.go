@@ -129,8 +129,9 @@ func initConfig() {
 		viper.SetDefault("auth.virter_private_key_path", "")
 	} else {
 		p := configPath()
-		os.MkdirAll(p, 0700)
-
+		if err := os.MkdirAll(p, 0700); err != nil {
+			log.Fatalf("Could not create directory %q: %v", p, err)
+		}
 		// Use config file from standard location
 		viper.AddConfigPath(p)
 		viper.SetConfigName("virter")
