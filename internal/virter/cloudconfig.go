@@ -231,12 +231,12 @@ func GenerateISO(files map[string][]byte) ([]byte, error) {
 		}
 	}
 
-	wab := newWriteAtBuffer(nil)
-	if err := isoWriter.WriteTo(wab, "cidata"); err != nil {
+	var buf bytes.Buffer
+	if err := isoWriter.WriteTo(&buf, "cidata"); err != nil {
 		return nil, err
 	}
 
-	return wab.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 func hasDhcpV4(net *lx.Network) bool {
