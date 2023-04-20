@@ -112,7 +112,7 @@ func initConfig() {
 	viper.SetDefault("libvirt.static_dhcp", false)
 	viper.SetDefault("libvirt.dnsmasq_options", []string{})
 	viper.SetDefault("libvirt.disk_cache", "")
-	viper.SetDefault("time.ssh_ping_count", 60)
+	viper.SetDefault("time.ssh_ping_count", 300)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
 	viper.SetDefault("auth.user_public_key", "")
