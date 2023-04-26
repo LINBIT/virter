@@ -42,18 +42,6 @@ func rootCommand() *cobra.Command {
 machines are controlled with libvirt, with qcow2 chained images for storage
 and cloud-init for basic access configuration. This allows for fast cloning
 and resetting, for a stable test environment.`,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			level, err := log.ParseLevel(logLevel)
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.SetLevel(level)
-			if logFormat == "short" {
-				shortFormatter := new(ShortFormatter)
-				shortFormatter.LevelDesc = []string{"PANC", "FATL", "ERRO", "WARN", "INFO", "DEBG"}
-				log.SetFormatter(shortFormatter)
-			}
-		},
 	}
 
 	configName := filepath.Join(configPath(), "virter.toml")
@@ -69,12 +57,25 @@ and resetting, for a stable test environment.`,
 	return rootCmd
 }
 
+func initLogging() {
+	level, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.SetLevel(level)
+	if logFormat == "short" {
+		shortFormatter := new(ShortFormatter)
+		shortFormatter.LevelDesc = []string{"PANC", "FATL", "ERRO", "WARN", "INFO", "DEBG"}
+		log.SetFormatter(shortFormatter)
+	}
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately
 func Execute() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	cobra.OnInitialize(initConfig, initSSHFromConfig)
+	cobra.OnInitialize(initLogging, initConfig, initSSHFromConfig)
 
 	if err := rootCommand().ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
