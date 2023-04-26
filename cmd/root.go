@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -18,8 +19,6 @@ var (
 	builddate string
 	githash   string
 )
-
-var defaultLogLevel = log.InfoLevel.String()
 
 var cfgFile string
 var logLevel string
@@ -44,9 +43,16 @@ and cloud-init for basic access configuration. This allows for fast cloning
 and resetting, for a stable test environment.`,
 	}
 
+	defaultLogLevel := log.InfoLevel.String()
+
+	if envLogLevel, ok := os.LookupEnv("VIRTER_LOG_LEVEL"); ok {
+		defaultLogLevel = envLogLevel
+	}
+
 	configName := filepath.Join(configPath(), "virter.toml")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", defaultLogLevel, "Log level")
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", defaultLogLevel,
+		"Log level, default may be set with environment variable \"VIRTER_LOG_LEVEL\"")
 	rootCmd.PersistentFlags().StringVar(&logFormat, "logformat", "default", "Log format, current options: short")
 
 	rootCmd.AddCommand(versionCommand())
