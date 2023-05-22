@@ -12,7 +12,7 @@ require (
 	github.com/google/go-containerregistry v0.15.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/helm/helm v2.17.0+incompatible
-	github.com/kdomanski/iso9660 v0.3.4
+	github.com/kdomanski/iso9660 v0.3.5
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
 	github.com/libvirt/libvirt-go-xml v7.4.0+incompatible
