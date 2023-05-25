@@ -86,6 +86,11 @@ func New(libvirtConnection LibvirtConnection,
 	}
 }
 
+// ProvisionStoragePool returns the default libvirt pool used for the VM boot image
+func (v *Virter) ProvisionStoragePool() libvirt.StoragePool {
+	return v.provisionStoragePool
+}
+
 // Disconnect disconnects virter's connection to libvirt
 func (v *Virter) Disconnect() error {
 	return v.libvirt.Disconnect()

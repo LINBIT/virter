@@ -84,11 +84,11 @@ func makeLayerOperationOpts(opts ...LayerOperationOption) *layerOperatorOpts {
 	return o
 }
 
-// FindRawLayer searches the default storage pool for the given volume and returns a RawLayer.
+// FindRawLayer searches the specified storage pool for the given volume and returns a RawLayer.
 //
 // If the layer could not be found, will return (nil, nil).
-func (v *Virter) FindRawLayer(name string) (*RawLayer, error) {
-	vol, err := v.libvirt.StorageVolLookupByName(v.provisionStoragePool, name)
+func (v *Virter) FindRawLayer(name string, pool libvirt.StoragePool) (*RawLayer, error) {
+	vol, err := v.libvirt.StorageVolLookupByName(pool, name)
 	if err != nil {
 		if hasErrorCode(err, libvirt.ErrNoStorageVol) {
 			return nil, nil
@@ -100,15 +100,15 @@ func (v *Virter) FindRawLayer(name string) (*RawLayer, error) {
 	return &RawLayer{
 		conn:   v.libvirt,
 		volume: vol,
-		pool:   v.provisionStoragePool,
+		pool:   pool,
 	}, nil
 }
 
-// FindVolumeLayer searches the default storage pool for the given volume layer and returns a VolumeLayer.
+// FindVolumeLayer searches the specified storage pool for the given volume layer and returns a VolumeLayer.
 //
 // The name is the raw layer name, i.e. "sha256:xxxx". If no matching volume is found, returns (nil, nil).
-func (v *Virter) FindVolumeLayer(name string) (*VolumeLayer, error) {
-	vol, err := v.FindRawLayer(LayerVolumePrefix + name)
+func (v *Virter) FindVolumeLayer(name string, pool libvirt.StoragePool) (*VolumeLayer, error) {
+	vol, err := v.FindRawLayer(LayerVolumePrefix+name, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -179,20 +179,20 @@ func WithFormat(fmt string) NewLayerOption {
 //
 // The volume name is prefix with WorkingLayerNamePrefix.
 // To set a backing layer, set the minimum capacity and more, pass in one or more NewLayerOption.
-func (v *Virter) NewDynamicLayer(name string, opts ...NewLayerOption) (*RawLayer, error) {
-	vol, err := v.emptyVolume(DynamicLayerName(name), opts...)
+func (v *Virter) NewDynamicLayer(name string, pool libvirt.StoragePool, opts ...NewLayerOption) (*RawLayer, error) {
+	vol, err := v.emptyVolume(DynamicLayerName(name), pool, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RawLayer{conn: v.libvirt, volume: vol, pool: v.provisionStoragePool}, nil
+	return &RawLayer{conn: v.libvirt, volume: vol, pool: pool}, nil
 }
 
-// FindDynamicLayer searches the default storage pool for the given dynamic layer, suitable for attaching to a VM.
+// FindDynamicLayer searches the specified storage pool for the given dynamic layer, suitable for attaching to a VM.
 //
 // If no matching layer could be found, returns (nil, nil).
-func (v *Virter) FindDynamicLayer(name string) (*RawLayer, error) {
-	return v.FindRawLayer(DynamicLayerName(name))
+func (v *Virter) FindDynamicLayer(name string, pool libvirt.StoragePool) (*RawLayer, error) {
+	return v.FindRawLayer(DynamicLayerName(name), pool)
 }
 
 // DynamicLayerName returns the prefixed raw volume name for the given dynamic layer.
@@ -757,7 +757,7 @@ func (vl *VolumeLayer) Squashed() (*RawLayer, error) {
 }
 
 // emptyVolume creates a new empty volume with the given name and options.
-func (v *Virter) emptyVolume(rawname string, opts ...NewLayerOption) (libvirt.StorageVol, error) {
+func (v *Virter) emptyVolume(rawname string, pool libvirt.StoragePool, opts ...NewLayerOption) (libvirt.StorageVol, error) {
 	volumeDescriptor := &lx.StorageVolume{
 		Name:     rawname,
 		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "bytes"},
@@ -778,7 +778,7 @@ func (v *Virter) emptyVolume(rawname string, opts ...NewLayerOption) (libvirt.St
 		return libvirt.StorageVol{}, fmt.Errorf("failed to encode volume descriptor for '%s': %w", rawname, err)
 	}
 
-	newVol, err := v.libvirt.StorageVolCreateXML(v.provisionStoragePool, encoded, 0)
+	newVol, err := v.libvirt.StorageVolCreateXML(pool, encoded, 0)
 	if err != nil {
 		return libvirt.StorageVol{}, fmt.Errorf("failed to create new volume '%s': %w", rawname, err)
 	}

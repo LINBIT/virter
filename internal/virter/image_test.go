@@ -43,6 +43,8 @@ func TestLocalImage_Layers(t *testing.T) {
 func TestVirter_MakeImage(t *testing.T) {
 	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
 
 	img, err := v.MakeImage("image1", layer)
 	assert.NoError(t, err)
@@ -50,7 +52,7 @@ func TestVirter_MakeImage(t *testing.T) {
 	assert.Equal(t, "image1", img.Name())
 	assert.Equal(t, layer.Name(), img.TopLayer().Name())
 
-	imgFound, err := v.FindImage("image1")
+	imgFound, err := v.FindImage("image1", pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, imgFound)
 	assert.Equal(t, "image1", imgFound.Name())
@@ -66,53 +68,57 @@ func TestVirter_MakeImage(t *testing.T) {
 func TestVirter_ImageRm(t *testing.T) {
 	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
 
 	img, err := v.MakeImage("image1", layer)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 
 	// Unknown images should work
-	err = v.ImageRm("image2")
+	err = v.ImageRm("image2", pool)
 	assert.NoError(t, err)
 
-	err = v.ImageRm("image1")
+	err = v.ImageRm("image1", pool)
 	assert.NoError(t, err)
 
 	// Should have removed all volumes
-	assert.Empty(t, l.vols)
+	assert.Empty(t, l.pools[poolName].vols)
 }
 
 func TestVirter_ImageImportFromReader(t *testing.T) {
 	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
 
-	img, err := v.ImageImportFromReader("image1", ioutil.NopCloser(strings.NewReader(ExampleLayerContent)))
+	img, err := v.ImageImportFromReader("image1", ioutil.NopCloser(strings.NewReader(ExampleLayerContent)), pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 
 	assert.Equal(t, img.TopLayer(), layer)
 	// 2 volumes: existing content + tag volume
-	assert.Len(t, l.vols, 2)
+	assert.Len(t, l.pools[poolName].vols, 2)
 
-	img2, err := v.ImageImportFromReader("image2", ioutil.NopCloser(strings.NewReader(ExampleLayerContent+ExampleLayerContent)))
+	img2, err := v.ImageImportFromReader("image2", ioutil.NopCloser(strings.NewReader(ExampleLayerContent+ExampleLayerContent)), pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, img2)
 
 	assert.NotEqual(t, img2.TopLayer(), layer)
 	// 4 volumes: 2 * (existing content + tag volume)
-	assert.Len(t, l.vols, 4)
+	assert.Len(t, l.pools[poolName].vols, 4)
 
-	failed, err := v.ImageImportFromReader("image2", ioutil.NopCloser(iotest.ErrReader(errors.New("test"))))
+	failed, err := v.ImageImportFromReader("image2", ioutil.NopCloser(iotest.ErrReader(errors.New("test"))), pool)
 	assert.Error(t, err)
 	assert.Nil(t, failed)
 	// 4 volumes: 2 * (existing content + tag volume), no new volume from failed import
-	assert.Len(t, l.vols, 4)
+	assert.Len(t, l.pools[poolName].vols, 4)
 }
 
 func TestVirter_ImageList(t *testing.T) {
 	l := newFakeLibvirtConnection()
-	l.addFakeImage("image1")
-	l.addFakeImage("image2")
+	l.addFakeImage(poolName, "image1")
+	l.addFakeImage(poolName, "image2")
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
 	imgs, err := v.ImageList()
@@ -164,6 +170,8 @@ func fakeRemoteLayer(t *testing.T, content string) regv1.Layer {
 func TestVirter_ImageImport(t *testing.T) {
 	l, base := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
 
 	source := &fake.FakeImage{
 		ManifestStub: func() (*regv1.Manifest, error) {
@@ -181,7 +189,7 @@ func TestVirter_ImageImport(t *testing.T) {
 		},
 	}
 
-	local, err := v.ImageImport("name", source)
+	local, err := v.ImageImport("name", pool, source)
 	assert.NoError(t, err)
 	assert.NotNil(t, local)
 
@@ -193,17 +201,19 @@ func TestVirter_ImageImport(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, actualbase)
 	assert.Equal(t, base.Name(), actualbase.Name())
-	assert.Contains(t, l.vols, virter.TagVolumePrefix+"name")
-	assert.Contains(t, l.vols, virter.LayerVolumePrefix+"sha256:c13faca63307342e622347733e82496954c9d56a0c5b90af6e0fb7aa7e920ad2")
-	assert.Contains(t, l.vols, virter.LayerVolumePrefix+ExampleLayerDigest)
+	assert.Contains(t, l.pools[poolName].vols, virter.TagVolumePrefix+"name")
+	assert.Contains(t, l.pools[poolName].vols, virter.LayerVolumePrefix+"sha256:c13faca63307342e622347733e82496954c9d56a0c5b90af6e0fb7aa7e920ad2")
+	assert.Contains(t, l.pools[poolName].vols, virter.LayerVolumePrefix+ExampleLayerDigest)
 }
 
 func TestVirter_Image(t *testing.T) {
 	l := newFakeLibvirtConnection()
-	l.addFakeImage("image1")
+	l.addFakeImage(poolName, "image1")
 	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
 
-	img, err := v.FindImage("image1")
+	img, err := v.FindImage("image1", pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 

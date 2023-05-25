@@ -62,13 +62,15 @@ func TestVirter_NetworkRemove(t *testing.T) {
 
 func TestVirter_NetworkListAttached(t *testing.T) {
 	l := newFakeLibvirtConnection()
-	l.addFakeImage(imageName)
+	l.addFakeImage(poolName, imageName)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
 	vmnics, err := v.NetworkListAttached(networkName)
 	assert.NoError(t, err)
 	assert.Empty(t, vmnics)
 
-	img, err := v.FindImage(imageName)
+	img, err := v.FindImage(imageName, pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 

@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/digitalocean/go-libvirt"
 	"io"
 	"net/http"
 	"strings"
@@ -247,8 +248,8 @@ func (l *LocalImage) Name() string {
 // ImageSpawn creates a new rw volume backed by this image.
 //
 // The returned RawLayer can be attached to a VM.
-func (v *Virter) ImageSpawn(name string, image *LocalImage, capacityKib uint64) (*RawLayer, error) {
-	raw, err := v.NewDynamicLayer(name, WithBackingLayer(image.topLayer), WithCapacity(capacityKib))
+func (v *Virter) ImageSpawn(name string, pool libvirt.StoragePool, image *LocalImage, capacityKib uint64) (*RawLayer, error) {
+	raw, err := v.NewDynamicLayer(name, pool, WithBackingLayer(image.topLayer), WithCapacity(capacityKib))
 	if err != nil {
 		return nil, err
 	}
@@ -256,12 +257,12 @@ func (v *Virter) ImageSpawn(name string, image *LocalImage, capacityKib uint64) 
 	return raw, nil
 }
 
-// FindImage searches the default storage pool for a LocalImage of the given name.
+// FindImage searches the specified storage pool for a LocalImage of the given name.
 //
 // If no matching image could be found, returns (nil, nil).
-func (v *Virter) FindImage(image string, opts ...LayerOperationOption) (*LocalImage, error) {
+func (v *Virter) FindImage(image string, pool libvirt.StoragePool, opts ...LayerOperationOption) (*LocalImage, error) {
 	rawName := TagVolumePrefix + image
-	raw, err := v.FindRawLayer(rawName)
+	raw, err := v.FindRawLayer(rawName, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +288,7 @@ func (v *Virter) FindImage(image string, opts ...LayerOperationOption) (*LocalIm
 // If an image of the given name already exists it will be deleted first.
 func (v *Virter) MakeImage(image string, topLayer *VolumeLayer, opts ...LayerOperationOption) (*LocalImage, error) {
 	rawName := TagVolumePrefix + image
-	existing, err := v.FindRawLayer(rawName)
+	existing, err := v.FindRawLayer(rawName, v.provisionStoragePool)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for existing image '%s': %w", image, err)
 	}
@@ -321,7 +322,7 @@ func (v *Virter) MakeImage(image string, topLayer *VolumeLayer, opts ...LayerOpe
 		}
 	}
 
-	raw, err := v.emptyVolume(rawName, WithBackingLayer(topLayer))
+	raw, err := v.emptyVolume(rawName, v.provisionStoragePool, WithBackingLayer(topLayer))
 	if err != nil {
 		return nil, err
 	}
@@ -338,8 +339,8 @@ func (v *Virter) MakeImage(image string, topLayer *VolumeLayer, opts ...LayerOpe
 	}, nil
 }
 
-// ImageImport imports the given registry image into the local storage pool
-func (v *Virter) ImageImport(name string, image regv1.Image, opts ...LayerOperationOption) (*LocalImage, error) {
+// ImageImport imports the given registry image into the specified local storage pool
+func (v *Virter) ImageImport(name string, pool libvirt.StoragePool, image regv1.Image, opts ...LayerOperationOption) (*LocalImage, error) {
 	o := makeLayerOperationOpts(opts...)
 
 	manifest, err := image.Manifest()
@@ -383,7 +384,7 @@ func (v *Virter) ImageImport(name string, image regv1.Image, opts ...LayerOperat
 			bar = o.Progress.NewBar(diffId.String(), "pull", size)
 		}
 
-		existing, err := v.FindVolumeLayer(diffId.String())
+		existing, err := v.FindVolumeLayer(diffId.String(), v.provisionStoragePool)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check for existing layer data: %w", err)
 		}
@@ -410,7 +411,7 @@ func (v *Virter) ImageImport(name string, image regv1.Image, opts ...LayerOperat
 			return nil, fmt.Errorf("failed to set up gunzip: %w", err)
 		}
 
-		dyn, err := v.NewDynamicLayer("import-"+diffId.String(), WithBackingLayer(topLayer))
+		dyn, err := v.NewDynamicLayer("import-"+diffId.String(), pool, WithBackingLayer(topLayer))
 		if err != nil {
 			return nil, err
 		}
@@ -440,14 +441,14 @@ func (v *Virter) ImageImport(name string, image regv1.Image, opts ...LayerOperat
 	return v.MakeImage(name, topLayer)
 }
 
-// ImageImportFromReader imports a new image into the local storage pool from a basic reader.
-func (v *Virter) ImageImportFromReader(image string, reader io.ReadCloser, opts ...LayerOperationOption) (*LocalImage, error) {
+// ImageImportFromReader imports a new image into the specified local storage pool from a basic reader.
+func (v *Virter) ImageImportFromReader(image string, reader io.ReadCloser, pool libvirt.StoragePool, opts ...LayerOperationOption) (*LocalImage, error) {
 	defer reader.Close()
 
 	diffId := sha256.New()
 	teeReader := io.TeeReader(reader, diffId)
 
-	dynLayer, err := v.NewDynamicLayer(image)
+	dynLayer, err := v.NewDynamicLayer(image, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -470,12 +471,12 @@ func (v *Virter) ImageImportFromReader(image string, reader io.ReadCloser, opts 
 	return v.MakeImage(image, layer)
 }
 
-// ImageRm removes an image from the local storage pool.
+// ImageRm removes an image from the specified local storage pool.
 //
 // If no image of the given name is present, returns nil.
 // This will recursively delete any layers that are not referenced by other images or currently in use by a VM.
-func (v *Virter) ImageRm(name string) error {
-	img, err := v.FindImage(name)
+func (v *Virter) ImageRm(name string, pool libvirt.StoragePool) error {
+	img, err := v.FindImage(name, pool)
 	if err != nil {
 		return err
 	}

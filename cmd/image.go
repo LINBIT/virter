@@ -72,7 +72,7 @@ func GetLocalImage(ctx context.Context, imageName string, source string, v *virt
 
 	switch policy {
 	case pullpolicy.Never, pullpolicy.IfNotExist:
-		localImg, err := v.FindImage(localName, virter.WithProgress(p))
+		localImg, err := v.FindImage(localName, v.ProvisionStoragePool(), virter.WithProgress(p))
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +104,7 @@ func GetLocalImage(ctx context.Context, imageName string, source string, v *virt
 		return nil, fmt.Errorf("could not fetch image information for %s: %w", parsedRef.Name(), err)
 	}
 
-	return v.ImageImport(localName, srcImg, virter.WithProgress(p))
+	return v.ImageImport(localName, v.ProvisionStoragePool(), srcImg, virter.WithProgress(p))
 }
 
 // pullNonContainerRegistry tries to pull an image from a source.
@@ -144,7 +144,7 @@ func pullNonContainerRegistry(ctx context.Context, v *virter.Virter, destination
 		return nil, fmt.Errorf("bad http status: %v", response.Status)
 	}
 
-	return v.ImageImportFromReader(destination, proxyResponse, virter.WithProgress(p))
+	return v.ImageImportFromReader(destination, proxyResponse, v.ProvisionStoragePool(), virter.WithProgress(p))
 }
 
 func imageCommand() *cobra.Command {

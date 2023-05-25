@@ -227,7 +227,7 @@ func imageBuildCommand() *cobra.Command {
 			}
 
 			if push {
-				localImg, err := v.FindImage(newImageName, virter.WithProgress(DefaultProgressFormat(p)))
+				localImg, err := v.FindImage(newImageName, v.ProvisionStoragePool(), virter.WithProgress(DefaultProgressFormat(p)))
 				if err != nil {
 					log.Fatalf("failed to find built image: %v", err)
 				}

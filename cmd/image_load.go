@@ -31,7 +31,7 @@ read from stdin`,
 				log.WithError(err).Fatal("error parsing destination image name")
 			}
 
-			importLayer, err := v.NewDynamicLayer("load-" + image)
+			importLayer, err := v.NewDynamicLayer("load-"+image, v.ProvisionStoragePool())
 			if err != nil {
 				log.WithError(err).Fatal("error creating import layer")
 			}

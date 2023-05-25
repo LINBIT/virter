@@ -29,7 +29,7 @@ func imageRmCommand() *cobra.Command {
 					errs = multierror.Append(errs, e)
 				}
 
-				err = v.ImageRm(localName)
+				err = v.ImageRm(localName, v.ProvisionStoragePool())
 				if err != nil {
 					e := fmt.Errorf("failed to remove image '%s': %w", localName, err)
 					errs = multierror.Append(errs, e)

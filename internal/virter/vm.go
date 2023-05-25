@@ -29,19 +29,33 @@ func (v *Virter) VMExists(vmName string) error {
 	return nil
 }
 
+// lookupPool looks up a libvirt pool by name, falling back to the default
+// storage pool if the name is empty.
+func (v *Virter) lookupPool(name string) (libvirt.StoragePool, error) {
+	if name == v.provisionStoragePool.Name || name == "" {
+		return v.provisionStoragePool, nil
+	}
+
+	return v.libvirt.StoragePoolLookupByName(name)
+}
+
 func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	vmName := vmConfig.Name
-	imgs := []string{
-		vmName,
-		ciDataVolumeName(vmName),
+	type imageAndPool struct {
+		image string
+		pool  libvirt.StoragePool
+	}
+	imgs := []imageAndPool{
+		{vmName, v.provisionStoragePool},
+		{ciDataVolumeName(vmName), v.provisionStoragePool},
 	}
 
 	for _, d := range vmConfig.Disks {
-		imgs = append(imgs, diskVolumeName(vmName, d.GetName()))
+		imgs = append(imgs, imageAndPool{diskVolumeName(vmName, d.GetName()), v.provisionStoragePool})
 	}
 
 	for _, img := range imgs {
-		if layer, err := v.FindDynamicLayer(img); layer != nil || err != nil {
+		if layer, err := v.FindDynamicLayer(img.image, img.pool); layer != nil || err != nil {
 			return layer != nil, err
 		}
 	}
@@ -123,7 +137,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		SSHUserName: vmConfig.SSHUserName,
 	}
 
-	vmXML, err := v.vmXML(v.provisionStoragePool.Name, vmConfig, mac, meta)
+	vmXML, err := v.vmXML(vmConfig, mac, meta)
 	if err != nil {
 		return err
 	}
@@ -137,7 +151,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	log.Print("Create boot volume")
-	_, err = v.ImageSpawn(vmConfig.Name, vmConfig.Image, vmConfig.BootCapacityKiB)
+	_, err = v.ImageSpawn(vmConfig.Name, v.provisionStoragePool, vmConfig.Image, vmConfig.BootCapacityKiB)
 	if err != nil {
 		return err
 	}
@@ -150,7 +164,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 
 	for _, d := range vmConfig.Disks {
 		log.Printf("Create volume '%s'", d.GetName())
-		_, err = v.NewDynamicLayer(diskVolumeName(vmConfig.Name, d.GetName()), WithCapacity(d.GetSizeKiB()), WithFormat(d.GetFormat()))
+		_, err = v.NewDynamicLayer(diskVolumeName(vmConfig.Name, d.GetName()), v.provisionStoragePool, WithCapacity(d.GetSizeKiB()), WithFormat(d.GetFormat()))
 		if err != nil {
 			return err
 		}
@@ -284,7 +298,7 @@ func (v *Virter) VMRm(vmName string, removeDHCPEntries bool, removeBoot bool) er
 	}
 
 	for _, disk := range disks {
-		if !removeBoot && disk == DynamicLayerName(vmName) {
+		if !removeBoot && disk.volumeName == DynamicLayerName(vmName) {
 			// do not delete boot volume
 			continue
 		}
@@ -313,19 +327,29 @@ func (v *Virter) VMRm(vmName string, removeDHCPEntries bool, removeBoot bool) er
 	return nil
 }
 
-func (v *Virter) rmVolume(rawVolumeName string) error {
-	layer, err := v.FindRawLayer(rawVolumeName)
+func (v *Virter) rmVolume(disk VMDisk) error {
+	var pool libvirt.StoragePool
+	var err error
+	if disk.poolName == v.provisionStoragePool.Name {
+		pool = v.provisionStoragePool
+	} else {
+		pool, err = v.libvirt.StoragePoolLookupByName(disk.poolName)
+		if err != nil {
+			return fmt.Errorf("failed to lookup libvirt pool %s: %w", disk.poolName, err)
+		}
+	}
+	layer, err := v.FindRawLayer(disk.volumeName, pool)
 	if err != nil {
 		if hasErrorCode(err, libvirt.ErrNoStorageVol) {
 			return nil
 		}
 
-		return fmt.Errorf("could not get volume %s: %w", rawVolumeName, err)
+		return fmt.Errorf("could not get volume %s: %w", disk.volumeName, err)
 	}
 
 	err = layer.DeleteAllIfUnused()
 	if err != nil {
-		return fmt.Errorf("could not delete volume %s: %w", rawVolumeName, err)
+		return fmt.Errorf("could not delete volume %s: %w", disk.volumeName, err)
 	}
 
 	return nil
@@ -378,7 +402,7 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		return err
 	}
 
-	layer, err := v.FindDynamicLayer(vmName)
+	layer, err := v.FindDynamicLayer(vmName, v.provisionStoragePool)
 	if err != nil {
 		return err
 	}

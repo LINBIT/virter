@@ -200,7 +200,7 @@ func (v *Virter) createCIData(vmConfig VMConfig, hostkey sshkeys.HostKey) (*RawL
 		return nil, fmt.Errorf("failed to generate ISO: %w", err)
 	}
 
-	ciLayer, err := v.NewDynamicLayer(ciDataVolumeName(vmName), WithFormat("raw"))
+	ciLayer, err := v.NewDynamicLayer(ciDataVolumeName(vmName), v.provisionStoragePool, WithFormat("raw"))
 	if err != nil {
 		return nil, err
 	}

@@ -95,14 +95,19 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk,
 	return result, nil
 }
 
-func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (string, error) {
+func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 	vmDisks := []VMDisk{
-		VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: DynamicLayerName(vm.Name), bus: "virtio", format: "qcow2"},
-		VMDisk{device: VMDiskDeviceCDROM, poolName: poolName, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "scsi", format: "raw"},
+		VMDisk{device: VMDiskDeviceDisk, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(vm.Name), bus: "virtio", format: "qcow2"},
+		VMDisk{device: VMDiskDeviceCDROM, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "scsi", format: "raw"},
 	}
 	for _, d := range vm.Disks {
-		disk := VMDisk{device: VMDiskDeviceDisk, poolName: poolName, volumeName: DynamicLayerName(diskVolumeName(vm.Name, d.GetName())), bus: d.GetBus(), format: d.GetFormat()}
-		vmDisks = append(vmDisks, disk)
+		vmDisks = append(vmDisks, VMDisk{
+			device:     VMDiskDeviceDisk,
+			poolName:   v.provisionStoragePool.Name,
+			volumeName: DynamicLayerName(diskVolumeName(vm.Name, d.GetName())),
+			bus:        d.GetBus(),
+			format:     d.GetFormat(),
+		})
 	}
 
 	log.Debugf("input are these vmdisks: %+v", vmDisks)
@@ -368,7 +373,7 @@ func (v *Virter) getMetaForVM(vmName string) (*VMMeta, error) {
 	return meta.VMMeta, nil
 }
 
-func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {
+func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]VMDisk, error) {
 	xml, err := v.libvirt.DomainGetXMLDesc(domain, 0)
 	if err != nil {
 		return nil, fmt.Errorf("could not get domain XML: %w", err)
@@ -380,7 +385,7 @@ func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {
 		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
 	}
 
-	var result []string
+	var result []VMDisk
 	if domcfg.Devices == nil {
 		log.Debugf("Domain '%s' has no <devices> section, returning no results", domcfg.Name)
 		return result, nil
@@ -392,7 +397,24 @@ func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]string, error) {
 				i, domcfg.Name)
 			continue
 		}
-		result = append(result, disk.Source.Volume.Volume)
+		if disk.Target == nil {
+			log.Debugf("Skipping disk without valid <target> section (#%d of domain '%s')",
+				i, domcfg.Name)
+			continue
+		}
+		if disk.Driver == nil || !approvedDiskFormats[disk.Driver.Type] {
+			log.Debugf("Skipping disk without valid <driver> section (#%d of domain '%s')",
+				i, domcfg.Name)
+			continue
+		}
+
+		result = append(result, VMDisk{
+			device:     VMDiskDevice(disk.Device),
+			poolName:   disk.Source.Volume.Pool,
+			volumeName: disk.Source.Volume.Volume,
+			bus:        disk.Target.Bus,
+			format:     disk.Driver.Type,
+		})
 	}
 
 	log.Debugf("found these disks for domain '%s': %v", domcfg.Name, result)
