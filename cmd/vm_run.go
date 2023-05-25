@@ -189,7 +189,7 @@ func vmRunCommand() *cobra.Command {
 					thisGDBPort += id
 				}
 				if vncEnabled && vncPort == 0 {
-					vncPort = 6000+int(id)
+					vncPort = 6000 + int(id)
 				}
 				g.Go(func() error {
 					var thisVMName string
@@ -230,7 +230,7 @@ func vmRunCommand() *cobra.Command {
 						GDBPort:            thisGDBPort,
 						SecureBoot:         secureBoot,
 						VNCEnabled:         vncEnabled,
-						VNCPort:	    vncPort,
+						VNCPort:            vncPort,
 						VNCIPv4BindAddress: vncIPv4BindAddress,
 						SSHUserName:        user,
 					}
@@ -310,7 +310,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().VarP(&vmPullPolicy, "pull-policy", "", "Whether or not to pull the source image.")
 	runCmd.Flags().VarP(&vmPullPolicy, "vm-pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	runCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
-        runCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
+	runCmd.Flags().StringVarP(&user, "user", "u", "root", "Remote user for ssh session")
 	runCmd.Flags().BoolVarP(&vncEnabled, "vnc", "", false, "whether to configure VNC (remote GUI access) for the VM (defaults to false)")
 	runCmd.Flags().IntVar(&vncPort, "vnc-port", 0, "VNC port. Defaults to 6000+id of this VM")
 	runCmd.Flags().StringVar(&vncIPv4BindAddress, "vnc-bind-ip", "127.0.0.1", "VNC IPv4 address to bind VNC listening socket to")

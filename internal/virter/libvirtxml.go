@@ -136,8 +136,8 @@ func (v *Virter) vmXML(poolName string, vm VMConfig, mac string, meta *VMMeta) (
 
 	var vncGraphics *lx.DomainGraphicVNC
 	if vm.VNCEnabled {
-		vncGraphics = &lx.DomainGraphicVNC {
-			Port: vm.VNCPort,
+		vncGraphics = &lx.DomainGraphicVNC{
+			Port:   vm.VNCPort,
 			Listen: vm.VNCIPv4BindAddress,
 		}
 	}
