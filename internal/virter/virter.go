@@ -113,6 +113,7 @@ type Disk interface {
 	GetSizeKiB() uint64
 	GetFormat() string
 	GetBus() string
+	GetPool() string
 }
 
 type NICType string

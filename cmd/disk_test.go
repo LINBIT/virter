@@ -20,12 +20,13 @@ func TestFromFlag(t *testing.T) {
 			expectError: true,
 		}, {
 			name:  "full spec parses",
-			input: "name=test,size=5GiB,format=qcow2,bus=virtio",
+			input: "name=test,size=5GiB,format=qcow2,bus=virtio,pool=mypool",
 			expect: cmd.DiskArg{
 				Name:   "test",
 				Size:   cmd.Size{KiB: uint64(5 * unit.G / unit.K)},
 				Format: "qcow2",
 				Bus:    "virtio",
+				Pool:   "mypool",
 			},
 		}, {
 			name:  "only required args parses",

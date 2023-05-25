@@ -101,9 +101,13 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 		VMDisk{device: VMDiskDeviceCDROM, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "scsi", format: "raw"},
 	}
 	for _, d := range vm.Disks {
+		pool := d.GetPool()
+		if pool == "" {
+			pool = v.provisionStoragePool.Name
+		}
 		vmDisks = append(vmDisks, VMDisk{
 			device:     VMDiskDeviceDisk,
-			poolName:   v.provisionStoragePool.Name,
+			poolName:   pool,
 			volumeName: DynamicLayerName(diskVolumeName(vm.Name, d.GetName())),
 			bus:        d.GetBus(),
 			format:     d.GetFormat(),

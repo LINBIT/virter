@@ -300,7 +300,7 @@ func vmRunCommand() *cobra.Command {
 	// and then manually marshal them to Disks.
 	// If this ever gets implemented in pflag , we will be able to solve this
 	// in a much smoother way.
-	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio". Can be specified multiple times`)
+	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio,pool=mypool". Can be specified multiple times`)
 	runCmd.Flags().StringArrayVarP(&nicStrings, "nic", "i", []string{}, `Add a NIC to the VM. Format: "type=network,source=some-net-name". Type can also be "bridge", in which case the source is the bridge device name. Additional config options are "model" (default: virtio) and "mac" (default chosen by libvirt). Can be specified multiple times`)
 	runCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
 

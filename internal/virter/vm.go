@@ -51,7 +51,11 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	}
 
 	for _, d := range vmConfig.Disks {
-		imgs = append(imgs, imageAndPool{diskVolumeName(vmName, d.GetName()), v.provisionStoragePool})
+		pool, err := v.lookupPool(d.GetPool())
+		if err != nil {
+			return false, fmt.Errorf("failed to lookup libvirt pool: %w", err)
+		}
+		imgs = append(imgs, imageAndPool{diskVolumeName(vmName, d.GetName()), pool})
 	}
 
 	for _, img := range imgs {
@@ -164,7 +168,11 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 
 	for _, d := range vmConfig.Disks {
 		log.Printf("Create volume '%s'", d.GetName())
-		_, err = v.NewDynamicLayer(diskVolumeName(vmConfig.Name, d.GetName()), v.provisionStoragePool, WithCapacity(d.GetSizeKiB()), WithFormat(d.GetFormat()))
+		pool, err := v.lookupPool(d.GetPool())
+		if err != nil {
+			return fmt.Errorf("failed to lookup libvirt pool %s: %w", d.GetPool(), err)
+		}
+		_, err = v.NewDynamicLayer(diskVolumeName(vmConfig.Name, d.GetName()), pool, WithCapacity(d.GetSizeKiB()), WithFormat(d.GetFormat()))
 		if err != nil {
 			return err
 		}

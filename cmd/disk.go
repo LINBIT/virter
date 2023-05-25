@@ -12,6 +12,7 @@ type DiskArg struct {
 	Size   Size   `arg:"size"`
 	Format string `arg:"format,qcow2"`
 	Bus    string `arg:"bus,virtio"`
+	Pool   string `arg:"pool,"`
 }
 
 type Size struct {
@@ -36,6 +37,7 @@ func (d *DiskArg) GetName() string    { return d.Name }
 func (d *DiskArg) GetSizeKiB() uint64 { return d.Size.KiB }
 func (d *DiskArg) GetFormat() string  { return d.Format }
 func (d *DiskArg) GetBus() string     { return d.Bus }
+func (d *DiskArg) GetPool() string    { return d.Pool }
 
 // Set implements flag.Value.Set.
 func (d *DiskArg) Set(str string) error {
