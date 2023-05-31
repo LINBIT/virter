@@ -23,7 +23,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/crypto v0.9.0
 	golang.org/x/sync v0.2.0
