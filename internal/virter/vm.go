@@ -614,7 +614,7 @@ func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containe
 	}
 	containerCfg.AddDNSServer(dnsserver)
 
-	err = containerRun(ctx, containerProvider, containerCfg, vmNames, vmSSHUserNames, v.sshkeys, knownHosts, copyStep)
+	err = containerRun(ctx, containerProvider, containerCfg, vmNames, vmSSHUserNames, ips, v.sshkeys, knownHosts, copyStep)
 	if err != nil {
 		return fmt.Errorf("failed to run container provisioning: %w", err)
 	}
