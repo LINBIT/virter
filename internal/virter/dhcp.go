@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net"
 	"os/exec"
+	"os/user"
 
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/digitalocean/go-libvirt"
@@ -407,9 +408,35 @@ func (v *Virter) tryReleaseDHCP(network libvirt.Network, mac string, addrs []str
 	}
 	iface := networkDescription.Bridge.Name
 
+	currentUser, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("failed to get the current user: %w", err)
+	}
+
+	requireSudo := currentUser.Uid != "0"
+
+	privCmd := ""
+	if requireSudo {
+		if sudo, e := exec.LookPath("sudo"); e != nil {
+			privCmd = sudo
+		} else if doas, e := exec.LookPath("doas"); e != nil {
+			privCmd = doas
+		} else if please, e := exec.LookPath("please"); e != nil {
+			privCmd = please
+		} else {
+			return fmt.Errorf("failed to find any privilege escalation commands in sudo, doas, please")
+		}
+	}
+
 	for _, addr := range addrs {
 		log.Debugf("Releasing DHCP lease from %v to %v", mac, addr)
-		cmd := exec.Command("sudo", "--non-interactive", "dhcp_release", iface, addr, mac)
+
+		cmdArgs := []string{"dhcp_release", iface, addr, mac}
+		if privCmd != "" {
+			cmdArgs = append([]string{privCmd, "-n"}, cmdArgs...)
+		}
+
+		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 		_, err = cmd.Output()
 		if err != nil {
 			if e, ok := err.(*exec.ExitError); ok {
