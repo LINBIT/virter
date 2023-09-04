@@ -27,7 +27,7 @@ require (
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/crypto v0.12.0
 	golang.org/x/sync v0.3.0
-	golang.org/x/term v0.11.0
+	golang.org/x/term v0.12.0
 )
 
 require (
@@ -68,7 +68,7 @@ require (
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
