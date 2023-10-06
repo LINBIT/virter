@@ -10,9 +10,9 @@ stages:
   - deploy
 
 variables:
-  VMSHED_VERSION: v0.19.0
+  VMSHED_VERSION: v0.20.1
   GO_VERSION: "1.18"
-  BUILD_HELPERS_VERSION: a87d4f95c35fa24eebe1a157408ef59cebd1f3f4
+  BUILD_HELPERS_VERSION: cad23b57db14b7676808fa645c4561bc66c3e204
 
 prepare-bins:
   stage: build
@@ -24,6 +24,7 @@ prepare-bins:
     - ci_prepare_tools
     - ci_fetch_binary vmshed vmshed-$VMSHED_VERSION https://github.com/LINBIT/vmshed/releases/download/$VMSHED_VERSION/vmshed-linux-amd64
   cache:
+    key: $BUILD_HELPERS_VERSION-$VMSHED_VERSION
     paths:
       - download
   artifacts:
