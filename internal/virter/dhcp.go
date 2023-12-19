@@ -31,7 +31,7 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 		return fmt.Errorf("failed to compute IP for network: %w", err)
 	}
 
-	log.Printf("Add DHCP entry from %v to %v", mac, ip)
+	log.WithField("from", mac).WithField("to", ip).Debug("Add DHCP entry")
 	err = v.patchedNetworkUpdate(
 		v.provisionNetwork,
 		libvirt.NetworkUpdateCommandAddLast,
@@ -213,7 +213,7 @@ func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool)
 
 func (v *Virter) removeDHCPEntries(network libvirt.Network, mac string, ips []string) error {
 	for _, ip := range ips {
-		log.Printf("Remove DHCP entry from %v to %v", mac, ip)
+		log.WithField("from", mac).WithField("to", ip).Debug("Remove DHCP entry")
 		err := v.patchedNetworkUpdate(
 			network,
 			libvirt.NetworkUpdateCommandDelete,

@@ -130,7 +130,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 	// end checks
 
-	log.Print("Create host key")
+	log.Debug("Create host key")
 	hostkey, err := sshkeys.NewRSAHostKey()
 	if err != nil {
 		return fmt.Errorf("could not create new host key: %w", err)
@@ -148,26 +148,26 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 
 	log.Debugf("Using domain XML: %s", vmXML)
 
-	log.Print("Define VM")
+	log.Debug("Define VM")
 	d, err := v.libvirt.DomainDefineXML(vmXML)
 	if err != nil {
 		return fmt.Errorf("could not define domain: %w", err)
 	}
 
-	log.Print("Create boot volume")
+	log.Debug("Create boot volume")
 	_, err = v.ImageSpawn(vmConfig.Name, v.provisionStoragePool, vmConfig.Image, vmConfig.BootCapacityKiB)
 	if err != nil {
 		return err
 	}
 
-	log.Print("Create cloud-init volume")
+	log.Debug("Create cloud-init volume")
 	_, err = v.createCIData(vmConfig, hostkey)
 	if err != nil {
 		return err
 	}
 
 	for _, d := range vmConfig.Disks {
-		log.Printf("Create volume '%s'", d.GetName())
+		log.WithField("name", d.GetName()).Debug("Create volume")
 		pool, err := v.lookupPool(d.GetPool())
 		if err != nil {
 			return fmt.Errorf("failed to lookup libvirt pool %s: %w", d.GetPool(), err)
@@ -188,7 +188,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		}
 	}
 
-	log.Print("Start VM")
+	log.Debug("Start VM")
 	err = v.libvirt.DomainCreate(d)
 	if err != nil {
 		return fmt.Errorf("could not create (start) domain: %w", err)
@@ -245,7 +245,7 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 		return nil
 	}
 
-	log.Print("Wait for VM to get ready")
+	log.Debug("Wait for VM to get ready")
 
 	// Using ActualTime breaks the expectation of the unit tests
 	// that this code does not sleep, but we work around that by
@@ -254,7 +254,7 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 		return fmt.Errorf("VM not ready: %w", err)
 	}
 
-	log.Print("Successfully connected to ready VM")
+	log.Debug("Successfully connected to ready VM")
 	return nil
 }
 
@@ -283,7 +283,7 @@ func (v *Virter) VMRm(vmName string, removeDHCPEntries bool, removeBoot bool) er
 	// it is active (running). And only if it is persistent, otherwise the
 	// domain is gone and we cannot query what resources it depended on.
 	if active > 0 && persistent > 0 {
-		log.Print("Stop VM")
+		log.Debug("Stop VM")
 		err = v.libvirt.DomainDestroy(domain)
 		if err != nil {
 			return fmt.Errorf("could not destroy domain: %w", err)
@@ -318,14 +318,14 @@ func (v *Virter) VMRm(vmName string, removeDHCPEntries bool, removeBoot bool) er
 	}
 
 	if persistent > 0 {
-		log.Print("Undefine VM")
+		log.Debug("Undefine VM")
 		err = v.libvirt.DomainUndefineFlags(domain, libvirt.DomainUndefineNvram)
 		if err != nil {
 			return fmt.Errorf("could not undefine domain: %w", err)
 		}
 	} else if active > 0 {
 		// Stop the VM if we did not stop it previously.
-		log.Print("Stop VM")
+		log.Debug("Stop VM")
 		err = v.libvirt.DomainDestroy(domain)
 		if err != nil {
 			return fmt.Errorf("could not destroy domain: %w", err)
@@ -370,7 +370,7 @@ func (v *Virter) rmSnapshots(domain libvirt.Domain) error {
 	}
 
 	for _, snapshot := range snapshots {
-		log.Printf("Delete snapshot %v", snapshot.Name)
+		log.WithField("name", snapshot.Name).Debug("Delete snapshot")
 		err = v.libvirt.DomainSnapshotDelete(snapshot, 0)
 		if err != nil {
 			return fmt.Errorf("could not delete snapshot: %w", err)
@@ -443,14 +443,14 @@ func (v *Virter) vmShutdown(ctx context.Context, afterNotifier AfterNotifier, sh
 	}
 
 	if active != 0 {
-		log.Printf("Shut down VM")
+		log.Debug("Shut down VM")
 
 		err = v.libvirt.DomainShutdown(domain)
 		if err != nil {
 			return fmt.Errorf("could not shut down domain: %w", err)
 		}
 
-		log.Printf("Wait for VM to stop")
+		log.Debug("Wait for VM to stop")
 	}
 
 	timeout := afterNotifier.After(shutdownTimeout)
@@ -703,7 +703,7 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, vmName := range vmNames {
 		vmName := vmName
-		log.Printf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, vmName)
+		log.Debugf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, vmName)
 		g.Go(func() error {
 			dest := fmt.Sprintf("%s:%s", vmName, rsyncStep.Dest)
 			return v.VMExecCopy(ctx, copier, files, dest)

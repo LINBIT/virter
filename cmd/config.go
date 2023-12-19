@@ -149,7 +149,7 @@ func initConfig() {
 		if newPath == "" {
 			newPath = filepath.Join(configPath(), "virter.toml")
 		}
-		log.Print("Config file does not exist, creating default: ", newPath)
+		log.Info("Config file does not exist, creating default: ", newPath)
 
 		err := writeDefaultConfig(newPath)
 		if err != nil {
