@@ -26,6 +26,14 @@ const (
 	colorReset   = "\u001b[0m"
 )
 
+type ContainerExitError struct {
+	Status int
+}
+
+func (e *ContainerExitError) Error() string {
+	return fmt.Sprintf("container exited with status %d", e.Status)
+}
+
 func containerRun(ctx context.Context, containerProvider containerapi.ContainerProvider, containerCfg *containerapi.ContainerConfig, vmNames []string, vmSSHUserNames []string, vmIPs []string, keyStore sshkeys.KeyStore, knownHosts sshkeys.KnownHosts, copyStep *ProvisionContainerCopyStep) error {
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
@@ -192,13 +200,15 @@ func logLines(wg *sync.WaitGroup, vm string, stderr bool, r io.Reader) {
 	}
 }
 
+// containerWait waits for a container to exit.
+// If the container exits with a non-zero exit code, a ContainerExitError is returned.
 func containerWait(statusCh <-chan int64, errCh <-chan error) error {
 	select {
 	case err := <-errCh:
 		return fmt.Errorf("error waiting for container: %w", err)
 	case status := <-statusCh:
 		if status != 0 {
-			return fmt.Errorf("container returned non-zero exit code %d", status)
+			return &ContainerExitError{Status: int(status)}
 		}
 		return nil
 	}

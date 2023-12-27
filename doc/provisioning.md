@@ -16,6 +16,8 @@ It can also be applied to one or multiple already running VMs:
 $ virter vm exec -p provisioning.toml centos-1 centos-2 centos-3
 ```
 
+If a container or shell provisioning step fails, the virter process will exit with the same exit code as the provisioning script.
+
 ## Provisioning types
 
 The following provisioning types are supported.

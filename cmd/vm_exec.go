@@ -2,8 +2,12 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 
 	log "github.com/sirupsen/logrus"
 
@@ -15,6 +19,23 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+// logProvisioningErrorAndExit logs an error from a virter.VMExec* function and exits with the appropriate exit code.
+// If the error is from a failed SSH or container provisioning step, the exit code is the exit code
+// of the respective command.
+// Otherwise, the exit code is 1.
+func logProvisioningErrorAndExit(err error) {
+	log.Errorf("Failed to build image: %v", err)
+	var sshErr *ssh.ExitError
+	if errors.As(err, &sshErr) {
+		os.Exit(sshErr.ExitStatus())
+	}
+	var containerErr *virter.ContainerExitError
+	if errors.As(err, &containerErr) {
+		os.Exit(containerErr.Status)
+	}
+	os.Exit(1)
+}
 
 func vmExecCommand() *cobra.Command {
 	var provisionFile string
@@ -35,7 +56,7 @@ func vmExecCommand() *cobra.Command {
 				OverridePullPolicy: containerPullPolicy,
 			}
 			if err := execProvision(cmd.Context(), provOpt, args); err != nil {
-				log.Fatal(err)
+				logProvisioningErrorAndExit(err)
 			}
 		},
 		ValidArgsFunction: suggestVmNames,
