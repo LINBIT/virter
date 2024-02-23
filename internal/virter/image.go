@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/LINBIT/containerapi"
 	regv1 "github.com/google/go-containerregistry/pkg/v1"
@@ -531,11 +530,9 @@ type ImageBuildTools struct {
 
 // ImageBuildConfig contains the configuration for building an image
 type ImageBuildConfig struct {
-	ImageName       string
 	ContainerName   string
-	ShutdownTimeout time.Duration
 	ProvisionConfig ProvisionConfig
-	ResetMachineID  bool
+	CommitConfig    CommitConfig
 }
 
 func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuildTools, vmConfig VMConfig, readyConfig VmReadyConfig, buildConfig ImageBuildConfig, opts ...LayerOperationOption) error {
@@ -545,17 +542,6 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 	err = v.WaitVmReady(ctx, tools.ShellClientBuilder, vmConfig.Name, readyConfig)
 	if err != nil {
 		return err
-	}
-
-	if buildConfig.ResetMachineID {
-		// starting the VM creates a machine-id
-		// we want these IDs to be unique, so reset to empty
-		resetMachineID := ProvisionStep{
-			Shell: &ProvisionShellStep{
-				Script: "truncate -c -s 0 /etc/machine-id",
-			},
-		}
-		buildConfig.ProvisionConfig.Steps = append(buildConfig.ProvisionConfig.Steps, resetMachineID)
 	}
 
 	for _, s := range buildConfig.ProvisionConfig.Steps {
@@ -580,7 +566,7 @@ func (v *Virter) imageBuildProvisionCommit(ctx context.Context, tools ImageBuild
 		}
 	}
 
-	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, buildConfig.ImageName, true, buildConfig.ShutdownTimeout, vmConfig.StaticDHCP, opts...)
+	err = v.VMCommit(ctx, tools.AfterNotifier, vmConfig.Name, buildConfig.CommitConfig, vmConfig.StaticDHCP, opts...)
 	if err != nil {
 		return err
 	}

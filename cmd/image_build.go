@@ -212,11 +212,14 @@ func imageBuildCommand() *cobra.Command {
 			}
 
 			buildConfig := virter.ImageBuildConfig{
-				ImageName:       newImageName,
 				ContainerName:   containerName,
-				ShutdownTimeout: shutdownTimeout,
 				ProvisionConfig: provisionConfig,
-				ResetMachineID:  resetMachineID,
+				CommitConfig: virter.CommitConfig{
+					ImageName:       newImageName,
+					Shutdown:        true,
+					ShutdownTimeout: shutdownTimeout,
+					ResetMachineID:  resetMachineID,
+				},
 			}
 
 			p = mpb.NewWithContext(ctx, DefaultContainerOpt())

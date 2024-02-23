@@ -267,7 +267,7 @@ func TestVMCommit(t *testing.T) {
 
 		an := new(mocks.AfterNotifier)
 
-		if r[commitShutdown] {
+		if r[commitShutdown] && r[commitDomainActive] {
 			if r[commitShutdownTimeout] {
 				timeout := make(chan time.Time, 1)
 				timeout <- time.Unix(0, 0)
@@ -281,7 +281,14 @@ func TestVMCommit(t *testing.T) {
 		pool, err := l.StoragePoolLookupByName(poolName)
 		assert.NoError(t, err)
 
-		err = v.VMCommit(context.Background(), an, vmName, vmName, r[commitShutdown], shutdownTimeout, false)
+		commitConfig := virter.CommitConfig{
+			ImageName:       vmName,
+			Shutdown:        r[commitShutdown],
+			ShutdownTimeout: shutdownTimeout,
+			ResetMachineID:  false,
+		}
+
+		err = v.VMCommit(context.Background(), an, vmName, commitConfig, false)
 		if expectOk {
 			assert.NoError(t, err)
 

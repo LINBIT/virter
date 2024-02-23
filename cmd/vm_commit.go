@@ -12,6 +12,7 @@ import (
 )
 
 func vmCommitCommand() *cobra.Command {
+	var resetMachineID bool
 	var shutdown bool
 
 	var commitCmd = &cobra.Command{
@@ -39,7 +40,14 @@ the virtual machine name if no other value is given.`,
 
 			p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-			err = v.VMCommit(ctx, actualtime.ActualTime{}, vmName, imageName, shutdown, shutdownTimeout, viper.GetBool("libvirt.static_dhcp"), virter.WithProgress(DefaultProgressFormat(p)))
+			commitConfig := virter.CommitConfig{
+				ImageName:       imageName,
+				Shutdown:        shutdown,
+				ShutdownTimeout: shutdownTimeout,
+				ResetMachineID:  resetMachineID,
+			}
+
+			err = v.VMCommit(ctx, actualtime.ActualTime{}, vmName, commitConfig, viper.GetBool("libvirt.static_dhcp"), virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -57,7 +65,8 @@ the virtual machine name if no other value is given.`,
 		},
 	}
 
-	commitCmd.Flags().BoolVarP(&shutdown, "shutdown", "s", false, "whether to shut the VM down and wait until it stops (default false)")
+	commitCmd.Flags().BoolVar(&resetMachineID, "reset-machine-id", true, "Whether or not to clear the /etc/machine-id file after provisioning")
+	commitCmd.Flags().BoolVarP(&shutdown, "shutdown", "s", true, "Whether to shut the VM down and wait until it stops")
 
 	return commitCmd
 }

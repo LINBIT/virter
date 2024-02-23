@@ -380,28 +380,55 @@ func (v *Virter) rmSnapshots(domain libvirt.Domain) error {
 	return nil
 }
 
+// CommitConfig contains the configuration for committing a VM
+type CommitConfig struct {
+	ImageName       string
+	Shutdown        bool
+	ShutdownTimeout time.Duration
+	ResetMachineID  bool
+}
+
 // VMCommit commits a VM to an image. If shutdown is true, the VM is shut down
 // before committing. If shutdown is false, the caller is responsible for
 // ensuring that the VM is not running.
-func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName, imageName string, shutdown bool, shutdownTimeout time.Duration, staticDHCP bool, opts ...LayerOperationOption) error {
+func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmName string, commitConfig CommitConfig, staticDHCP bool, opts ...LayerOperationOption) error {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
 
-	if shutdown {
-		err = v.vmShutdown(ctx, afterNotifier, shutdownTimeout, domain)
+	active, err := v.libvirt.DomainIsActive(domain)
+	if err != nil {
+		return fmt.Errorf("could not check if domain is active: %w", err)
+	}
+
+	running := active != 0
+
+	// Check if shutdown is allowed before resetting machine ID.
+	if running && !commitConfig.Shutdown {
+		return fmt.Errorf("must allow shutdown to commit a running VM")
+	}
+
+	if commitConfig.ResetMachineID {
+		if !running {
+			return fmt.Errorf("cannot reset machine ID of VM '%s' that is not running", vmName)
+		}
+
+		// Starting the VM creates a machine ID.
+		// We want these IDs to be unique, so reset to empty.
+		err = v.VMExecShell(
+			ctx, []string{vmName},
+			&ProvisionShellStep{Script: "truncate -c -s 0 /etc/machine-id"})
+
 		if err != nil {
 			return err
 		}
-	} else {
-		active, err := v.libvirt.DomainIsActive(domain)
-		if err != nil {
-			return fmt.Errorf("could not check if domain is active: %w", err)
-		}
+	}
 
-		if active != 0 {
-			return fmt.Errorf("cannot commit a running VM")
+	if running && commitConfig.Shutdown {
+		err = v.vmShutdown(ctx, afterNotifier, commitConfig.ShutdownTimeout, domain)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -424,7 +451,7 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		return err
 	}
 
-	_, err = v.MakeImage(imageName, volumeLayer, opts...)
+	_, err = v.MakeImage(commitConfig.ImageName, volumeLayer, opts...)
 	if err != nil {
 		return err
 	}
