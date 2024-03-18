@@ -25,7 +25,7 @@ import (
 func imageBuildCommand() *cobra.Command {
 	var vmID uint
 	var vmName string
-	var provisionFile string
+	var provFile FileVar
 	var provisionOverrides []string
 
 	var mem *unit.Value
@@ -135,13 +135,12 @@ func imageBuildCommand() *cobra.Command {
 			p.Wait()
 
 			provOpt := virter.ProvisionOption{
-				FilePath:           provisionFile,
 				Overrides:          provisionOverrides,
 				DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 				OverridePullPolicy: containerPullPolicy,
 			}
 
-			provisionConfig, err := virter.NewProvisionConfig(provOpt)
+			provisionConfig, err := virter.NewProvisionConfig(provFile.File, provOpt)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -266,7 +265,7 @@ func imageBuildCommand() *cobra.Command {
 		},
 	}
 
-	buildCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
+	buildCmd.Flags().VarP(&provFile, "provision", "p", "name of toml file containing provisioning steps")
 	buildCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 	buildCmd.Flags().UintVarP(&vmID, "id", "", 0, "ID for VM which determines the IP address")
 	buildCmd.Flags().StringVarP(&vmName, "name", "", "", "Name to use for provisioning VM")
@@ -290,7 +289,6 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().BoolVarP(&vncEnabled, "vnc", "", false, "whether to configure VNC (remote GUI access) for the VM (defaults to false)")
 	buildCmd.Flags().IntVar(&vncPort, "vnc-port", 0, "VNC port. Defaults to 6000+id of this VM")
 	buildCmd.Flags().StringVar(&vncIPv4BindAddress, "vnc-bind-ip", "127.0.0.1", "VNC IPv4 address to bind VNC listening socket to")
-
 	buildCmd.Flag("pull-policy").Deprecated = "use --vm-pull-policy"
 
 	return buildCmd

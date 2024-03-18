@@ -91,7 +91,7 @@ func vmRunCommand() *cobra.Command {
 	var mountStrings []string
 	var mounts []virter.Mount
 
-	var provisionFile string
+	var provFile FileVar
 	var provisionOverrides []string
 
 	var user string
@@ -168,7 +168,7 @@ func vmRunCommand() *cobra.Command {
 			}
 
 			// do we want to run provisioning steps?
-			provision := provisionFile != "" || len(provisionOverrides) > 0
+			provision := provFile.File != nil || len(provisionOverrides) > 0
 
 			// if we want to run some provisioning steps later,
 			// it doesn't make sense not to wait for SSH.
@@ -255,12 +255,11 @@ func vmRunCommand() *cobra.Command {
 
 			if provision {
 				provOpt := virter.ProvisionOption{
-					FilePath:           provisionFile,
 					Overrides:          provisionOverrides,
 					DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 					OverridePullPolicy: containerPullPolicy,
 				}
-				if err := execProvision(ctx, provOpt, vmNames); err != nil {
+				if err := execProvision(ctx, provFile.File, provOpt, vmNames); err != nil {
 					log.Fatal(err)
 				}
 			}
@@ -304,7 +303,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().StringArrayVarP(&nicStrings, "nic", "i", []string{}, `Add a NIC to the VM. Format: "type=network,source=some-net-name". Type can also be "bridge", in which case the source is the bridge device name. Additional config options are "model" (default: virtio) and "mac" (default chosen by libvirt). Can be specified multiple times`)
 	runCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)
 
-	runCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
+	runCmd.Flags().VarP(&provFile, "provision", "p", "name of toml file containing provisioning steps")
 	runCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 
 	runCmd.Flags().VarP(&vmPullPolicy, "pull-policy", "", "Whether or not to pull the source image.")

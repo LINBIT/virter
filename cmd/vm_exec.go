@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -38,7 +39,7 @@ func logProvisioningErrorAndExit(err error) {
 }
 
 func vmExecCommand() *cobra.Command {
-	var provisionFile string
+	var provFile FileVar
 	var provisionOverrides []string
 
 	var containerPullPolicy pullpolicy.PullPolicy
@@ -50,27 +51,26 @@ func vmExecCommand() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			provOpt := virter.ProvisionOption{
-				FilePath:           provisionFile,
 				Overrides:          provisionOverrides,
 				DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 				OverridePullPolicy: containerPullPolicy,
 			}
-			if err := execProvision(cmd.Context(), provOpt, args); err != nil {
+			if err := execProvision(cmd.Context(), provFile.File, provOpt, args); err != nil {
 				logProvisioningErrorAndExit(err)
 			}
 		},
 		ValidArgsFunction: suggestVmNames,
 	}
 
-	execCmd.Flags().StringVarP(&provisionFile, "provision", "p", "", "name of toml file containing provisioning steps")
+	execCmd.Flags().VarP(&provFile, "provision", "p", "name of toml file containing provisioning steps")
 	execCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
 	execCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used durign provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 
 	return execCmd
 }
 
-func execProvision(ctx context.Context, provOpt virter.ProvisionOption, vmNames []string) error {
-	pc, err := virter.NewProvisionConfig(provOpt)
+func execProvision(ctx context.Context, provFileReader io.ReadCloser, provOpt virter.ProvisionOption, vmNames []string) error {
+	pc, err := virter.NewProvisionConfig(provFileReader, provOpt)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package virter
 
 import (
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -88,7 +89,7 @@ foo="rck"
 
 	for i, tc := range tests {
 		r := strings.NewReader(tc.input)
-		pc, err := newProvisionConfigReader(r, tc.provOpts)
+		pc, err := newProvisionConfigReader(io.NopCloser(r), tc.provOpts)
 
 		if !tc.valid && err == nil {
 			t.Errorf("Expexted test %d to be invalid", i)
@@ -288,7 +289,7 @@ foo = "{{.ShellEnv"
 
 	for _, tc := range tests {
 		r := strings.NewReader(tc.input)
-		pc, err := newProvisionConfigReader(r, tc.provOpts)
+		pc, err := newProvisionConfigReader(io.NopCloser(r), tc.provOpts)
 
 		if !tc.valid && err == nil {
 			t.Errorf("did not get expected error for test %s", tc.description)

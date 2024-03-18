@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
@@ -95,33 +94,23 @@ func EnvmapToSlice(envMap map[string]string) []string {
 
 // ProvisionOption sumarizes all the options used for generating the final ProvisionConfig
 type ProvisionOption struct {
-	FilePath           string
 	Overrides          []string
 	DefaultPullPolicy  pullpolicy.PullPolicy
 	OverridePullPolicy pullpolicy.PullPolicy
 }
 
 // NewProvisionConfig returns a ProvisionConfig from a ProvisionOption
-func NewProvisionConfig(provOpt ProvisionOption) (ProvisionConfig, error) {
-	// file has highest precedence
-	var provReader io.ReadCloser
-	if provOpt.FilePath != "" {
-		r, err := os.Open(provOpt.FilePath)
-		if err != nil {
-			return ProvisionConfig{}, err
-		}
-		defer r.Close()
-		provReader = r
-	}
-
-	return newProvisionConfigReader(provReader, provOpt)
+func NewProvisionConfig(reader io.ReadCloser, provOpt ProvisionOption) (ProvisionConfig, error) {
+	return newProvisionConfigReader(reader, provOpt)
 }
 
 // newProvisionConfigReader returns a ProvisionConfig and does some necesary checks and for example merges the global env to the individual steps.
-func newProvisionConfigReader(provReader io.Reader, provOpt ProvisionOption) (ProvisionConfig, error) {
+func newProvisionConfigReader(provReader io.ReadCloser, provOpt ProvisionOption) (ProvisionConfig, error) {
 	var pc ProvisionConfig
 
 	if provReader != nil {
+		defer provReader.Close()
+
 		decoder := toml.NewDecoder(provReader)
 		md, err := decoder.Decode(&pc)
 		if err != nil {
