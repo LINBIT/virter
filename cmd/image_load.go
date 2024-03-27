@@ -51,9 +51,9 @@ read from stdin`,
 
 				in = f
 
-				// If we can't stat the file, still allow this to continue, could be some special file.
+				// If we can't stat() the file or size is zero, still allow this to continue, could be some special file.
 				stat, err := f.Stat()
-				if err == nil {
+				if err == nil && stat.Size() > 0 {
 					bar := DefaultProgressFormat(p).NewBar(image, "load", stat.Size())
 					in = bar.ProxyReader(in)
 				}
