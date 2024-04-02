@@ -607,6 +607,14 @@ func (v *Virter) getSSHUserNames(vmNames []string) []string {
 // VMExecContainer runs a container against some VMs.
 func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containerapi.ContainerProvider,
 	vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionContainerCopyStep) error {
+
+	accessIPNet, err := v.getIPNet(v.provisionNetwork)
+	if err != nil {
+		return fmt.Errorf("could not get network: %w", err)
+	}
+
+	containerCfg.SetEnv("VIRTER_ACCESS_NETWORK", accessIPNet.String())
+
 	ips, err := v.getIPs(vmNames)
 	if err != nil {
 		return err
