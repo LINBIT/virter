@@ -32,9 +32,11 @@ The container provisioning step can be parameterized using the following configu
 * `pull` specifies when the above image should be pulled. Valid values are `Always`, `IfNotExist` or `Never`. If not specified, the default is `IfNotExist`. Can be overridden during execution using `--container-pull-policy`.
 * `env` is a map of environment variables to be passed to the container, in `KEY=value` format. The values are Go templates.
 
-  Note that Virter already passes two environment variables by default:
+  Note that Virter already passes these environment variables by default:
   * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
   * `SSH_PRIVATE_KEY` is the SSH private key Virter uses to connect to the machine as `root`.
+  * `VIRTER_ACCESS_NETWORK` is the network interface that virter is using to  connect to the VMs. It is provided in CIDR notation, with the address being the address of the host. (Example: `192.168.122.1/24`)
+  
 
 * `command` is a string array and sets the command to execute in the container (basically `<args>...` in `docker run <image> <args>...`). The items are Go templates.
 * `copy` can be used to retrieve files from the container after the provisioning has finished. `source` is the file or directory within the container to copy out, and `dest` is the path on the host where the file or directory should be copied to. The `dest` value is a Go template.
