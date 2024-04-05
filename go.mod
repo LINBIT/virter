@@ -27,7 +27,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/vbauerster/mpb/v7 v7.5.3
 	golang.org/x/crypto v0.22.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.7.0
 	golang.org/x/term v0.19.0
 )
 
