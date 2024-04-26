@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
+	"github.com/digitalocean/go-libvirt/socket/dialers"
 	"github.com/spf13/viper"
 
 	"github.com/LINBIT/virter/internal/virter"
@@ -14,13 +14,11 @@ import (
 
 // InitVirter initializes virter by connecting to the local libvirt instance and configures the ssh keystore.
 func InitVirter() (*virter.Virter, error) {
-	c, err := net.DialTimeout("unix", "/var/run/libvirt/libvirt-sock", 2*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial libvirt: %w", err)
-	}
-
-	l := libvirt.New(c)
-	if err := l.Connect(); err != nil {
+	l := libvirt.NewWithDialer(dialers.NewLocal(
+		dialers.WithSocket(viper.GetString("libvirt.socket")),
+		dialers.WithLocalTimeout(2*time.Second),
+	))
+	if err := l.ConnectToURI(libvirt.ConnectURI(viper.GetString("libvirt.uri"))); err != nil {
 		return nil, fmt.Errorf("failed to connect to libvirt socket: %w", err)
 	}
 

@@ -25,6 +25,14 @@ import (
 // configuration file.
 // The default config file also contains some inline documentation for each option.
 const defaultConfigTemplate = `[libvirt]
+# socket is the path to the unix domain socket for libvirt.
+# Default value: "{{ get "libvirt.socket" }}"
+socket = "{{ get "libvirt.socket" }}"
+
+# uri is the libvirt uri to connect to a specific driver.
+# Default value: "{{ get "libvirt.uri" }}"
+uri = "{{ get "libvirt.uri" }}"
+
 # pool is the libvirt pool that virter should use.
 # The user is responsible for ensuring that this pool exists and is active.
 # Default value: "{{ get "libvirt.pool" }}"
@@ -107,6 +115,8 @@ pull = "{{ get "container.pull" }}"
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetDefault("libvirt.socket", "/var/run/libvirt/libvirt-sock")
+	viper.SetDefault("libvirt.uri", "qemu:///system")
 	viper.SetDefault("libvirt.pool", "default")
 	viper.SetDefault("libvirt.network", "default")
 	viper.SetDefault("libvirt.static_dhcp", false)
