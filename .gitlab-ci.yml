@@ -135,6 +135,7 @@ e2e-test:
 
 sync-images:
   stage: deploy
+  timeout: 2h
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_MERGE_REQUEST_ID
