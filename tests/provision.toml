@@ -15,6 +15,15 @@ if command -v apt-get ; then
 elif command -v dnf ; then
     dnf install -y rsync hostname
 elif command -v yum ; then
+    is_centos7() {
+        . /etc/os-release
+        [ "$ID" = "centos" ] && [ "$VERSION_ID" -eq 7 ]
+    }
+
+    if is_centos7 ; then
+        sed -e 's/^mirrorlist=/#mirrorlist=/' -e 's%^#baseurl=http://mirror.centos.org%baseurl=http://vault.centos.org%' -i /etc/yum.repos.d/*.repo
+    fi
+
     yum install -y rsync hostname
 fi
 
