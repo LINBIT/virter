@@ -10,8 +10,8 @@ stages:
   - deploy
 
 variables:
-  VMSHED_VERSION: v0.20.1
-  GO_VERSION: "1.19"
+  VMSHED_VERSION: v0.22.0
+  GO_VERSION: "1.20"
   BUILD_HELPERS_VERSION: cad23b57db14b7676808fa645c4561bc66c3e204
 
 prepare-bins:
