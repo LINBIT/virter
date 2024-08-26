@@ -107,6 +107,16 @@ func AddToMAC(mac net.HardwareAddr, addend uint) (net.HardwareAddr, error) {
 	return out, nil
 }
 
+func IDFromMAC(mac, base net.HardwareAddr) uint {
+	var macValue, baseValue big.Int
+	macValue.SetBytes(mac)
+	baseValue.SetBytes(base)
+
+	macValue.Sub(&macValue, &baseValue)
+
+	return uint(macValue.Int64())
+}
+
 func (v *Virter) getIPNet(network libvirt.Network) (*net.IPNet, error) {
 	networkDescription, err := getNetworkDescription(v.libvirt, network)
 	if err != nil {

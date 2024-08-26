@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"slices"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
@@ -19,6 +21,7 @@ func vmCommand() *cobra.Command {
 
 	vmCmd.AddCommand(vmCommitCommand())
 	vmCmd.AddCommand(vmExecCommand())
+	vmCmd.AddCommand(vmListCommand())
 	vmCmd.AddCommand(vmExistsCommand())
 	vmCmd.AddCommand(vmHostKeyCommand())
 	vmCmd.AddCommand(vmRmCommand())
@@ -59,18 +62,24 @@ func suggestVmNames(cmd *cobra.Command, args []string, toComplete string) ([]str
 	}
 	defer v.ForceDisconnect()
 
-	vms, err := v.ListVM()
+	vms, err := v.VMList()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 
 	filtered := make([]string, 0, len(vms))
-outer:
 	for _, vm := range vms {
-		for _, arg := range args {
-			if arg == vm {
-				continue outer
-			}
+		if slices.Contains(args, vm) {
+			// already mentioned in previous argument
+			continue
+		}
+		info, err := v.VMInfo(vm)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		if info.ID == 0 {
+			// not a VM created by virter
+			continue
 		}
 
 		filtered = append(filtered, vm)

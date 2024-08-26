@@ -3,6 +3,7 @@ package virter
 import (
 	"bytes"
 	"context"
+	"encoding/xml"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/LINBIT/containerapi"
 	sshclient "github.com/LINBIT/gosshclient"
 	libvirt "github.com/digitalocean/go-libvirt"
+	lx "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
@@ -66,7 +68,7 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	return false, nil
 }
 
-func (v *Virter) ListVM() ([]string, error) {
+func (v *Virter) VMList() ([]string, error) {
 	domains, _, err := v.libvirt.ConnectListAllDomains(-1, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list domains")
@@ -78,6 +80,62 @@ func (v *Virter) ListVM() ([]string, error) {
 	}
 
 	return result, nil
+}
+
+type VMInfo struct {
+	Name          string
+	ID            uint
+	AccessNetwork string
+}
+
+// VMInfo returns the ID and access network of the named VM
+func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
+	dom, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup domain: %w", err)
+	}
+
+	xmldesc, err := v.libvirt.DomainGetXMLDesc(dom, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get XML description: %w", err)
+	}
+
+	desc := lx.Domain{}
+	err = xml.Unmarshal([]byte(xmldesc), &desc)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode domain xml '%s': %w", vmName, err)
+	}
+
+	meta := metaWrapper{}
+	err = xml.Unmarshal([]byte(desc.Metadata.XML), &meta)
+	if err != nil {
+		// not a virter VM
+		return &VMInfo{Name: vmName}, nil
+	}
+
+	if len(desc.Devices.Interfaces) < 1 {
+		return nil, fmt.Errorf("no interfaces found for VM '%s'", vmName)
+	}
+
+	if desc.Devices.Interfaces[0].Source == nil || desc.Devices.Interfaces[0].Source.Network == nil || desc.Devices.Interfaces[0].Source.Network.Network == "" {
+		return nil, fmt.Errorf("no network found for VM '%s'", vmName)
+	}
+
+	network, err := v.NetworkGet(desc.Devices.Interfaces[0].Source.Network.Network)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network '%s' for VM '%s': %w", desc.Devices.Interfaces[0].Source.Network.Network, vmName, err)
+	}
+
+	if desc.Devices.Interfaces[0].MAC == nil {
+		return nil, fmt.Errorf("no MAC address found for VM '%s'", vmName)
+	}
+
+	vmMac, err := net.ParseMAC(desc.Devices.Interfaces[0].MAC.Address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse VM MAC address '%s' for VM '%s': %w", desc.Devices.Interfaces[0].MAC.Address, vmName, err)
+	}
+
+	return &VMInfo{Name: vmName, AccessNetwork: network.Name, ID: IDFromMAC(vmMac, QemuBaseMAC())}, nil
 }
 
 // VMRun starts a VM.
