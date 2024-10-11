@@ -144,7 +144,7 @@ func buildNetworkDHCP(ip net.IP, n *net.IPNet, dhcpMAC string, dhcpID uint, dhcp
 
 	prefix, hostBits := n.Mask.Size()
 	// libvirt does not support more than 2^16-1 hosts in the dhcp range
-	if hostBits-prefix >= 16 {
+	if hostBits-prefix > 16 {
 		end, _ = cidr.Host(n, 65535)
 	} else {
 		end = cidr.Dec(end)
