@@ -477,9 +477,15 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		err = v.VMExecShell(
 			ctx, []string{vmName},
 			&ProvisionShellStep{Script: "truncate -c -s 0 /etc/machine-id"})
-
 		if err != nil {
-			return err
+			// In case the command failed because of an unprivileged user,
+			// retry with sudo before giving up.
+			err = v.VMExecShell(
+				ctx, []string{vmName},
+				&ProvisionShellStep{Script: "sudo truncate -c -s 0 /etc/machine-id"})
+			if err != nil {
+				return err
+			}
 		}
 	}
 
