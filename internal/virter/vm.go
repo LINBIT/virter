@@ -476,8 +476,7 @@ func (v *Virter) VMCommit(ctx context.Context, afterNotifier AfterNotifier, vmNa
 		// We want these IDs to be unique, so reset to empty.
 		err = v.VMExecShell(
 			ctx, []string{vmName},
-			&ProvisionShellStep{Script: "truncate -c -s 0 /etc/machine-id"})
-
+			&ProvisionShellStep{Script: "CMD='truncate -c -s 0 /etc/machine-id'; [ \"$(id -u)\" -eq 0 ] && $CMD || { ESC=$(command -v sudo || command -v doas || command -v please || echo ''); $ESC $CMD; }"})
 		if err != nil {
 			return err
 		}
