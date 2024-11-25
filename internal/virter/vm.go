@@ -107,6 +107,10 @@ func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 	}
 
 	meta := metaWrapper{}
+	if desc.Metadata == nil {
+		// not a virter VM
+		return &VMInfo{Name: vmName}, nil
+	}
 	err = xml.Unmarshal([]byte(desc.Metadata.XML), &meta)
 	if err != nil {
 		// not a virter VM
