@@ -39,7 +39,7 @@ url = "https://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud.qco
 url = "https://cdn.amazonlinux.com/os-images/2.0.20250123.4/kvm/amzn2-kvm-2.0.20250123.4-x86_64.xfs.gpt.qcow2"
 
 [amazonlinux-2023]
-url = "https://cdn.amazonlinux.com/al2023/os-images/2023.6.20250123.4/kvm/al2023-kvm-2023.6.20250123.4-kernel-6.1-x86_64.xfs.gpt.qcow2"
+url = "https://cdn.amazonlinux.com/al2023/os-images/2023.6.20250128.0/kvm/al2023-kvm-2023.6.20250128.0-kernel-6.1-x86_64.xfs.gpt.qcow2"
 
 [rocky-9]
 url = "https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
