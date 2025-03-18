@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.23.4
 
 require (
-	github.com/BurntSushi/toml v1.4.0
+	github.com/BurntSushi/toml v1.5.0
 	github.com/LINBIT/containerapi v0.9.0
 	github.com/LINBIT/gosshclient v0.3.1
 	github.com/apparentlymart/go-cidr v1.1.0
