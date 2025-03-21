@@ -28,6 +28,7 @@ func vmCommand() *cobra.Command {
 	vmCmd.AddCommand(vmRunCommand())
 	vmCmd.AddCommand(vmSSHCommand())
 	vmCmd.AddCommand(vmCpCommand())
+	vmCmd.AddCommand(vmWaitReadyCommand())
 	return vmCmd
 }
 

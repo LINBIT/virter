@@ -265,6 +265,7 @@ func diskVolumeName(vmName, diskName string) string {
 
 // WaitVmReady repeatedly tries to connect to a VM and checks if it's ready to be used.
 func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig) error {
+	logger := log.WithField("vm", vmName)
 	ips, err := v.getIPs([]string{vmName})
 	if err != nil {
 		return err
@@ -295,19 +296,19 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 	readyFunc := func() error {
 		sshClient := shellClientBuilder.NewShellClient(hostPort, sshConfig)
 		if err := sshClient.DialContext(ctx); err != nil {
-			log.Debugf("SSH dial attempt failed: %v", err)
+			logger.Debugf("SSH dial attempt failed: %v", err)
 			return err
 		}
 		defer sshClient.Close()
 		if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
-			log.Debugf("cloud-init not done: %v", err)
+			logger.Debugf("cloud-init not done: %v", err)
 			return err
 		}
 
 		return nil
 	}
 
-	log.Debug("Wait for VM to get ready")
+	logger.Debug("Wait for VM to get ready")
 
 	// Using ActualTime breaks the expectation of the unit tests
 	// that this code does not sleep, but we work around that by
@@ -316,7 +317,7 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 		return fmt.Errorf("VM not ready: %w", err)
 	}
 
-	log.Debug("Successfully connected to ready VM")
+	logger.Debug("Successfully connected to ready VM")
 	return nil
 }
 
