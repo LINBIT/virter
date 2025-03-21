@@ -103,7 +103,7 @@ func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest 
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Debugf("rsync output:\n%s", string(out))
+		_, _ = fmt.Fprintln(os.Stderr, strings.TrimRight(string(out), "\n"))
 		return fmt.Errorf("error executing rsync: %w", err)
 	}
 	return nil
