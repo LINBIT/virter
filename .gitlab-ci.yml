@@ -11,7 +11,7 @@ stages:
 
 variables:
   VMSHED_VERSION: v0.22.1
-  GO_VERSION: "1.23"
+  GO_VERSION: "1.24"
   BUILD_HELPERS_VERSION: cad23b57db14b7676808fa645c4561bc66c3e204
 
 prepare-bins:
@@ -85,7 +85,7 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: golangci/golangci-lint:v1.63
+  image: golangci/golangci-lint:v2.1
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
@@ -93,7 +93,7 @@ lint:
     - golangci-lint version
     - echo "Linting new code relative to branch $CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - golangci-lint run --new-from-rev="remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --out-format="junit-xml" > lint.xml
+    - golangci-lint run --new-from-rev="remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --output.junit-xml.path lint.xml
   allow_failure: true
   artifacts:
     reports:

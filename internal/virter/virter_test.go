@@ -7,10 +7,10 @@ import (
 	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
-//go:generate go run github.com/vektra/mockery/v2@v2.40.3 --name=ShellClient
-//go:generate go run github.com/vektra/mockery/v2@v2.40.3 --name=AfterNotifier
-//go:generate go run github.com/vektra/mockery/v2@v2.40.3 --name=NetworkCopier --dir=../../pkg/netcopy
-//go:generate go run github.com/vektra/mockery/v2@v2.40.3 --name=KeyStore --dir=../../pkg/sshkeys
+//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=ShellClient
+//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=AfterNotifier
+//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=NetworkCopier --dir=../../pkg/netcopy
+//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=KeyStore --dir=../../pkg/sshkeys
 
 const poolName = "some-pool"
 const networkName = "some-network"
