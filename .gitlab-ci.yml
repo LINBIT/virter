@@ -36,15 +36,9 @@ prepare-docker:
   stage: build
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [ "" ]
+  image: ${LINBIT_DOCKER_REGISTRY}/container-tools:latest
   script:
-    - set -ex
-    - mkdir -p /kaniko/.docker
-    - ln -snf "$DOCKER_AUTH_CONFIG_FILE" /kaniko/.docker/config.json
-    - /kaniko/executor --registry-mirror $DOCKER_REGISTRY_MIRROR --dockerfile $CI_PROJECT_DIR/tests/Dockerfile --context $CI_PROJECT_DIR/tests --cache --destination ${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG
-
+    - docker buildx build --push --tag ${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG ./tests
 
 build:
   image: golang:$GO_VERSION
