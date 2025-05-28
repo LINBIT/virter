@@ -1,15 +1,20 @@
 package cmd
 
 import (
+	"strconv"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
 
 func imagePruneCommand() *cobra.Command {
+	var deleteUnusedForDuration time.Duration
+
 	pruneCmd := &cobra.Command{
 		Use:   "prune",
-		Short: "Prune unreferenced image layers",
+		Short: "Prune unreferenced or unused image layers",
 		Long:  `Prune all image layers not referenced by tag images or VMs`,
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -18,6 +23,36 @@ func imagePruneCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 			defer v.ForceDisconnect()
+
+			if deleteUnusedForDuration > 0 {
+				now := time.Now()
+
+				images, err := v.ImageList()
+				if err != nil {
+					log.WithError(err).Fatal("failed to get image list")
+				}
+
+				for _, image := range images {
+					vol, err := image.TopLayer().Descriptor()
+					if err != nil {
+						log.WithError(err).Fatalf("failed to get tag volume for '%s'", image.Name())
+					}
+
+					atime, err := strconv.ParseFloat(vol.Target.Timestamps.Atime, 64)
+					if err != nil {
+						log.WithError(err).Fatalf("failed to parse atime for volume '%s'", image.Name())
+					}
+
+					if time.Unix(int64(atime), 0).Add(deleteUnusedForDuration).Before(now) {
+						err := v.ImageRm(image.Name(), v.ProvisionStoragePool())
+						if err != nil {
+							log.WithError(err).Fatalf("failed to delete image '%s'", image.Name())
+						}
+
+						log.WithField("image", image.Name()).Info("deleted image")
+					}
+				}
+			}
 
 			layers, err := v.LayerList()
 			if err != nil {
@@ -38,6 +73,8 @@ func imagePruneCommand() *cobra.Command {
 		},
 		ValidArgsFunction: suggestNone,
 	}
+
+	pruneCmd.Flags().DurationVar(&deleteUnusedForDuration, "delete-unused", 0, "delete images that have not been used for the given duration")
 
 	return pruneCmd
 }
