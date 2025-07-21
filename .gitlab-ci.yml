@@ -101,10 +101,11 @@ e2e-test:
     # centos-6: repos offline
     # centos-8: repos offline
     # debian-9: no longer supported, and cloud-init so old it crashes when a network-config is provided
+    # debian-10: no longer supported, and some repos are not longer online
     # rocky-8: requires "--secure-boot=true" but we do not yet have a way of specifying that
     # rocky-9: requires "--secure-boot=true" but we do not yet have a way of specifying that
     # ubuntu-xenial: kernel crashes on boot
-    EXCLUDED: amazonlinux-2|centos-6|centos-8|debian-9|rocky-8|rocky-9|ubuntu-xenial
+    EXCLUDED: amazonlinux-2|centos-6|centos-8|debian-9|debian-10|rocky-8|rocky-9|ubuntu-xenial
   rules:
     - if: $CI_MERGE_REQUEST_ID
   tags:
