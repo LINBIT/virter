@@ -9,7 +9,8 @@ set -ex
 # * rsync: for copy steps
 # * hostname: for ssh access tests
 if command -v apt-get ; then
-    apt-get update
+    # We ignore errors when updating the repository metadata, as some repos might not be available forever.
+    apt-get update || true
     apt-get install -y rsync hostname
     apt-get purge -y apparmor
 elif command -v dnf ; then
