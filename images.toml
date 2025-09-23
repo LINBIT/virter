@@ -13,6 +13,9 @@ url = "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd
 [ubuntu-xenial]
 url = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
 
+[debian-13]
+url = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
+
 [debian-12]
 url = "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
 
