@@ -51,7 +51,7 @@ type LibvirtConnection interface {
 	DomainSnapshotDelete(Snap libvirt.DomainSnapshot, Flags libvirt.DomainSnapshotDeleteFlags) (err error)
 	Disconnect() error
 	ConnectSupportsFeature(Feature int32) (int32, error)
-	ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags uint32) (rCapabilities string, err error)
+	ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags libvirt.ConnectGetDomainCapabilitiesFlags) (rCapabilities string, err error)
 }
 
 // Virter manipulates libvirt for virter.

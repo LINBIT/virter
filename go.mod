@@ -9,7 +9,7 @@ require (
 	github.com/LINBIT/containerapi v0.9.0
 	github.com/LINBIT/gosshclient v0.3.1
 	github.com/apparentlymart/go-cidr v1.1.0
-	github.com/digitalocean/go-libvirt v0.0.0-20221205150000-2939327a8519
+	github.com/digitalocean/go-libvirt v0.0.0-20251014225438-3d9fc6d90050
 	github.com/docker/go-units v0.5.0
 	github.com/google/go-containerregistry v0.20.6
 	github.com/hashicorp/go-multierror v1.1.1

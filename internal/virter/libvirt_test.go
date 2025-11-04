@@ -424,7 +424,7 @@ func (l *FakeLibvirtConnection) DomainUndefineFlags(Dom libvirt.Domain, Flags li
 	return nil
 }
 
-func (l *FakeLibvirtConnection) ConnectGetDomainCapabilities(Emulatorbin libvirt.OptString, Arch libvirt.OptString, Machine libvirt.OptString, Virttype libvirt.OptString, Flags uint32) (string, error) {
+func (l *FakeLibvirtConnection) ConnectGetDomainCapabilities(libvirt.OptString, libvirt.OptString, libvirt.OptString, libvirt.OptString, libvirt.ConnectGetDomainCapabilitiesFlags) (string, error) {
 	return "", nil
 }
 
