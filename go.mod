@@ -17,7 +17,6 @@ require (
 	github.com/kdomanski/iso9660 v0.4.0
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
-	github.com/libvirt/libvirt-go-xml v7.4.0+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/rck/unit v0.0.3
@@ -31,6 +30,7 @@ require (
 	golang.org/x/crypto v0.43.0
 	golang.org/x/sync v0.17.0
 	golang.org/x/term v0.36.0
+	libvirt.org/go/libvirtxml v1.11008.0
 )
 
 require (

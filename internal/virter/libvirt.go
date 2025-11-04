@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/digitalocean/go-libvirt"
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
+	"libvirt.org/go/libvirtxml"
 )
 
 type LibvirtGetError struct {

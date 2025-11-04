@@ -9,8 +9,8 @@ import (
 
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/digitalocean/go-libvirt"
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
+	"libvirt.org/go/libvirtxml"
 )
 
 // AddDHCPHost determines the IP for an ID and adds a DHCP mapping from a MAC

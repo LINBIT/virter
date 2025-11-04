@@ -7,8 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	libvirt "github.com/digitalocean/go-libvirt"
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
+	"github.com/digitalocean/go-libvirt"
+	"libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/internal/virter"
 )

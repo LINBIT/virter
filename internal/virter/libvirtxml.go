@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	libvirt "github.com/digitalocean/go-libvirt"
-	lx "github.com/libvirt/libvirt-go-xml"
+	"github.com/digitalocean/go-libvirt"
 	log "github.com/sirupsen/logrus"
+	lx "libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/pkg/driveletter"
 )
@@ -46,13 +46,13 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk,
 	var result []lx.DomainDisk
 	for _, d := range vmDisks {
 		driver := map[VMDiskDevice]lx.DomainDiskDriver{
-			VMDiskDeviceDisk: lx.DomainDiskDriver{
+			VMDiskDeviceDisk: {
 				Name:    "qemu",
 				Cache:   diskCache,
 				Discard: "unmap",
 				Type:    d.format,
 			},
-			VMDiskDeviceCDROM: lx.DomainDiskDriver{
+			VMDiskDeviceCDROM: {
 				Name:  "qemu",
 				Cache: diskCache,
 				Type:  d.format,
@@ -97,8 +97,8 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk,
 
 func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 	vmDisks := []VMDisk{
-		VMDisk{device: VMDiskDeviceDisk, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(vm.Name), bus: "virtio", format: "qcow2"},
-		VMDisk{device: VMDiskDeviceCDROM, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "scsi", format: "raw"},
+		{device: VMDiskDeviceDisk, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(vm.Name), bus: "virtio", format: "qcow2"},
+		{device: VMDiskDeviceCDROM, poolName: v.provisionStoragePool.Name, volumeName: DynamicLayerName(ciDataVolumeName(vm.Name)), bus: "scsi", format: "raw"},
 	}
 	for _, d := range vm.Disks {
 		pool := d.GetPool()
@@ -328,7 +328,7 @@ func libvirtConsole(vm VMConfig) lx.DomainConsole {
 				Path:   vm.ConsolePath,
 				Append: "on",
 				SecLabel: []lx.DomainDeviceSecLabel{
-					lx.DomainDeviceSecLabel{
+					{
 						Model:   "dac",
 						Relabel: "no",
 					},

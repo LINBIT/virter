@@ -3,8 +3,8 @@ package virter_test
 import (
 	"testing"
 
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
+	"libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/internal/virter"
 )

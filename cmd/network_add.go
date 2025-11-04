@@ -4,10 +4,10 @@ import (
 	"net"
 
 	"github.com/apparentlymart/go-cidr/cidr"
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/internal/virter"
 )

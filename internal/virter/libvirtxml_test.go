@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
-	lx "github.com/libvirt/libvirt-go-xml"
+	lx "libvirt.org/go/libvirtxml"
 )
 
 func TestVmDisksToLibvirtDisks(t *testing.T) {

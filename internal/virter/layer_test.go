@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	regv1 "github.com/google/go-containerregistry/pkg/v1"
-	lx "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
+	lx "libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/internal/virter"
 )

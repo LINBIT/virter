@@ -3,7 +3,6 @@ package virter_test
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,10 +10,12 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/LINBIT/containerapi"
-	libvirtxml "github.com/libvirt/libvirt-go-xml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/internal/virter"
 	"github.com/LINBIT/virter/internal/virter/mocks"

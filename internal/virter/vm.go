@@ -13,10 +13,10 @@ import (
 	"github.com/LINBIT/containerapi"
 	sshclient "github.com/LINBIT/gosshclient"
 	libvirt "github.com/digitalocean/go-libvirt"
-	lx "github.com/libvirt/libvirt-go-xml"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
+	lx "libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/pkg/actualtime"
 	"github.com/LINBIT/virter/pkg/netcopy"

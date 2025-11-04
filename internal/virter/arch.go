@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	lx "github.com/libvirt/libvirt-go-xml"
+	lx "libvirt.org/go/libvirtxml"
 )
 
 type CpuArch string

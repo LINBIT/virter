@@ -6,7 +6,7 @@ import (
 
 	"github.com/kdomanski/iso9660"
 	"github.com/kr/text"
-	lx "github.com/libvirt/libvirt-go-xml"
+	lx "libvirt.org/go/libvirtxml"
 
 	"github.com/LINBIT/virter/pkg/sshkeys"
 )
