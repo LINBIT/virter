@@ -30,7 +30,7 @@ require (
 	golang.org/x/crypto v0.43.0
 	golang.org/x/sync v0.17.0
 	golang.org/x/term v0.36.0
-	libvirt.org/go/libvirtxml v1.11008.0
+	libvirt.org/go/libvirtxml v1.11009.0
 )
 
 require (
