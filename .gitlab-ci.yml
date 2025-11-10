@@ -41,7 +41,7 @@ prepare-docker:
     - docker buildx build --push --tag ${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG ./tests
 
 build:
-  image: golang:$GO_VERSION
+  image: docker.io/library/golang:$GO_VERSION
   stage: build
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
@@ -56,7 +56,7 @@ test:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: golang:$GO_VERSION
+  image: docker.io/library/golang:$GO_VERSION
   cache:
     paths:
       - .mygo/pkg/mod
@@ -79,7 +79,7 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: golangci/golangci-lint:v2.1
+  image: docker.io/library/golangci/golangci-lint:v2.1
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
