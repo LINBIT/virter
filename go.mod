@@ -2,7 +2,7 @@ module github.com/LINBIT/virter
 
 go 1.24.0
 
-toolchain go1.24.3
+toolchain go1.25.4
 
 require (
 	github.com/BurntSushi/toml v1.5.0
@@ -95,4 +95,4 @@ require (
 // github.com/containerd/containerd@v1.5.2 which, via some circular
 // dependencies, depends on older versions of github.com/containerd/containerd.
 // Pin the version to avoid pulling in these older versions.
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.7
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.29
