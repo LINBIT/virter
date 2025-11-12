@@ -79,7 +79,7 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: docker.io/golangci/golangci-lint:v2.1
+  image: docker.io/golangci/golangci-lint:v2.6.1
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
