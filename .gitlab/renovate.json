@@ -10,5 +10,6 @@
     },
     "gitlabci": {
         "enabled": false
-    }
+    },
+    "baseBranchPatterns": ["master", "gh-pages"]
 }
