@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v8"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/LINBIT/virter/internal/virter"

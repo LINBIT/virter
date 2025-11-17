@@ -13,8 +13,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/vbauerster/mpb/v7"
-	"github.com/vbauerster/mpb/v7/decor"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 	"golang.org/x/term"
 
 	"github.com/LINBIT/virter/internal/virter"
@@ -190,7 +190,7 @@ func (m *mpbProgress) NewBar(name, operation string, total int64) *mpb.Bar {
 	return m.Progress.AddBar(
 		total,
 		mpb.PrependDecorators(
-			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DidentRight}),
+			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DindentRight}),
 			decor.OnComplete(decor.Name(operation, decor.WCSyncWidthR), fmt.Sprintf("%s done", operation)),
 		),
 		mpb.AppendDecorators(decor.CountersKibiByte("%.2f / %.2f")),

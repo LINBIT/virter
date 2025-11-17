@@ -2,7 +2,7 @@ package cmd
 
 import (
 	log "github.com/sirupsen/logrus"
-	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v8"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

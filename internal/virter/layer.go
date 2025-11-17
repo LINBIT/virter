@@ -23,7 +23,7 @@ import (
 	regv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	log "github.com/sirupsen/logrus"
-	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v8"
 	lx "libvirt.org/go/libvirtxml"
 )
 

@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v8"
 
 	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
