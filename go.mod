@@ -26,7 +26,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/vbauerster/mpb/v7 v7.5.3
+	github.com/vbauerster/mpb/v8 v8.11.2
 	github.com/vbauerster/mpb/v8 v8.11.2
 	golang.org/x/crypto v0.44.0
 	golang.org/x/sync v0.18.0
