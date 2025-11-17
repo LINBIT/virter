@@ -91,9 +91,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// github.com/google/go-containerregistry@v0.6.0 has a dependency on
-// github.com/containerd/containerd@v1.5.2 which, via some circular
-// dependencies, depends on older versions of github.com/containerd/containerd.
-// Pin the version to avoid pulling in these older versions.
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.29
