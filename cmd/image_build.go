@@ -280,7 +280,6 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().VarP(bootCapacity, "boot-capacity", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
 	buildCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	buildCmd.Flags().BoolVar(&resetMachineID, "reset-machine-id", true, "Whether or not to clear the /etc/machine-id file after provisioning")
-	buildCmd.Flags().VarP(&vmPullPolicy, "pull-policy", "", "Whether or not to pull the source image.")
 	buildCmd.Flags().VarP(&vmPullPolicy, "vm-pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	buildCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used during provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	buildCmd.Flags().BoolVarP(&push, "push", "", false, "Push the image after building")
@@ -291,7 +290,6 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().BoolVarP(&vncEnabled, "vnc", "", false, "whether to configure VNC (remote GUI access) for the VM (defaults to false)")
 	buildCmd.Flags().IntVar(&vncPort, "vnc-port", 0, "VNC port. Defaults to 6000+id of this VM")
 	buildCmd.Flags().StringVar(&vncIPv4BindAddress, "vnc-bind-ip", "127.0.0.1", "VNC IPv4 address to bind VNC listening socket to")
-	buildCmd.Flag("pull-policy").Deprecated = "use --vm-pull-policy"
 
 	return buildCmd
 }
