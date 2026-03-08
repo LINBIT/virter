@@ -287,6 +287,8 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 	bootCapacity = u.MustNewValue(10*sizeUnits["G"], unit.None)
 	runCmd.Flags().VarP(bootCapacity, "bootcapacity", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
+	_ = runCmd.Flags().MarkDeprecated("bootcapacity", "use --boot-capacity instead")
+	runCmd.Flags().VarP(bootCapacity, "boot-capacity", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	runCmd.Flags().VarP(&cpuArch, "arch", "", "CPU architecture to use. Will use kvm if host and VM use the same architecture")
 	runCmd.Flags().BoolVar(&secureBoot, "secure-boot", false, "whether to enable secure boot")
