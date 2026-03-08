@@ -3,7 +3,6 @@ package netcopy
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -68,7 +67,7 @@ func (r *RsyncNetworkCopier) Copy(ctx context.Context, sources []HostPath, dest 
 		return nil
 	}
 
-	knownHostsFile, err := ioutil.TempFile("", "rsync-known-hosts-*")
+	knownHostsFile, err := os.CreateTemp("", "rsync-known-hosts-*")
 	if err != nil {
 		return fmt.Errorf("failed to create known hosts file: %w", err)
 	}

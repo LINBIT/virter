@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/digitalocean/go-libvirt"
 	"libvirt.org/go/libvirtxml"
@@ -173,7 +172,7 @@ func (l *FakeLibvirtConnection) StorageVolUpload(Vol libvirt.StorageVol, outStre
 		return libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
-	vol.content, err = ioutil.ReadAll(outStream)
+	vol.content, err = io.ReadAll(outStream)
 	if err != nil {
 		return errors.New("error reading upload data")
 	}

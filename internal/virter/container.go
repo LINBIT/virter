@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 	// This is roughly equivalent to
 	// docker run --rm --network=host -e TARGETS=$vmIPs -e SSH_PRIVATE_KEY="$sshPrivateKey" $dockerImageName
 
-	knownHostsFile, err := ioutil.TempFile("", "virter-container-known-hosts-*")
+	knownHostsFile, err := os.CreateTemp("", "virter-container-known-hosts-*")
 	if err != nil {
 		return fmt.Errorf("failed to create known hosts file: %w", err)
 	}
@@ -55,7 +54,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		return fmt.Errorf("failed to close known hosts file: %w", err)
 	}
 
-	sshConfigFile, err := ioutil.TempFile("", "virter-container-ssh-config-*")
+	sshConfigFile, err := os.CreateTemp("", "virter-container-ssh-config-*")
 	if err != nil {
 		return fmt.Errorf("failed to create ssh config file: %w", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -92,7 +91,7 @@ func TestVirter_ImageImportFromReader(t *testing.T) {
 	pool, err := l.StoragePoolLookupByName(poolName)
 	assert.NoError(t, err)
 
-	img, err := v.ImageImportFromReader("image1", ioutil.NopCloser(strings.NewReader(ExampleLayerContent)), pool)
+	img, err := v.ImageImportFromReader("image1", io.NopCloser(strings.NewReader(ExampleLayerContent)), pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 
@@ -100,7 +99,7 @@ func TestVirter_ImageImportFromReader(t *testing.T) {
 	// 2 volumes: existing content + tag volume
 	assert.Len(t, l.pools[poolName].vols, 2)
 
-	img2, err := v.ImageImportFromReader("image2", ioutil.NopCloser(strings.NewReader(ExampleLayerContent+ExampleLayerContent)), pool)
+	img2, err := v.ImageImportFromReader("image2", io.NopCloser(strings.NewReader(ExampleLayerContent+ExampleLayerContent)), pool)
 	assert.NoError(t, err)
 	assert.NotNil(t, img2)
 
@@ -108,7 +107,7 @@ func TestVirter_ImageImportFromReader(t *testing.T) {
 	// 4 volumes: 2 * (existing content + tag volume)
 	assert.Len(t, l.pools[poolName].vols, 4)
 
-	failed, err := v.ImageImportFromReader("image2", ioutil.NopCloser(iotest.ErrReader(errors.New("test"))), pool)
+	failed, err := v.ImageImportFromReader("image2", io.NopCloser(iotest.ErrReader(errors.New("test"))), pool)
 	assert.Error(t, err)
 	assert.Nil(t, failed)
 	// 4 volumes: 2 * (existing content + tag volume), no new volume from failed import
@@ -149,7 +148,7 @@ func (i *inMemoryLayer) DiffID() (regv1.Hash, error) {
 }
 
 func (i *inMemoryLayer) Uncompressed() (io.ReadCloser, error) {
-	return ioutil.NopCloser(strings.NewReader(i.content)), nil
+	return io.NopCloser(strings.NewReader(i.content)), nil
 }
 
 func (i *inMemoryLayer) MediaType() (types.MediaType, error) {

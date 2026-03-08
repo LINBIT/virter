@@ -2,7 +2,6 @@ package virter_test
 
 import (
 	"io"
-	"io/ioutil"
 	"testing"
 
 	regv1 "github.com/google/go-containerregistry/pkg/v1"
@@ -221,7 +220,7 @@ func TestVolumeLayer_ToRegistryLayer(t *testing.T) {
 	uncompressedReader, err := compatLayer.Uncompressed()
 	assert.NoError(t, err)
 
-	actual, err := ioutil.ReadAll(uncompressedReader)
+	actual, err := io.ReadAll(uncompressedReader)
 	assert.NoError(t, err)
 	assert.Equal(t, ExampleLayerContent, string(actual))
 

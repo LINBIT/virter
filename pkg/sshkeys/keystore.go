@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"golang.org/x/crypto/ssh"
@@ -131,7 +130,7 @@ func loadPrivateKeyAt(path string) (ssh.Signer, []byte, error) {
 		}
 	}
 
-	keyBuf, err := ioutil.ReadFile(path)
+	keyBuf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading private key: %w", err)
 	}
@@ -152,13 +151,13 @@ func loadPublicKeyAt(key ssh.Signer, path string) ([]byte, error) {
 	}
 
 	if !exists {
-		err = ioutil.WriteFile(path, ssh.MarshalAuthorizedKey(key.PublicKey()), 0644)
+		err = os.WriteFile(path, ssh.MarshalAuthorizedKey(key.PublicKey()), 0644)
 		if err != nil {
 			return nil, fmt.Errorf("error writing public key: %w", err)
 		}
 	}
 
-	pubBuf, err := ioutil.ReadFile(path)
+	pubBuf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading public key: %w", err)
 	}
@@ -188,7 +187,7 @@ func generatePrivateKeyAt(path string) error {
 	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}
 	pemBuf := pem.EncodeToMemory(privateKeyPEM)
 
-	err = ioutil.WriteFile(path, pemBuf, 0600)
+	err = os.WriteFile(path, pemBuf, 0600)
 	if err != nil {
 		return err
 	}

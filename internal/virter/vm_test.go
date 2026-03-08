@@ -3,7 +3,6 @@ package virter_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -427,7 +426,7 @@ func TestVMExecCopy(t *testing.T) {
 }
 
 func createFakeDirectory() (string, error) {
-	dir, err := ioutil.TempDir("/tmp", "virter-test")
+	dir, err := os.MkdirTemp("/tmp", "virter-test")
 	if err != nil {
 		return "", err
 	}

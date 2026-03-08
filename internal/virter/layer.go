@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -426,7 +425,7 @@ func (rl *RawLayer) CloneAs(name string, opts ...LayerOperationOption) (*RawLaye
 	// (called in Uncompressed()) and StorageVolUpload (called in Upload()). When the amount piped between download and
 	// upload is large enough, libvirt seems to get stuck. As a workaround, we first download the layer to a temporary
 	// file and upload it only after the download has finished.
-	bufferFile, err := ioutil.TempFile("", name)
+	bufferFile, err := os.CreateTemp("", name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temporary clone buffer file: %w", err)
 	}
@@ -681,7 +680,7 @@ func (vl *registryVolumeLayer) Digest() (regv1.Hash, error) {
 
 // Compressed returns an io.ReadCloser for the compressed layer contents.
 func (vl *registryVolumeLayer) Compressed() (io.ReadCloser, error) {
-	reader := ioutil.NopCloser(bytes.NewReader(vl.compressed.Bytes()))
+	reader := io.NopCloser(bytes.NewReader(vl.compressed.Bytes()))
 
 	if vl.opts.Progress != nil {
 		diff, err := vl.DiffID()
