@@ -25,6 +25,10 @@ import (
 // The default config file also contains some inline documentation for each option.
 const defaultConfigTemplate = `[libvirt]
 # socket is the path to the unix domain socket for libvirt.
+# The default connects to the monolithic libvirtd daemon. If your system
+# uses modular daemons (virtqemud, etc.), you may need to change this to
+# "/var/run/libvirt/virtqemud-sock". Most distros provide a compatibility
+# socket at the default path that routes to the correct modular daemon.
 # Default value: "{{ get "libvirt.socket" }}"
 socket = "{{ get "libvirt.socket" }}"
 
