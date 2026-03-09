@@ -125,13 +125,16 @@ can be downloaded.
 Image registry files are simple enough in principle:
 
 ```toml
-[ubuntu-focal]
+version = 1
+
+[images.ubuntu-focal]
 url = "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
 ```
 
-A registry file is just a [toml](https://github.com/toml-lang/toml) file, with
-each section corresponding to an image and a `url` key to specify the VM image
-location.
+A registry file is a [toml](https://github.com/toml-lang/toml) file with a
+`version` field and an `images` section. Each subsection of `images` corresponds
+to an image with a `url` key to specify the VM image location. Virter rejects
+registry files with an unsupported version.
 
 ### Locations
 

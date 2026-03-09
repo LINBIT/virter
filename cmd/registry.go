@@ -8,12 +8,13 @@ import (
 	"path/filepath"
 
 	"github.com/LINBIT/virter/pkg/registry"
+
 	homedir "github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-const upstreamRegistryURL = "https://linbit.github.io/virter/images.toml"
+var upstreamRegistryURL = fmt.Sprintf("https://linbit.github.io/virter/v%d/images.toml", registry.CurrentRegistryFileVersion)
 
 const longRegistryCommandText = `Image registry related subcommands.
 To manipulate the registry config: '%s'`

@@ -9,12 +9,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const CurrentRegistryFileVersion = 1
+
 var (
 	ErrNotFound = errors.New("not found")
 )
 
 type imageEntry struct {
 	URL string `toml:"url"`
+}
+
+type registryFile struct {
+	Version int                    `toml:"version"`
+	Images  map[string]imageEntry  `toml:"images"`
 }
 
 type ImageRegistry struct {
@@ -35,8 +42,8 @@ func (r *ImageRegistry) load() error {
 
 	for _, f := range r.sources {
 		log.Debugf("Loading image registry file: %s", f)
-		var fileEntries map[string]imageEntry
-		_, err := toml.DecodeFile(f, &fileEntries)
+		var rf registryFile
+		md, err := toml.DecodeFile(f, &rf)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// ignore nonexistent files
@@ -45,7 +52,15 @@ func (r *ImageRegistry) load() error {
 			return fmt.Errorf("failed to decode image registry file '%v': %w", f, err)
 		}
 
-		for k, v := range fileEntries {
+		for _, k := range md.Undecoded() {
+			log.WithField("key", k).Warn("Unknown key in image registry file")
+		}
+
+		if rf.Version != CurrentRegistryFileVersion {
+			return fmt.Errorf("unsupported registry file version %d in '%v' (want %d)", rf.Version, f, CurrentRegistryFileVersion)
+		}
+
+		for k, v := range rf.Images {
 			// if the key already exists, overwrite it
 			entries[k] = v
 		}
