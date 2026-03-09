@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -339,10 +338,20 @@ func TestVMExecRsync(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	dir, err := createFakeDirectory()
+	// Create test files in a subdirectory of the current working directory
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+
+	dir, err := os.MkdirTemp(wd, "virter-test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
+	_, err = os.Create(filepath.Join(dir, "file1.txt"))
+	assert.NoError(t, err)
+	_, err = os.Create(filepath.Join(dir, "file2.txt"))
+	assert.NoError(t, err)
+
+	// Rsync from within working directory should succeed
 	step := &virter.ProvisionRsyncStep{
 		Source: filepath.Join(dir, "*.txt"),
 		Dest:   "/tmp",
@@ -357,37 +366,28 @@ func TestVMExecRsync(t *testing.T) {
 	err = v.VMExecRsync(context.Background(), copier, []string{vmName}, step)
 	assert.NoError(t, err)
 
+	// Rsync from outside working directory should fail
 	step = &virter.ProvisionRsyncStep{
-		Source: filepath.Join("~/*"),
+		Source: filepath.Join("/tmp", "*.txt"),
 		Dest:   "/tmp",
 	}
-	copier2 := new(mocks.MockNetworkCopier)
-	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
-	copierCall.RunFn = func(args mock.Arguments) {
-		paths := args[1].([]netcopy.HostPath)
-		for _, f := range paths {
-			assert.True(t, strings.HasPrefix(f.Path, os.Getenv("HOME")))
-		}
-	}
-	err = v.VMExecRsync(context.Background(), copier2, []string{vmName}, step)
-	assert.NoError(t, err)
+	err = v.VMExecRsync(context.Background(), new(mocks.MockNetworkCopier), []string{vmName}, step)
+	assert.Error(t, err)
 
+	// Absolute path outside working directory is rejected even when no files match
 	step = &virter.ProvisionRsyncStep{
 		Source: filepath.Join("/", "323willnotbeherefile.txt"),
 		Dest:   "/tmp",
 	}
-	copier3 := new(mocks.MockNetworkCopier)
-	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
-	err = v.VMExecRsync(context.Background(), copier3, []string{vmName}, step)
-	assert.NoError(t, err)
+	err = v.VMExecRsync(context.Background(), new(mocks.MockNetworkCopier), []string{vmName}, step)
+	assert.Error(t, err)
 
+	// Nonexistent VM should fail
 	step = &virter.ProvisionRsyncStep{
 		Source: filepath.Join(dir, "*.txt"),
 		Dest:   "/tmp",
 	}
-	copier4 := new(mocks.MockNetworkCopier)
-	copier4.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
-	err = v.VMExecRsync(context.Background(), copier3, []string{"NoVm"}, step)
+	err = v.VMExecRsync(context.Background(), new(mocks.MockNetworkCopier), []string{"NoVm"}, step)
 	assert.Error(t, err)
 }
 

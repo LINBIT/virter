@@ -6,7 +6,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -792,9 +794,39 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 }
 
 func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, vmNames []string, rsyncStep *ProvisionRsyncStep) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Check the non-glob prefix of the pattern first, so that patterns
+	// pointing outside the working directory are rejected even when no
+	// files match. This mirrors Docker/BuildKit's approach for COPY.
+	globPrefix, _ := splitGlobPrefix(rsyncStep.Source)
+	if err := checkPathInWorkDir(globPrefix, wd); err != nil {
+		return fmt.Errorf("rsync source not allowed: %w", err)
+	}
+
 	files, err := filepath.Glob(rsyncStep.Source)
 	if err != nil {
 		return fmt.Errorf("failed to parse glob pattern: %w", err)
+	}
+
+	resolved := make([]string, 0, len(files))
+	for _, f := range files {
+		realPath, err := filepath.EvalSymlinks(f)
+		if err != nil {
+			return fmt.Errorf("failed to resolve path %q: %w", f, err)
+		}
+		if err := checkPathInWorkDir(realPath, wd); err != nil {
+			return fmt.Errorf("rsync source not allowed: %w", err)
+		}
+		// Preserve trailing slash: it is semantically significant for
+		// rsync (copy directory contents vs. copy directory itself).
+		if strings.HasSuffix(f, string(filepath.Separator)) && !strings.HasSuffix(realPath, string(filepath.Separator)) {
+			realPath += string(filepath.Separator)
+		}
+		resolved = append(resolved, realPath)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -803,7 +835,7 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, 
 		log.Debugf(`Copying files via rsync: %s to %s on %s`, rsyncStep.Source, rsyncStep.Dest, vmName)
 		g.Go(func() error {
 			dest := fmt.Sprintf("%s:%s", vmName, rsyncStep.Dest)
-			return v.VMExecCopy(ctx, copier, files, dest)
+			return v.VMExecCopy(ctx, copier, resolved, dest)
 		})
 	}
 	return g.Wait()

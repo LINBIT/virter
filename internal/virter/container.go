@@ -143,7 +143,7 @@ func containerRun(ctx context.Context, containerProvider containerapi.ContainerP
 		// Use a fresh Context here because ctx may have been canceled
 		copyCtx, copyCancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer copyCancel()
-		err = containerCopy(copyCtx, containerProvider, containerID, copyStep)
+		err = containerCopy(copyCtx, containerProvider, containerID, copyStep, wd)
 		if err != nil {
 			return err
 		}
@@ -213,10 +213,29 @@ func containerWait(statusCh <-chan int64, errCh <-chan error) error {
 	}
 }
 
-func containerCopy(ctx context.Context, provider containerapi.ContainerProvider, containerID string, step *ProvisionContainerCopyStep) error {
+func containerCopy(ctx context.Context, provider containerapi.ContainerProvider, containerID string, step *ProvisionContainerCopyStep, workDir string) error {
 	destDir, err := filepath.Abs(step.Dest)
 	if err != nil {
 		return fmt.Errorf("failed to determine absolute path of destination %q: %w", step.Dest, err)
 	}
-	return provider.CopyFrom(ctx, containerID, step.Source, destDir)
+
+	// prevent copying to a path outside the working directory: open the destination directory first, then
+	// resolve the real path via /proc/self/fd. this prevents symlink swaps between the check and the copy.
+	f, err := os.Open(destDir)
+	if err != nil {
+		return fmt.Errorf("failed to open destination directory %q: %w", destDir, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	realPath, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", f.Fd()))
+	if err != nil {
+		return fmt.Errorf("failed to resolve destination path: %w", err)
+	}
+
+	if err := checkPathInWorkDir(realPath, workDir); err != nil {
+		return fmt.Errorf("container copy destination not allowed: %w", err)
+	}
+
+	fdPath := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), f.Fd())
+	return provider.CopyFrom(ctx, containerID, step.Source, fdPath)
 }

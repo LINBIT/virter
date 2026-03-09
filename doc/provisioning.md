@@ -39,7 +39,7 @@ The container provisioning step can be parameterized using the following configu
   
 
 * `command` is a string array and sets the command to execute in the container (basically `<args>...` in `docker run <image> <args>...`). The items are Go templates.
-* `copy` can be used to retrieve files from the container after the provisioning has finished. `source` is the file or directory within the container to copy out, and `dest` is the path on the host where the file or directory should be copied to. The `dest` value is a Go template.
+* `copy` can be used to retrieve files from the container after the provisioning has finished. `source` is the file or directory within the container to copy out, and `dest` is the path on the host where the file or directory should be copied to. The `dest` value is a Go template. The destination must be within the current working directory.
 
 In addition, every container binds the following paths:
 * The current working directory of Virter, exposed read only at `/virter/workspace`
@@ -62,10 +62,11 @@ The `rsync` provisioning step can be used to distribute files from the host to t
 **NOTE**: This step requires that the `rsync` program is installed both on the host and on the guest machine. The user is responsible for making sure that this requirement is met.
 
 The `rsync` provisioning step accepts the following parameters:
-* `source` is as a glob pattern of files on the host machine.
+* `source` is a glob pattern of files on the host machine.
   It will first be expanded as a Go template and
   then interpreted according to the rules of Go's [filepath.Match](https://golang.org/pkg/path/filepath/#Match)
   function, so refer to the Go documentation for details.
+  All matched files must be within the current working directory.
 * `dest` is the path on the guest machine(s) where the files should be copied to.
 
 The glob-expanded `source` list of files and the `dest` path are passed verbatim to the `rsync` command line, so `rsync`'s path rules apply. Refer to the `rsync` documentation for more details.
