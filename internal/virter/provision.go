@@ -9,7 +9,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/helm/helm/pkg/strvals"
 	"github.com/mitchellh/mapstructure"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
@@ -117,8 +116,8 @@ func newProvisionConfigReader(provReader io.ReadCloser, provOpt ProvisionOption)
 			return pc, err
 		}
 
-		for _, k := range md.Undecoded() {
-			log.WithField("key", k).Warn("Unknown key in provisioning")
+		if undecoded := md.Undecoded(); len(undecoded) > 0 {
+			return pc, fmt.Errorf("unknown keys in provisioning file: %v", undecoded)
 		}
 	}
 

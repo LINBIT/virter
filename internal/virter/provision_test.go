@@ -65,6 +65,24 @@ rck="was"
 foo="rck"
 `
 
+	unknownKey := `
+version = 1
+typo = "oops"
+
+[[steps]]
+[steps.shell]
+script = "echo rck"
+`
+
+	unknownStepKey := `
+version = 1
+
+[[steps]]
+[steps.shell]
+script = "echo rck"
+destination = "/tmp"
+`
+
 	// IMPORTANT: this assumes 1 shell step!
 	tests := []struct {
 		input    string
@@ -76,6 +94,8 @@ foo="rck"
 		{validLocalOnly, true, ProvisionOption{Overrides: []string{}}, []string{"foo=bar", "bar=baz=lala"}},
 		{bothDistinct, true, ProvisionOption{Overrides: []string{}}, []string{"foo=bar", "bar=baz", "rck=was", "here="}},
 		{bothOverride, true, ProvisionOption{Overrides: []string{}}, []string{"foo=rck", "bar=baz", "rck=was"}},
+		{unknownKey, false, ProvisionOption{Overrides: []string{}}, nil},
+		{unknownStepKey, false, ProvisionOption{Overrides: []string{}}, nil},
 		{"version = 1", true, ProvisionOption{
 			Overrides: []string{"steps[0].shell.script=env", "steps[0].shell.env.foo=bar"},
 		}, []string{"foo=bar"}},

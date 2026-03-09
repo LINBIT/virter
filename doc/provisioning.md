@@ -3,7 +3,7 @@ Virter supports running provisioning steps either on running VMs or to build a n
 
 Conceptually, this is similar to using `docker exec` on a running container and using a Dockerfile to build a Docker image, respectively.
 
-To define the provisioning process, Virter uses files in the [toml](https://github.com/toml-lang/toml) format. In such a file, each provisioning step can be specified, and Virter will execute them in order.
+To define the provisioning process, Virter uses files in the [toml](https://github.com/toml-lang/toml) format. In such a file, each provisioning step can be specified, and Virter will execute them in order. Provisioning files are parsed strictly: any unknown keys will cause an error. This helps catch typos in field names early.
 
 A provisioning file can be used when building a VM image as such:
 ```sh
