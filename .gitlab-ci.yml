@@ -63,7 +63,7 @@ test:
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
-    - go generate ./...
+    - go run github.com/vektra/mockery/v3@v3.7.0
     - go test -v -coverprofile .testCoverage.txt -covermode count ./... 2>&1 | go run github.com/jstemmer/go-junit-report@latest -set-exit-code > test.xml
     - go run github.com/boumenot/gocover-cobertura@latest < .testCoverage.txt > coverage.xml
     - go tool cover -func=.testCoverage.txt
@@ -83,7 +83,7 @@ lint:
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
-    - go generate ./...
+    - go run github.com/vektra/mockery/v3@v3.7.0
     - golangci-lint version
     - echo "Linting new code relative to branch $CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME

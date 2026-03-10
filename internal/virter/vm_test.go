@@ -80,7 +80,7 @@ func TestVMRun(t *testing.T) {
 }
 
 func TestWaitVmReady(t *testing.T) {
-	shell := new(mocks.ShellClient)
+	shell := new(mocks.MockShellClient)
 	shell.On("DialContext", mock.Anything).Return(nil)
 	shell.On("Close").Return(nil)
 	shell.On("ExecScript", mock.Anything).Return(nil)
@@ -265,7 +265,7 @@ func TestVMCommit(t *testing.T) {
 
 		fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
 
-		an := new(mocks.AfterNotifier)
+		an := new(mocks.MockAfterNotifier)
 
 		if r[commitShutdown] && r[commitDomainActive] {
 			if r[commitShutdownTimeout] {
@@ -348,7 +348,7 @@ func TestVMExecRsync(t *testing.T) {
 		Dest:   "/tmp",
 	}
 
-	copier := new(mocks.NetworkCopier)
+	copier := new(mocks.MockNetworkCopier)
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: filepath.Join(dir, "file1.txt")},
 		{Path: filepath.Join(dir, "file2.txt")},
@@ -361,7 +361,7 @@ func TestVMExecRsync(t *testing.T) {
 		Source: filepath.Join("~/*"),
 		Dest:   "/tmp",
 	}
-	copier2 := new(mocks.NetworkCopier)
+	copier2 := new(mocks.MockNetworkCopier)
 	copierCall := copier2.On("Copy", mock.Anything, mock.AnythingOfType("[]netcopy.HostPath"), netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	copierCall.RunFn = func(args mock.Arguments) {
 		paths := args[1].([]netcopy.HostPath)
@@ -376,7 +376,7 @@ func TestVMExecRsync(t *testing.T) {
 		Source: filepath.Join("/", "323willnotbeherefile.txt"),
 		Dest:   "/tmp",
 	}
-	copier3 := new(mocks.NetworkCopier)
+	copier3 := new(mocks.MockNetworkCopier)
 	copier3.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	err = v.VMExecRsync(context.Background(), copier3, []string{vmName}, step)
 	assert.NoError(t, err)
@@ -385,7 +385,7 @@ func TestVMExecRsync(t *testing.T) {
 		Source: filepath.Join(dir, "*.txt"),
 		Dest:   "/tmp",
 	}
-	copier4 := new(mocks.NetworkCopier)
+	copier4 := new(mocks.MockNetworkCopier)
 	copier4.On("Copy", mock.Anything, []netcopy.HostPath{}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
 	err = v.VMExecRsync(context.Background(), copier3, []string{"NoVm"}, step)
 	assert.Error(t, err)
@@ -407,7 +407,7 @@ func TestVMExecCopy(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	copier := new(mocks.NetworkCopier)
+	copier := new(mocks.MockNetworkCopier)
 	copier.On("Copy", mock.Anything, []netcopy.HostPath{
 		{Path: filepath.Join(dir, "file1.txt")},
 	}, netcopy.HostPath{User: "root", Path: "/tmp", Host: "192.168.122.42"}, mock.Anything, mock.Anything).Return(nil)
@@ -443,7 +443,7 @@ func createFakeDirectory() (string, error) {
 	return dir, nil
 }
 
-func mockAfter(an *mocks.AfterNotifier, timeout <-chan time.Time) {
+func mockAfter(an *mocks.MockAfterNotifier, timeout <-chan time.Time) {
 	an.On("After", shutdownTimeout).Return(timeout)
 }
 

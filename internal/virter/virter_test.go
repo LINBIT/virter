@@ -7,10 +7,6 @@ import (
 	"github.com/LINBIT/virter/internal/virter/mocks"
 )
 
-//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=ShellClient
-//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=AfterNotifier
-//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=NetworkCopier --dir=../../pkg/netcopy
-//go:generate go run github.com/vektra/mockery/v2@v2.53.4 --name=KeyStore --dir=../../pkg/sshkeys
 
 const poolName = "some-pool"
 const networkName = "some-network"
@@ -24,8 +20,8 @@ func (b MockShellClientBuilder) NewShellClient(hostPort string, sshconfig ssh.Cl
 	return b.ShellClient
 }
 
-func newMockKeystore() *mocks.KeyStore {
-	keystore := new(mocks.KeyStore)
+func newMockKeystore() *mocks.MockKeyStore {
+	keystore := new(mocks.MockKeyStore)
 	keystore.On("PublicKey").Return([]byte{})
 	keystore.On("Auth").Return([]ssh.AuthMethod{})
 	keystore.On("KeyBytes").Return([]byte{})

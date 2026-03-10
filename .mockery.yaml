@@ -1,0 +1,15 @@
+template: testify
+pkgname: mocks
+dir: internal/virter/mocks
+filename: "{{.InterfaceName}}.go"
+packages:
+  github.com/LINBIT/virter/internal/virter:
+    interfaces:
+      ShellClient: {}
+      AfterNotifier: {}
+  github.com/LINBIT/virter/pkg/netcopy:
+    interfaces:
+      NetworkCopier: {}
+  github.com/LINBIT/virter/pkg/sshkeys:
+    interfaces:
+      KeyStore: {}
