@@ -64,7 +64,8 @@ test:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
     - go run github.com/vektra/mockery/v3@v3.7.0
-    - go test -v -coverprofile .testCoverage.txt -covermode count ./... 2>&1 | go run github.com/jstemmer/go-junit-report@latest -set-exit-code > test.xml
+    - go test -v -coverprofile .testCoverage.txt -covermode count ./... > test-out.log 2>&1 || { cat test-out.log; false; }
+    - go run github.com/jstemmer/go-junit-report@latest -set-exit-code < test-out.log > test.xml
     - go run github.com/boumenot/gocover-cobertura@latest < .testCoverage.txt > coverage.xml
     - go tool cover -func=.testCoverage.txt
   coverage: '/total:\s*\(statements\)\s*\d+.\d+%/'
