@@ -102,10 +102,10 @@ virter_public_key_path = "{{ get "auth.virter_public_key_path" }}"
 virter_private_key_path = "{{ get "auth.virter_private_key_path" }}"
 
 # user_public_key can be used to define additional public keys to inject into
-# the VM. If non-empty, the contents of this string will be added to the root
-# user's authorized keys inside the VM.
-# Default value: "{{ get "auth.user_public_key" }}"
-user_public_key = "{{ get "auth.user_public_key" }}"
+# the VM. The strings in this array will be added to the root user's authorized
+# keys inside the VM.
+# Default value: {{ get "auth.user_public_key" }}
+user_public_key = {{ get "auth.user_public_key" }}
 
 [container]
 # provider is the container engine used. Can be either podman or docker.
@@ -128,7 +128,7 @@ func initConfig() {
 	viper.SetDefault("time.ssh_ping_count", 300)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
-	viper.SetDefault("auth.user_public_key", "")
+	viper.SetDefault("auth.user_public_key", []string{})
 	viper.SetDefault("container.provider", "docker")
 	viper.SetDefault("container.pull", "IfNotExist")
 

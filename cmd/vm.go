@@ -46,14 +46,9 @@ func (SSHClientBuilder) NewShellClient(hostPort string, sshConfig ssh.ClientConf
 }
 
 func extraAuthorizedKeys() ([]string, error) {
-	publicKeys := []string{}
+	userPublicKeys := viper.GetStringSlice("auth.user_public_key")
 
-	userPublicKey := viper.GetString("auth.user_public_key")
-	if userPublicKey != "" {
-		publicKeys = append(publicKeys, userPublicKey)
-	}
-
-	return publicKeys, nil
+	return userPublicKeys, nil
 }
 
 func suggestVmNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
