@@ -40,13 +40,17 @@ func vmListCommand() *cobra.Command {
 				vmInfos = append(vmInfos, vmInfo)
 			}
 
-			t := table.New("Name", "ID", "Access Network")
+			t := table.New("Name", "ID", "Access Network", "State")
 			for _, val := range vmInfos {
 				id := ""
 				if val.ID != 0 {
 					id = strconv.Itoa(int(val.ID))
 				}
-				t.AddRow(val.Name, id, val.AccessNetwork)
+				state := "shut off"
+				if val.Running {
+					state = "running"
+				}
+				t.AddRow(val.Name, id, val.AccessNetwork, state)
 			}
 			t.Print()
 		},

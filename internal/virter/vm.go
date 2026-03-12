@@ -88,13 +88,19 @@ type VMInfo struct {
 	Name          string
 	ID            uint
 	AccessNetwork string
+	Running       bool
 }
 
-// VMInfo returns the ID and access network of the named VM
+// VMInfo returns the ID, access network, and running state of the named VM
 func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 	dom, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup domain: %w", err)
+	}
+
+	active, err := v.libvirt.DomainIsActive(dom)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if domain is active: %w", err)
 	}
 
 	xmldesc, err := v.libvirt.DomainGetXMLDesc(dom, 0)
@@ -111,12 +117,12 @@ func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 	meta := metaWrapper{}
 	if desc.Metadata == nil {
 		// not a virter VM
-		return &VMInfo{Name: vmName}, nil
+		return &VMInfo{Name: vmName, Running: active != 0}, nil
 	}
 	err = xml.Unmarshal([]byte(desc.Metadata.XML), &meta)
 	if err != nil {
 		// not a virter VM
-		return &VMInfo{Name: vmName}, nil
+		return &VMInfo{Name: vmName, Running: active != 0}, nil
 	}
 
 	if len(desc.Devices.Interfaces) < 1 {
@@ -141,7 +147,7 @@ func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 		return nil, fmt.Errorf("failed to parse VM MAC address '%s' for VM '%s': %w", desc.Devices.Interfaces[0].MAC.Address, vmName, err)
 	}
 
-	return &VMInfo{Name: vmName, AccessNetwork: network.Name, ID: IDFromMAC(vmMac, QemuBaseMAC())}, nil
+	return &VMInfo{Name: vmName, AccessNetwork: network.Name, ID: IDFromMAC(vmMac, QemuBaseMAC()), Running: active != 0}, nil
 }
 
 // VMRun starts a VM.
