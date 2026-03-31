@@ -63,3 +63,12 @@ url = "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-Ge
 
 [images.alma-8]
 url = "https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
+
+[images.oracle-10]
+url = "https://yum.oracle.com/templates/OracleLinux/OL10/u1/aarch64/OL10U1_aarch64-kvm-cloud-b154.qcow2"
+
+[images.oracle-9]
+url = "https://yum.oracle.com/templates/OracleLinux/OL9/u7/aarch64/OL9U7_aarch64-kvm-cloud-b158.qcow2"
+
+[images.oracle-8]
+url = "https://yum.oracle.com/templates/OracleLinux/OL8/u10/x86_64/OL8U10_x86_64-kvm-b271.qcow2"
