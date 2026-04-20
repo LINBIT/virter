@@ -106,7 +106,10 @@ e2e-test:
     # rocky-8: requires "--secure-boot=true" but we do not yet have a way of specifying that
     # rocky-9: requires "--secure-boot=true" but we do not yet have a way of specifying that
     # ubuntu-xenial: kernel crashes on boot
-    EXCLUDED: amazonlinux-2|centos-6|centos-8|debian-9|debian-10|rocky-8|rocky-9|ubuntu-xenial
+    # oracle-10: we don't keep copies of the Oracle Linux images
+    # oracle-9: we don't keep copies of the Oracle Linux images
+    # oracle-8: we don't keep copies of the Oracle Linux images
+    EXCLUDED: amazonlinux-2|centos-6|centos-8|debian-9|debian-10|rocky-8|rocky-9|ubuntu-xenial|oracle-10|oracle-9|oracle-8
   rules:
     - if: $CI_MERGE_REQUEST_ID
   tags:
