@@ -149,10 +149,7 @@ func vmRunCommand() *cobra.Command {
 			}
 			defer v.ForceDisconnect()
 
-			extraAuthorizedKeys, err := extraAuthorizedKeys()
-			if err != nil {
-				log.Fatal(err)
-			}
+			extraAuthorizedKeys := extraAuthorizedKeys()
 
 			p := mpb.New(DefaultContainerOpt())
 			image, err := GetLocalImage(ctx, args[0], args[0], v, vmPullPolicy, DefaultProgressFormat(p))

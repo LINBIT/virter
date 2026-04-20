@@ -108,10 +108,7 @@ func imageBuildCommand() *cobra.Command {
 				existingTargetImage, _ = remote.Image(existingTargetRef, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx))
 			}
 
-			extraAuthorizedKeys, err := extraAuthorizedKeys()
-			if err != nil {
-				log.Fatal(err)
-			}
+			extraAuthorizedKeys := extraAuthorizedKeys()
 
 			consoleDir, err = createConsoleDir(consoleDir)
 			if err != nil {
