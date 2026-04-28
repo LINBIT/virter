@@ -139,6 +139,12 @@ func pullNonContainerRegistry(ctx context.Context, v *virter.Virter, destination
 	bar := p.NewBar(destination, "pull", response.ContentLength)
 	proxyResponse := bar.ProxyReader(response.Body)
 	defer proxyResponse.Close()
+	// Finalize the bar once the body is consumed. If response.ContentLength
+	// was known (>0), mpb auto-enables triggerComplete and SetTotal is a
+	// no-op; if it was -1 (chunked, gzip, etc.), this sets total = current
+	// and marks the bar complete -- without it, Progress.Wait() blocks
+	// forever waiting for a bar that can never trigger.
+	defer bar.SetTotal(-1, true)
 
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bad http status: %v", response.Status)
@@ -187,13 +193,21 @@ func (m *mpbProgress) NewBar(name, operation string, total int64) *mpb.Bar {
 		name = name[:24]
 	}
 
+	// When the total size is unknown (e.g. HTTP response without Content-Length)
+	// only show the current byte count -- the "/ -1.00b" we'd otherwise print is
+	// meaningless.
+	counter := decor.CountersKibiByte("%.2f / %.2f")
+	if total <= 0 {
+		counter = decor.CurrentKibiByte("%.2f")
+	}
+
 	return m.Progress.AddBar(
 		total,
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DindentRight}),
 			decor.OnComplete(decor.Name(operation, decor.WCSyncWidthR), fmt.Sprintf("%s done", operation)),
 		),
-		mpb.AppendDecorators(decor.CountersKibiByte("%.2f / %.2f")),
+		mpb.AppendDecorators(counter),
 	)
 }
 
