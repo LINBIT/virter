@@ -1,5 +1,8 @@
 version = 1
 
+[images.ubuntu-resolute]
+url = "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
+
 [images.ubuntu-noble]
 url = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 
