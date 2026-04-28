@@ -315,10 +315,11 @@ func (v *Virter) MakeImage(image string, topLayer *VolumeLayer, opts ...LayerOpe
 			}, nil
 		}
 
-		err = existing.DeleteAllIfUnused()
-		if err != nil {
+		if _, err := existing.DeleteAllIfUnused(); err != nil {
 			return nil, err
 		}
+
+		log.WithField("image", image).Info("replaced image tag")
 	}
 
 	raw, err := v.emptyVolume(rawName, v.provisionStoragePool, WithBackingLayer(topLayer))
@@ -484,7 +485,15 @@ func (v *Virter) ImageRm(name string, pool libvirt.StoragePool) error {
 		return nil
 	}
 
-	return img.tagLayer.DeleteAllIfUnused()
+	count, err := img.tagLayer.DeleteAllIfUnused()
+	if err != nil {
+		return err
+	}
+
+	if count > 0 {
+		log.WithField("image", name).Info("deleted image")
+	}
+	return nil
 }
 
 // ImageList returns the list of images in the local storage pool.

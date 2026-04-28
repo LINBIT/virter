@@ -48,8 +48,6 @@ func imagePruneCommand() *cobra.Command {
 						if err != nil {
 							log.WithError(err).Fatalf("failed to delete image '%s'", image.Name())
 						}
-
-						log.WithField("image", image.Name()).Info("deleted image")
 					}
 				}
 			}
@@ -65,9 +63,13 @@ func imagePruneCommand() *cobra.Command {
 			// we just follow the dependency chain once we have a successful deletion. So in the example, after
 			// we deleted a, we would follow the chain and try to delete b again.
 			for _, layer := range layers {
-				err := layer.DeleteAllIfUnused()
+				count, err := layer.DeleteAllIfUnused()
 				if err != nil {
 					log.WithError(err).Warn("could not prune layer")
+					continue
+				}
+				if count > 0 {
+					log.WithFields(log.Fields{"layer": layer.Name(), "count": count}).Info("pruned unused layers")
 				}
 			}
 		},

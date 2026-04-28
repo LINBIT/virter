@@ -482,30 +482,34 @@ func (rl *RawLayer) Delete() error {
 	return nil
 }
 
-func (rl *RawLayer) DeleteAllIfUnused() error {
+// DeleteAllIfUnused walks the dependency chain, deleting layers that are not in use.
+// Returns the number of layers actually deleted.
+func (rl *RawLayer) DeleteAllIfUnused() (int, error) {
 	if rl == nil {
-		return nil
+		return 0, nil
 	}
 
+	count := 0
 	for {
 		dep, err := rl.Dependency()
 		if err != nil {
-			return err
+			return count, err
 		}
 
 		deleted, err := rl.DeleteIfUnused()
 		if err != nil {
-			return err
+			return count, err
 		}
 
 		if !deleted {
-			return nil
+			return count, nil
 		}
 
-		log.WithField("layer", rl.volume.Name).Info("deleted layer")
+		log.WithField("layer", rl.volume.Name).Debug("deleted layer")
+		count++
 
 		if dep == nil {
-			return nil
+			return count, nil
 		}
 
 		rl = &dep.RawLayer

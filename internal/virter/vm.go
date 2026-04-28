@@ -426,8 +426,7 @@ func (v *Virter) rmVolume(disk VMDisk) error {
 		return fmt.Errorf("could not get volume %s: %w", disk.volumeName, err)
 	}
 
-	err = layer.DeleteAllIfUnused()
-	if err != nil {
+	if _, err := layer.DeleteAllIfUnused(); err != nil {
 		return fmt.Errorf("could not delete volume %s: %w", disk.volumeName, err)
 	}
 
