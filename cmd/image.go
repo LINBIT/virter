@@ -130,6 +130,13 @@ func pullNonContainerRegistry(ctx context.Context, v *virter.Virter, destination
 	if err != nil {
 		return nil, err
 	}
+	// Disable transparent gzip. Virter pulls disk images (qcow2, raw, iso)
+	// which are already compressed or essentially random, so gzip transit
+	// just burns CPU on both ends. As a side benefit, CDNs that gzip on
+	// the fly (e.g. Varnish in front of vault.almalinux.org) drop the
+	// Content-Length header when they re-encode -- without identity
+	// encoding, the progress bar can't show a total.
+	req.Header.Set("Accept-Encoding", "identity")
 
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
