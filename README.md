@@ -30,6 +30,13 @@ Depending on your host distribution and libvirt installation, you may need to:
 * [Set up a storage pool](#libvirt-storage-pool); and/or
 * [Configure AppArmor](#apparmor).
 
+## Upgrading from 0.x
+
+Virter 1.0 introduces breaking changes to the registry file format,
+provisioning file rules, and a few CLI flags. See the
+[migration guide](./doc/migration-1.0.md) for details on how to update
+existing configurations.
+
 ## Usage
 
 For usage just run `virter help`.
