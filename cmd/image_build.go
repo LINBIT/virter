@@ -272,8 +272,6 @@ func imageBuildCommand() *cobra.Command {
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
 	bootCapacity = u.MustNewValue(10*sizeUnits["G"], unit.None)
-	buildCmd.Flags().VarP(bootCapacity, "bootcap", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
-	_ = buildCmd.Flags().MarkDeprecated("bootcap", "use --boot-capacity instead")
 	buildCmd.Flags().VarP(bootCapacity, "boot-capacity", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
 	buildCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	buildCmd.Flags().BoolVar(&resetMachineID, "reset-machine-id", true, "Whether or not to clear the /etc/machine-id file after provisioning")

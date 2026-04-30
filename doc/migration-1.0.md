@@ -72,12 +72,10 @@ virter vm run --pull-policy IfNotExist ...
 virter vm run --vm-pull-policy IfNotExist ...
 ```
 
-### Renamed: `--boot-capacity`
+### Removed: `--bootcapacity` / `--bootcap`
 
-The old flag names are inconsistent with the rest of the CLI:
+The old flag names on `vm run` and `image build` are inconsistent with the rest
+of the CLI and have been renamed to `--boot-capacity` for clarity:
 
 * `vm run --bootcapacity` → `vm run --boot-capacity`
 * `image build --bootcap` → `image build --boot-capacity`
-
-The old names still work in 1.0 but are deprecated and will be removed in a
-future release. Update scripts now to silence the deprecation warnings.
