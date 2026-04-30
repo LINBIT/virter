@@ -44,17 +44,17 @@ docker login my.registry.com
 Instead of a container registry, you can also pull images from HTTP resources. You can either specify a URL directly:
 
 ```
-$ virter image pull ubuntu-bionic https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img
-ubuntu-bionic pull done [===============================================] 353.56MiB / 353.56MiB
-Pulled ubuntu-bionic
+$ virter image pull ubuntu-resolute https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img
+ubuntu-resolute pull done [=============================================] 817.41MiB / 817.41MiB
+Pulled ubuntu-resolute
 ```
 
 or use the [Virter Image Registry](images.md#virter-image-registry) to select the HTTP resource to pull:
 
 ```
-$ virter image pull ubuntu-bionic
-ubuntu-bionic pull done [===============================================] 353.56MiB / 353.56MiB
-Pulled ubuntu-bionic
+$ virter image pull ubuntu-resolute
+ubuntu-resolute pull done [=============================================] 817.41MiB / 817.41MiB
+Pulled ubuntu-resolute
 ```
 
 ## Pushing images
@@ -153,7 +153,7 @@ which represents some commonly used distributions. It is maintained by the
 virter maintainers.
 
 If the shipped image registry file does not exist, it is fetched from a well-known
-static url (https://linbit.github.io/virter/images.toml). The shipped registry
+static url (https://linbit.github.io/virter/v1/images.toml). The shipped registry
 can also be updated manually, using the `virter registry update` command.
 
 #### User-Defined Registry

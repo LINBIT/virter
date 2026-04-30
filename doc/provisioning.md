@@ -7,9 +7,9 @@ To define the provisioning process, Virter uses files in the [toml](https://gith
 
 A provisioning file can be used when building a VM image as such:
 ```sh
-$ virter image build -p provisioning.toml centos7 centos7-provisioned
+$ virter image build -p provisioning.toml alma-10 alma-10-provisioned
 ```
-This will create a new image – `centos7-provisioned` – which is derived from the `centos7` base image by applying the provisioning steps defined in `provisioning.toml`.
+This will create a new image – `alma-10-provisioned` – which is derived from the `alma-10` base image by applying the provisioning steps defined in `provisioning.toml`.
 
 It can also be applied to one or multiple already running VMs:
 ```sh

@@ -251,4 +251,4 @@ running standard distributions.
 ## Development
 
 Virter is a standard go project using modules.
-Go 1.13+ is supported.
+Go 1.25+ is supported.
