@@ -133,9 +133,9 @@ func initConfig() {
 	viper.SetDefault("container.pull", "IfNotExist")
 
 	viper.SetConfigType("toml")
-	if cfgFile != "" {
+	if configFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
+		viper.SetConfigFile(configFile)
 
 		// When using a custom config file, do not set a default key location
 		viper.SetDefault("auth.virter_public_key_path", "")
@@ -158,7 +158,7 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		log.Debugf("Using config file: %s", viper.ConfigFileUsed())
 	} else if isConfigNotFoundError(err) {
-		newPath := cfgFile
+		newPath := configFile
 		if newPath == "" {
 			newPath = filepath.Join(configPath(), "virter.toml")
 		}
@@ -176,6 +176,21 @@ func initConfig() {
 	viper.SetEnvPrefix("virter")
 	viper.AutomaticEnv() // read in environment variables that match
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	applyConfigOverrides()
+}
+
+// applyConfigOverrides applies values from the --config-set flag to viper,
+// overriding the config file and environment variables. If a key is repeated,
+// the last value wins.
+func applyConfigOverrides() {
+	for _, override := range configOverrides {
+		key, value, ok := strings.Cut(override, "=")
+		if !ok {
+			log.Fatalf("invalid --config-set value %q: expected key=value", override)
+		}
+		viper.Set(key, value)
+	}
 }
 
 func isConfigNotFoundError(err error) bool {

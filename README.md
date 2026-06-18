@@ -71,10 +71,8 @@ Virter requires:
 * When container provisioning is used: A container runtime.
   Currently, Virter supports `docker` and `podman`.
 
-Configuration is read by default from `~/.config/virter/virter.toml`.
-
-When starting Virter for the first time, a default configuration file will be
-generated, including documentation about the various flags.
+See [`doc/configuration.md`](./doc/configuration.md) for how Virter is
+configured.
 
 ### Container runtime
 

@@ -20,7 +20,8 @@ var (
 	githash   string
 )
 
-var cfgFile string
+var configFile string
+var configOverrides []string
 var logLevel string
 var logFormat string
 
@@ -50,7 +51,9 @@ and resetting, for a stable test environment.`,
 	}
 
 	configName := filepath.Join(configPath(), "virter.toml")
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
+	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", fmt.Sprintf("config file (default is %v)", configName))
+	rootCmd.PersistentFlags().StringArrayVar(&configOverrides, "config-set", nil,
+		"Override a config value, e.g. --config-set libvirt.pool=mypool")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", defaultLogLevel,
 		"Log level, default may be set with environment variable \"VIRTER_LOG_LEVEL\"")
 	rootCmd.PersistentFlags().StringVar(&logFormat, "logformat", "default", "Log format, current options: short")
