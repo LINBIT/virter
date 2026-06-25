@@ -257,14 +257,14 @@ func multipartUserData(parts []userDataPart) (string, error) {
 }
 
 func (v *Virter) userData(vmConfig VMConfig, sshPublicKeys []string, hostkey sshkeys.HostKey, mounts []string) (string, error) {
-	domainSuffix, err := v.getDomainSuffix()
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
 	if err != nil {
 		return "", err
 	}
 
 	return renderUserData(userDataConfig{
 		VMName:        vmConfig.Name,
-		DomainSuffix:  domainSuffix,
+		DomainSuffix:  getDomainSuffix(networkDescription),
 		SSHPublicKeys: sshPublicKeys,
 		HostKey:       hostkey,
 		Mounts:        mounts,

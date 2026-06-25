@@ -689,7 +689,7 @@ func (v *Virter) vmShutdown(ctx context.Context, afterNotifier AfterNotifier, sh
 	return nil
 }
 
-func (v *Virter) getIP(vmName string, network *libvirt.Network) (string, error) {
+func (v *Virter) getIP(vmName string) (string, error) {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
 		return "", fmt.Errorf("could not get domain '%s': %w", vmName, err)
@@ -704,11 +704,12 @@ func (v *Virter) getIP(vmName string, network *libvirt.Network) (string, error) 
 		return "", fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
 	}
 
-	if network == nil {
-		network = &v.provisionNetwork
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
+	if err != nil {
+		return "", err
 	}
 
-	ip, err := v.findVMIP(*network, domain)
+	ip, err := v.findVMIP(networkDescription, domain)
 	if err != nil {
 		return "", fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
 	}
@@ -744,7 +745,7 @@ func (v *Virter) getIPs(vmNames []string) ([]string, error) {
 	var ips []string
 
 	for _, vmName := range vmNames {
-		ip, err := v.getIP(vmName, &v.provisionNetwork)
+		ip, err := v.getIP(vmName)
 		if err != nil {
 			return nil, err
 		}
@@ -759,10 +760,12 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 		return nil, err
 	}
 
-	domainSuffix, err := v.getDomainSuffix()
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
 	if err != nil {
 		return nil, err
 	}
+
+	domainSuffix := getDomainSuffix(networkDescription)
 
 	knownHosts := sshkeys.NewKnownHosts()
 	for i, vmName := range vmNames {
@@ -823,7 +826,12 @@ func (v *Virter) getSSHUserNames(vmNames []string) []string {
 func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containerapi.ContainerProvider,
 	vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionContainerCopyStep) error {
 
-	accessIPNet, err := v.getIPNet(v.provisionNetwork)
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
+	if err != nil {
+		return fmt.Errorf("could not get network: %w", err)
+	}
+
+	accessIPNet, err := getIPNet(networkDescription)
 	if err != nil {
 		return fmt.Errorf("could not get network: %w", err)
 	}
@@ -837,10 +845,7 @@ func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containe
 
 	vmSSHUserNames := v.getSSHUserNames(vmNames)
 
-	domain, err := v.getDomainSuffix()
-	if err != nil {
-		return err
-	}
+	domain := getDomainSuffix(networkDescription)
 
 	for i := range ips {
 		containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: vmNames[i], IP: ips[i]})
@@ -854,15 +859,11 @@ func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containe
 		return err
 	}
 
-	dnsserver, err := v.getDNSServer()
-	if err != nil {
-		return err
-	}
-
 	if domain != "" {
 		containerCfg.AddDNSSearchDomain(domain)
 	}
-	containerCfg.AddDNSServer(dnsserver)
+	// The libvirt DNS server listens on the host address of the network
+	containerCfg.AddDNSServer(accessIPNet.IP)
 
 	err = containerRun(ctx, containerProvider, containerCfg, vmNames, vmSSHUserNames, ips, v.sshkeys, knownHosts, copyStep)
 	if err != nil {
@@ -1003,7 +1004,7 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 
 			vmNames = append(vmNames, sources[i].Host)
 			// Replace hostname with ip
-			ip, err := v.getIP(sources[i].Host, nil)
+			ip, err := v.getIP(sources[i].Host)
 			if err != nil {
 				return err
 			}
@@ -1016,7 +1017,7 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 		dest.User = v.getSSHUserName(dest.Host)
 
 		vmNames = append(vmNames, dest.Host)
-		ip, err := v.getIP(dest.Host, nil)
+		ip, err := v.getIP(dest.Host)
 		if err != nil {
 			return err
 		}
@@ -1084,7 +1085,7 @@ func connectSSHRetry(ctx context.Context, config *ssh.ClientConfig, ipPort strin
 	return sshClient, nil
 }
 
-func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (string, error) {
+func (v *Virter) findVMIP(networkDescription *lx.Network, domain libvirt.Domain) (string, error) {
 	nics, err := v.getNICs(domain)
 	if err != nil {
 		return "", err
@@ -1092,7 +1093,7 @@ func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (strin
 
 	mac := ""
 	for _, nic := range nics {
-		if network.Name == nic.Network {
+		if networkDescription.Name == nic.Network {
 			mac = nic.MAC
 			break
 		}
@@ -1101,10 +1102,7 @@ func (v *Virter) findVMIP(network libvirt.Network, domain libvirt.Domain) (strin
 		return "", fmt.Errorf("could not find MAC address of domain")
 	}
 
-	ips, err := v.findIPs(network, mac)
-	if err != nil {
-		return "", err
-	}
+	ips := findIPs(networkDescription, mac)
 	if len(ips) < 1 {
 		return "", fmt.Errorf("no IP found for domain")
 	}

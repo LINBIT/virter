@@ -18,7 +18,12 @@ import (
 // so that DHCP entries do not need to be released between removing a VM and
 // creating another with the same ID.
 func (v *Virter) AddDHCPHost(mac string, id uint) error {
-	ipNet, err := v.getIPNet(v.provisionNetwork)
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
+	if err != nil {
+		return err
+	}
+
+	ipNet, err := getIPNet(networkDescription)
 	if err != nil {
 		return err
 	}
@@ -45,29 +50,14 @@ func (v *Virter) AddDHCPHost(mac string, id uint) error {
 	return nil
 }
 
-// Get the libvirt DNS server
-func (v *Virter) getDNSServer() (net.IP, error) {
-	ipNet, err := v.getIPNet(v.provisionNetwork)
-	if err != nil {
-		return nil, fmt.Errorf("could not get network description: %w", err)
-	}
-
-	return ipNet.IP, nil
-}
-
 // Get the domain suffix of the libvirt network. Returns an empty string if no
 // domain is configured.
-func (v *Virter) getDomainSuffix() (string, error) {
-	net, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
-	if err != nil {
-		return "", fmt.Errorf("could not get network xml: %w", err)
+func getDomainSuffix(networkDescription *libvirtxml.Network) string {
+	if networkDescription.Domain == nil {
+		return ""
 	}
 
-	if net.Domain == nil || net.Domain.Name == "" {
-		return "", nil
-	}
-
-	return net.Domain.Name, nil
+	return networkDescription.Domain.Name
 }
 
 // QemuMAC calculates a MAC address for a given id
@@ -117,14 +107,18 @@ func IDFromMAC(mac, base net.HardwareAddr) uint {
 	return uint(macValue.Int64())
 }
 
-func (v *Virter) getIPNet(network libvirt.Network) (*net.IPNet, error) {
-	networkDescription, err := getNetworkDescription(v.libvirt, network)
+func getIPNet(networkDescription *libvirtxml.Network) (*net.IPNet, error) {
+	ipNet, err := getIPv4Net(networkDescription.IPs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("network '%s': %w", networkDescription.Name, err)
 	}
 
-	for i := range networkDescription.IPs {
-		desc := networkDescription.IPs[i]
+	return ipNet, nil
+}
+
+func getIPv4Net(networkIPs []libvirtxml.NetworkIP) (*net.IPNet, error) {
+	for i := range networkIPs {
+		desc := networkIPs[i]
 		if desc.Family != "" && desc.Family != "ipv4" {
 			continue
 		}
@@ -166,17 +160,14 @@ func (v *Virter) getIPNet(network libvirt.Network) (*net.IPNet, error) {
 // RemoveMACDHCPEntries removes DHCP host entries associated with the given
 // MAC address
 func (v *Virter) RemoveMACDHCPEntries(mac string) error {
-	ips, err := v.findIPs(v.provisionNetwork, mac)
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
 	if err != nil {
 		return err
 	}
 
-	err = v.removeDHCPEntries(v.provisionNetwork, mac, ips)
-	if err != nil {
-		return err
-	}
+	ips := findIPs(networkDescription, mac)
 
-	return nil
+	return v.removeDHCPEntries(v.provisionNetwork, mac, ips)
 }
 
 // reclaimOrphanDHCPHost frees an orphaned DHCP reservation so the ID can be reused,
@@ -192,15 +183,17 @@ func (v *Virter) reclaimOrphanDHCPHost(id uint) error {
 		return nil
 	}
 
-	ips, err := v.findIPs(v.provisionNetwork, mac)
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
 	if err != nil {
 		return err
 	}
+
+	ips := findIPs(networkDescription, mac)
 	if len(ips) == 0 {
 		return nil
 	}
 
-	expected, err := v.expectedHostIP(id)
+	expected, err := expectedHostIP(networkDescription, id)
 	if err != nil {
 		return err
 	}
@@ -214,8 +207,8 @@ func (v *Virter) reclaimOrphanDHCPHost(id uint) error {
 }
 
 // expectedHostIP returns the IP virter assigns to a VM ID on the provision network
-func (v *Virter) expectedHostIP(id uint) (net.IP, error) {
-	ipNet, err := v.getIPNet(v.provisionNetwork)
+func expectedHostIP(networkDescription *libvirtxml.Network, id uint) (net.IP, error) {
+	ipNet, err := getIPNet(networkDescription)
 	if err != nil {
 		return nil, err
 	}
@@ -248,10 +241,12 @@ func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool)
 			return fmt.Errorf("could not get network: %w", err)
 		}
 
-		ips, err := v.findIPs(network, nic.MAC)
+		networkDescription, err := getNetworkDescription(v.libvirt, network)
 		if err != nil {
 			return err
 		}
+
+		ips := findIPs(networkDescription, nic.MAC)
 
 		if removeDHCPEntries {
 			err = v.removeDHCPEntries(network, nic.MAC, ips)
@@ -362,13 +357,8 @@ func getDomainNICs(domainDescription *libvirtxml.Domain) ([]nic, error) {
 }
 
 // getDHCPHosts returns an array of used dhcp entry hosts
-func (v *Virter) getDHCPHosts(network libvirt.Network) ([]libvirtxml.NetworkDHCPHost, error) {
+func getDHCPHosts(networkDescription *libvirtxml.Network) []libvirtxml.NetworkDHCPHost {
 	var hosts []libvirtxml.NetworkDHCPHost
-
-	networkDescription, err := getNetworkDescription(v.libvirt, network)
-	if err != nil {
-		return hosts, err
-	}
 
 	for i := range networkDescription.IPs {
 		desc := networkDescription.IPs[i]
@@ -384,40 +374,37 @@ func (v *Virter) getDHCPHosts(network libvirt.Network) ([]libvirtxml.NetworkDHCP
 		hosts = append(hosts, desc.DHCP.Hosts...)
 	}
 
-	return hosts, nil
+	return hosts
 }
 
-func (v *Virter) findIPs(network libvirt.Network, mac string) ([]string, error) {
+func findIPs(networkDescription *libvirtxml.Network, mac string) []string {
 	ips := []string{}
 
-	hosts, err := v.getDHCPHosts(network)
-	if err != nil {
-		return ips, err
-	}
-
-	for _, host := range hosts {
+	for _, host := range getDHCPHosts(networkDescription) {
 		if host.MAC == mac {
 			ips = append(ips, host.IP)
 		}
 	}
 
-	return ips, nil
+	return ips
 }
 
 // GetVMID returns wantedID if it is not 0 and free.
 // If wantedID is 0 GetVMID searches for an unused ID and returns the first it can find.
 // For searching it uses the set libvirt network and already reserved DHCP entries.
 func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
-	if expectDHCPEntry {
-		if wantedID == 0 {
-			return 0, fmt.Errorf("ID must be set in static DHCP mode")
-		}
+	if expectDHCPEntry && wantedID == 0 {
+		return 0, fmt.Errorf("ID must be set in static DHCP mode")
+	}
 
+	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get access network: %w", err)
+	}
+
+	if expectDHCPEntry {
 		mac := QemuMAC(wantedID)
-		ips, err := v.findIPs(v.provisionNetwork, mac)
-		if err != nil {
-			return 0, err
-		}
+		ips := findIPs(networkDescription, mac)
 
 		if len(ips) < 1 {
 			return 0, fmt.Errorf("DHCP host entry for ID '%d' not found (static DHCP mode)", wantedID)
@@ -426,7 +413,7 @@ func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
 		return wantedID, nil
 	}
 
-	ipnet, err := v.getIPNet(v.provisionNetwork)
+	ipnet, err := getIPNet(networkDescription)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get access network: %w", err)
 	}
@@ -444,10 +431,7 @@ func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
 	// we start from top of avialable host id's and check if they are already used and find one
 	for i := end; i >= start; i-- {
 		mac := QemuMAC(i)
-		ips, err := v.findIPs(v.provisionNetwork, mac)
-		if err != nil {
-			return 0, err
-		}
+		ips := findIPs(networkDescription, mac)
 
 		if len(ips) == 0 {
 			return i, nil
