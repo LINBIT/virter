@@ -130,24 +130,17 @@ func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 		return &VMInfo{Name: vmName, Running: active != 0}, nil
 	}
 
-	if len(desc.Devices.Interfaces) < 1 {
-		return nil, fmt.Errorf("no interfaces found for VM '%s'", vmName)
-	}
-
-	if desc.Devices.Interfaces[0].Source == nil || desc.Devices.Interfaces[0].Source.Network == nil || desc.Devices.Interfaces[0].Source.Network.Network == "" {
-		return nil, fmt.Errorf("no network found for VM '%s'", vmName)
-	}
-
-	if desc.Devices.Interfaces[0].MAC == nil {
-		return nil, fmt.Errorf("no MAC address found for VM '%s'", vmName)
-	}
-
-	vmMac, err := net.ParseMAC(desc.Devices.Interfaces[0].MAC.Address)
+	accessNIC, err := getAccessNIC(vmName, &desc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse VM MAC address '%s' for VM '%s': %w", desc.Devices.Interfaces[0].MAC.Address, vmName, err)
+		return nil, err
 	}
 
-	return &VMInfo{Name: vmName, AccessNetwork: desc.Devices.Interfaces[0].Source.Network.Network, ID: IDFromMAC(vmMac, QemuBaseMAC()), Running: active != 0}, nil
+	vmMac, err := net.ParseMAC(accessNIC.MAC)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse VM MAC address '%s' for VM '%s': %w", accessNIC.MAC, vmName, err)
+	}
+
+	return &VMInfo{Name: vmName, AccessNetwork: accessNIC.Network, ID: IDFromMAC(vmMac, QemuBaseMAC()), Running: active != 0}, nil
 }
 
 // VMRun starts a VM.
@@ -721,6 +714,30 @@ func (v *Virter) getIP(vmName string, network *libvirt.Network) (string, error) 
 	}
 
 	return ip, nil
+}
+
+// getAccessNIC returns the VM's first network interface, which Virter treats as
+// the access network interface. It is an error if the VM has no interfaces, if
+// the first interface is not on a libvirt network, or if it has no MAC address.
+func getAccessNIC(vmName string, domainDescription *lx.Domain) (nic, error) {
+	nics, err := getDomainNICs(domainDescription)
+	if err != nil {
+		return nic{}, fmt.Errorf("could not get interfaces for VM '%s': %w", vmName, err)
+	}
+
+	if len(nics) < 1 {
+		return nic{}, fmt.Errorf("no interfaces found for VM '%s'", vmName)
+	}
+
+	if nics[0].Network == "" {
+		return nic{}, fmt.Errorf("no network found for VM '%s'", vmName)
+	}
+
+	if nics[0].MAC == "" {
+		return nic{}, fmt.Errorf("no MAC address found for VM '%s'", vmName)
+	}
+
+	return nics[0], nil
 }
 
 func (v *Virter) getIPs(vmNames []string) ([]string, error) {

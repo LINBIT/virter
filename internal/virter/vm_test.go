@@ -683,6 +683,74 @@ func TestVMExecCopy(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestVMInfoAccessNIC(t *testing.T) {
+	networkNIC := func(network, mac string) libvirtxml.DomainInterface {
+		nic := libvirtxml.DomainInterface{
+			Source: &libvirtxml.DomainInterfaceSource{
+				Network: &libvirtxml.DomainInterfaceSourceNetwork{Network: network},
+			},
+		}
+		if mac != "" {
+			nic.MAC = &libvirtxml.DomainInterfaceMAC{Address: mac}
+		}
+		return nic
+	}
+	bridgeNIC := libvirtxml.DomainInterface{
+		Source: &libvirtxml.DomainInterfaceSource{
+			Bridge: &libvirtxml.DomainInterfaceSourceBridge{Bridge: "br0"},
+		},
+		MAC: &libvirtxml.DomainInterfaceMAC{Address: virter.QemuMAC(vmID)},
+	}
+
+	cases := []struct {
+		name                  string
+		interfaces            []libvirtxml.DomainInterface
+		expectedAccessNetwork string
+		expectedErr           string
+	}{
+		{
+			name:                  "first interface is the access interface",
+			interfaces:            []libvirtxml.DomainInterface{networkNIC("other-network", virter.QemuMAC(vmID)), networkNIC(networkName, virter.QemuMAC(vmID+1))},
+			expectedAccessNetwork: "other-network",
+		},
+		{
+			name:        "no interfaces",
+			expectedErr: fmt.Sprintf("no interfaces found for VM '%s'", vmName),
+		},
+		{
+			name:        "first interface not on a libvirt network",
+			interfaces:  []libvirtxml.DomainInterface{bridgeNIC, networkNIC(networkName, virter.QemuMAC(vmID+1))},
+			expectedErr: fmt.Sprintf("no network found for VM '%s'", vmName),
+		},
+		{
+			name:        "first interface without MAC address",
+			interfaces:  []libvirtxml.DomainInterface{networkNIC(networkName, "")},
+			expectedErr: fmt.Sprintf("no MAC address found for VM '%s'", vmName),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			l := newFakeLibvirtConnection()
+			domain := newFakeLibvirtDomain(vmName, vmMAC)
+			domain.description.Devices.Interfaces = c.interfaces
+			l.domains[vmName] = domain
+
+			v := virter.New(l, poolName, networkName, newMockKeystore())
+
+			info, err := v.VMInfo(vmName)
+			if c.expectedErr != "" {
+				assert.EqualError(t, err, c.expectedErr)
+				return
+			}
+			if assert.NoError(t, err) {
+				assert.Equal(t, c.expectedAccessNetwork, info.AccessNetwork)
+				assert.Equal(t, uint(vmID), info.ID)
+			}
+		})
+	}
+}
+
 func createFakeDirectory() (string, error) {
 	dir, err := os.MkdirTemp("/tmp", "virter-test")
 	if err != nil {

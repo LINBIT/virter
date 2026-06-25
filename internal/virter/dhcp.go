@@ -323,6 +323,12 @@ func (v *Virter) getNICs(domain libvirt.Domain) ([]nic, error) {
 		return nil, err
 	}
 
+	return getDomainNICs(domainDescription)
+}
+
+// getDomainNICs returns the list of macs and their virtual network from a
+// domain description
+func getDomainNICs(domainDescription *libvirtxml.Domain) ([]nic, error) {
 	devicesDescription := domainDescription.Devices
 	if devicesDescription == nil {
 		return nil, fmt.Errorf("no devices in domain")
