@@ -41,7 +41,9 @@ uri = "{{ get "libvirt.uri" }}"
 # Default value: "{{ get "libvirt.pool" }}"
 pool = "{{ get "libvirt.pool" }}"
 
-# network is the libvirt network that virter should use.
+# network is the libvirt network that new VMs are attached to ('vm run').
+# Existing VMs are accessed via their own network, so changing this does not
+# affect access to VMs that were already created.
 # The user is responsible for ensuring that this network exists and is active.
 # Default value: "{{ get "libvirt.network" }}"
 network = "{{ get "libvirt.network" }}"

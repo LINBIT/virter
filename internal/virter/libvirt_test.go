@@ -510,14 +510,18 @@ func (l *FakeLibvirtConnection) addFakeStoragePool(name string) *FakeLibvirtStor
 }
 
 func fakeLibvirtNetwork() *FakeLibvirtNetwork {
+	return newFakeLibvirtNetwork(networkName, "fake-domain.com", networkAddress)
+}
+
+func newFakeLibvirtNetwork(name, domain, address string) *FakeLibvirtNetwork {
 	return &FakeLibvirtNetwork{
 		description: &libvirtxml.Network{
 			XMLName: xml.Name{Local: "network"},
-			Name:    networkName,
-			Domain:  &libvirtxml.NetworkDomain{Name: "fake-domain.com"},
+			Name:    name,
+			Domain:  &libvirtxml.NetworkDomain{Name: domain},
 			IPs: []libvirtxml.NetworkIP{
 				libvirtxml.NetworkIP{
-					Address: networkAddress,
+					Address: address,
 					Netmask: networkNetmask,
 					DHCP:    &libvirtxml.NetworkDHCP{},
 				},
@@ -542,6 +546,10 @@ const fakeVMMeta = `
 `
 
 func newFakeLibvirtDomain(name string, mac string) *FakeLibvirtDomain {
+	return newFakeLibvirtDomainOnNetwork(name, mac, networkName)
+}
+
+func newFakeLibvirtDomainOnNetwork(name string, mac string, network string) *FakeLibvirtDomain {
 	return &FakeLibvirtDomain{
 		description: &libvirtxml.Domain{
 			Metadata: &libvirtxml.DomainMetadata{XML: fakeVMMeta},
@@ -551,7 +559,7 @@ func newFakeLibvirtDomain(name string, mac string) *FakeLibvirtDomain {
 					libvirtxml.DomainInterface{
 						Source: &libvirtxml.DomainInterfaceSource{
 							Network: &libvirtxml.DomainInterfaceSourceNetwork{
-								Network: networkName,
+								Network: network,
 							},
 						},
 						MAC: &libvirtxml.DomainInterfaceMAC{

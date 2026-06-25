@@ -683,6 +683,58 @@ func TestVMExecCopy(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// newVirterWithVMOnOtherNetwork returns a Virter configured with networkName
+// and a running VM whose access interface is on otherNetworkName.
+func newVirterWithVMOnOtherNetwork() *virter.Virter {
+	l := newFakeLibvirtConnection()
+
+	otherNetwork := newFakeLibvirtNetwork(otherNetworkName, otherNetworkDomain, otherNetworkAddress)
+	l.networks[otherNetworkName] = otherNetwork
+
+	domain := newFakeLibvirtDomainOnNetwork(vmName, vmMAC, otherNetworkName)
+	domain.active = true
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(otherNetwork, vmMAC, otherNetworkVMIP)
+	// A DHCP entry for the same MAC on the configured network must be ignored.
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+
+	return virter.New(l, poolName, networkName, newMockKeystore())
+}
+
+func TestVMExecCopyOtherNetwork(t *testing.T) {
+	v := newVirterWithVMOnOtherNetwork()
+
+	file := filepath.Join(t.TempDir(), "file1.txt")
+	assert.NoError(t, os.WriteFile(file, nil, 0o644))
+
+	copier := new(mocks.MockNetworkCopier)
+	copier.On("Copy", mock.Anything, []netcopy.HostPath{
+		{Path: file},
+	}, netcopy.HostPath{User: "root", Path: "/tmp", Host: otherNetworkVMIP}, mock.Anything, mock.Anything).Return(nil)
+
+	err := v.VMExecCopy(context.Background(), copier, []string{file}, vmName+":/tmp")
+	assert.NoError(t, err)
+
+	copier.AssertExpectations(t)
+}
+
+func TestVMExecCopyMissingAccessNetwork(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomainOnNetwork(vmName, vmMAC, "missing-network")
+	domain.active = true
+	l.domains[vmName] = domain
+
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	err := v.VMExecCopy(context.Background(), new(mocks.MockNetworkCopier), []string{"/tmp/file1.txt"}, vmName+":/tmp")
+
+	var getErr *virter.LibvirtGetError
+	if assert.ErrorAs(t, err, &getErr) {
+		assert.True(t, getErr.NotFound)
+	}
+}
+
 func TestVMInfoAccessNIC(t *testing.T) {
 	networkNIC := func(network, mac string) libvirtxml.DomainInterface {
 		nic := libvirtxml.DomainInterface{
@@ -783,4 +835,9 @@ const (
 	sshPublicKey       = "some-key"
 	shutdownTimeout    = time.Second
 	containerImageName = "some-container-image"
+
+	otherNetworkName    = "other-network"
+	otherNetworkDomain  = "other-domain.com"
+	otherNetworkAddress = "192.168.123.1"
+	otherNetworkVMIP    = "192.168.123.42"
 )

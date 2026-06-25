@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `vm ssh`, `vm exec`, `vm cp` and `vm wait-ready` reach a VM through the
+  network of its first interface instead of `libvirt.network`. VMs created on
+  another network can be reached without overriding `libvirt.network`.
+
 ## [1.5.1] - 2026-11-24
 
 ### Fixed

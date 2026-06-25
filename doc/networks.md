@@ -1,8 +1,12 @@
 # Virter Networking
 
-Using Virter requires at least one virtual network. All VMs started by Virter will be
-added to this network, and all interactions with the guest (`vm ssh`/`vm cp`/`vm exec`/...)
-happen through this network.
+Using Virter requires at least one virtual network. The network configured as `libvirt.network`
+is the *access network* for new VMs: `vm run` attaches each VM to it as the VM's first network
+interface.
+
+All interactions with a guest (`vm ssh`/`vm cp`/`vm exec`/...) happen through that VM's own access
+network, that is, its first network interface. Virter determines this per VM, so changing
+`libvirt.network` does not break access to VMs that were created on a different network.
 
 In almost all cases, a suitable network called `default` is already configured in libvirt.
 

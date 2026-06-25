@@ -689,32 +689,85 @@ func (v *Virter) vmShutdown(ctx context.Context, afterNotifier AfterNotifier, sh
 	return nil
 }
 
-func (v *Virter) getIP(vmName string) (string, error) {
+// vmAccess describes how Virter reaches a running VM: the description of the
+// network that the VM's access interface is on (see getAccessNIC), and the
+// IP address of that interface.
+type vmAccess struct {
+	name    string
+	network *lx.Network
+	ip      string
+}
+
+func (v *Virter) getVMAccess(vmName string) (vmAccess, error) {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
-		return "", fmt.Errorf("could not get domain '%s': %w", vmName, err)
+		return vmAccess{}, fmt.Errorf("could not get domain '%s': %w", vmName, err)
 	}
 
 	active, err := v.libvirt.DomainIsActive(domain)
 	if err != nil {
-		return "", fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
+		return vmAccess{}, fmt.Errorf("could not check if domain '%s' is active: %w", vmName, err)
 	}
 
 	if active == 0 {
-		return "", fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
+		return vmAccess{}, fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
 	}
 
-	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
+	domainDescription, err := getDomainDescription(v.libvirt, domain)
+	if err != nil {
+		return vmAccess{}, fmt.Errorf("could not get description of domain '%s': %w", vmName, err)
+	}
+
+	// Determine the VM's access network from its first interface, rather than
+	// assuming it is on the configured provision network. This lets commands
+	// like 'vm ssh' reach VMs that were created on a different network.
+	accessNIC, err := getAccessNIC(vmName, domainDescription)
+	if err != nil {
+		return vmAccess{}, err
+	}
+
+	network, err := v.libvirt.NetworkLookupByName(accessNIC.Network)
+	if err != nil {
+		return vmAccess{}, &LibvirtGetError{
+			Message:  fmt.Sprintf("could not look up access network '%s' for VM '%s'", accessNIC.Network, vmName),
+			Err:      err,
+			NotFound: hasErrorCode(err, libvirt.ErrNoNetwork),
+		}
+	}
+
+	networkDescription, err := getNetworkDescription(v.libvirt, network)
+	if err != nil {
+		return vmAccess{}, fmt.Errorf("could not get access network '%s' for VM '%s': %w", accessNIC.Network, vmName, err)
+	}
+
+	ips := findIPs(networkDescription, accessNIC.MAC)
+	if len(ips) < 1 {
+		return vmAccess{}, fmt.Errorf("could not find IP for VM '%s' in network '%s'", vmName, accessNIC.Network)
+	}
+
+	return vmAccess{name: vmName, network: networkDescription, ip: ips[0]}, nil
+}
+
+func (v *Virter) getVMAccesses(vmNames []string) ([]vmAccess, error) {
+	var accesses []vmAccess
+
+	for _, vmName := range vmNames {
+		access, err := v.getVMAccess(vmName)
+		if err != nil {
+			return nil, err
+		}
+		accesses = append(accesses, access)
+	}
+	return accesses, nil
+}
+
+func (v *Virter) getIP(vmName string) (string, error) {
+	access, err := v.getVMAccess(vmName)
 	if err != nil {
 		return "", err
 	}
 
-	ip, err := v.findVMIP(networkDescription, domain)
-	if err != nil {
-		return "", fmt.Errorf("could not find IP for VM '%s': %w", vmName, err)
-	}
-
-	return ip, nil
+	return access.ip, nil
 }
 
 // getAccessNIC returns the VM's first network interface, which Virter treats as
@@ -742,14 +795,14 @@ func getAccessNIC(vmName string, domainDescription *lx.Domain) (nic, error) {
 }
 
 func (v *Virter) getIPs(vmNames []string) ([]string, error) {
-	var ips []string
+	accesses, err := v.getVMAccesses(vmNames)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, vmName := range vmNames {
-		ip, err := v.getIP(vmName)
-		if err != nil {
-			return nil, err
-		}
-		ips = append(ips, ip)
+	var ips []string
+	for _, access := range accesses {
+		ips = append(ips, access.ip)
 	}
 	return ips, nil
 }
@@ -1083,29 +1136,4 @@ func connectSSHRetry(ctx context.Context, config *ssh.ClientConfig, ipPort strin
 		}
 	}
 	return sshClient, nil
-}
-
-func (v *Virter) findVMIP(networkDescription *lx.Network, domain libvirt.Domain) (string, error) {
-	nics, err := v.getNICs(domain)
-	if err != nil {
-		return "", err
-	}
-
-	mac := ""
-	for _, nic := range nics {
-		if networkDescription.Name == nic.Network {
-			mac = nic.MAC
-			break
-		}
-	}
-	if mac == "" {
-		return "", fmt.Errorf("could not find MAC address of domain")
-	}
-
-	ips := findIPs(networkDescription, mac)
-	if len(ips) < 1 {
-		return "", fmt.Errorf("no IP found for domain")
-	}
-
-	return ips[0], nil
 }
