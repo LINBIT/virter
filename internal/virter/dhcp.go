@@ -437,7 +437,7 @@ func (v *Virter) GetVMID(wantedID uint, expectDHCPEntry bool) (uint, error) {
 
 	// we start from top of avialable host id's and check if they are already used and find one
 	for i := end; i >= start; i-- {
-		mac := QemuMAC(wantedID)
+		mac := QemuMAC(i)
 		ips, err := v.findIPs(v.provisionNetwork, mac)
 		if err != nil {
 			return 0, err
