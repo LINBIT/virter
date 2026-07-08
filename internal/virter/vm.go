@@ -204,6 +204,13 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		}
 	}
 
+	// Reclaim a DHCP reservation orphaned by an unclean removal so the ID is reusable
+	if !vmConfig.StaticDHCP && vmConfig.ID != 0 {
+		if err := v.reclaimOrphanDHCPHost(vmConfig.ID); err != nil {
+			return err
+		}
+	}
+
 	id, err := v.GetVMID(vmConfig.ID, vmConfig.StaticDHCP)
 	if err != nil {
 		return err

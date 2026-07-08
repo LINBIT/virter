@@ -179,6 +179,54 @@ func (v *Virter) RemoveMACDHCPEntries(mac string) error {
 	return nil
 }
 
+// reclaimOrphanDHCPHost frees an orphaned DHCP reservation so the ID can be reused,
+// only reclaim virter entries (its MAC and IP), and only if no domain owns it
+func (v *Virter) reclaimOrphanDHCPHost(id uint) error {
+	mac := QemuMAC(id)
+
+	owner, err := v.getDomainForMAC(mac)
+	if err != nil {
+		return err
+	}
+	if owner.Name != "" {
+		return nil
+	}
+
+	ips, err := v.findIPs(v.provisionNetwork, mac)
+	if err != nil {
+		return err
+	}
+	if len(ips) == 0 {
+		return nil
+	}
+
+	expected, err := v.expectedHostIP(id)
+	if err != nil {
+		return err
+	}
+	if len(ips) != 1 || !net.ParseIP(ips[0]).Equal(expected) {
+		log.WithField("mac", mac).WithField("ips", ips).Debug("leaving non-virter DHCP reservation in place")
+		return nil
+	}
+
+	log.WithField("mac", mac).WithField("ip", expected).Info("reclaiming orphaned DHCP reservation")
+	return v.removeDHCPEntries(v.provisionNetwork, mac, ips)
+}
+
+// expectedHostIP returns the IP virter assigns to a VM ID on the provision network
+func (v *Virter) expectedHostIP(id uint) (net.IP, error) {
+	ipNet, err := v.getIPNet(v.provisionNetwork)
+	if err != nil {
+		return nil, err
+	}
+	ipNet.IP = ipNet.IP.Mask(ipNet.Mask)
+	ip, err := cidr.Host(ipNet, int(id))
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute IP for network: %w", err)
+	}
+	return ip, nil
+}
+
 func (v *Virter) removeDomainDHCP(domain libvirt.Domain, removeDHCPEntries bool) error {
 	nics, err := v.getNICs(domain)
 	if err != nil {
