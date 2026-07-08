@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vbauerster/mpb/v8"
 
 	"github.com/LINBIT/virter/cmd"
 )
@@ -39,4 +40,15 @@ func TestLocalImageName(t *testing.T) {
 			assert.Equal(t, tcase.localname, actual)
 		})
 	}
+}
+
+// A finished mpb progress must not make NewBar panic
+func TestNewBarAfterContainerDone(t *testing.T) {
+	p := mpb.New(mpb.WithOutput(nil))
+	p.Wait()
+
+	assert.NotPanics(t, func() {
+		bar := cmd.DefaultProgressFormat(p).NewBar("layer", "compute digest", 100)
+		bar.IncrBy(50)
+	})
 }

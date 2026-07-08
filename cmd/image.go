@@ -208,14 +208,21 @@ func (m *mpbProgress) NewBar(name, operation string, total int64) *mpb.Bar {
 		counter = decor.CurrentKibiByte("%.2f")
 	}
 
-	return m.Progress.AddBar(
+	bar, err := m.Add(
 		total,
+		mpb.BarStyle().Build(),
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DindentRight}),
 			decor.OnComplete(decor.Name(operation, decor.WCSyncWidthR), fmt.Sprintf("%s done", operation)),
 		),
 		mpb.AppendDecorators(counter),
 	)
+	if err != nil {
+		// A SIGINT or SIGTERM mid-build already ended the mpb progress, so hand
+		// back a bar that draws nothing rather than a nil that panics on IncrBy
+		return mpb.New(mpb.WithOutput(nil)).AddBar(total)
+	}
+	return bar
 }
 
 func suggestImageNames(cmd *cobra.Command, args []string, tocomplete string) ([]string, cobra.ShellCompDirective) {
