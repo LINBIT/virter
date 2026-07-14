@@ -65,8 +65,8 @@ test:
   script:
     - go generate ./...
     - go test -v -coverprofile .testCoverage.txt -covermode count ./... > test-out.log 2>&1 || { cat test-out.log; false; }
-    - go run github.com/jstemmer/go-junit-report@latest -set-exit-code < test-out.log > test.xml
-    - go run github.com/boumenot/gocover-cobertura@latest < .testCoverage.txt > coverage.xml
+    - go tool go-junit-report -set-exit-code < test-out.log > test.xml
+    - go tool gocover-cobertura < .testCoverage.txt > coverage.xml
     - go tool cover -func=.testCoverage.txt
   coverage: '/total:\s*\(statements\)\s*\d+.\d+%/'
   artifacts:
