@@ -27,7 +27,7 @@ jobs:
 
     - name: Test
       run: |
-        go run github.com/vektra/mockery/v3@v3.7.0
+        go generate ./...
         go test ./internal/virter/
 
     - name: Vet
