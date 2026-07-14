@@ -117,6 +117,6 @@ require (
 
 tool (
 	github.com/boumenot/gocover-cobertura
-	github.com/jstemmer/go-junit-report
+	github.com/jstemmer/go-junit-report/v2
 	github.com/vektra/mockery/v3
 )
