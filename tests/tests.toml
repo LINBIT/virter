@@ -12,3 +12,15 @@ vms = [1]
 needallplatforms = true
 [[tests.smoke.networks]]
 dhcp = true
+
+# Checks that a disk can be shared between the VMs of a test.
+# The extra network matches the smoke test so that the generic
+# steps of the test suite pass unchanged.
+[tests.shared-disk]
+vms = [2]
+[[tests.shared-disk.networks]]
+dhcp = true
+[[tests.shared-disk.shared_disks]]
+name = "shared0"
+size = "200M"
+bus = "virtio"

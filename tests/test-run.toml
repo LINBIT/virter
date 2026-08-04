@@ -84,3 +84,27 @@ done < <(ip -oneline link show | grep -oP "^\d+:\s\w+")
 # Should have two networks configured
 test $NR_ADDRS -eq 2
 '''
+
+# Checks that a disk shared between all VMs of the test behaves like
+# shared storage: a block written by one VM is visible to the others.
+# Direct I/O is used so that the guest page caches are bypassed.
+[[steps]]
+[steps.container]
+image = "{{ .ContainerImage }}"
+command = ["sh", "-exc", """
+[ "$TEST_NAME" = shared-disk ] || exit 0
+# Some old SSH versions only support the now deprecated ssh-rsa signature
+SSH="ssh -o PubkeyAcceptedKeyTypes=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa"
+IFS=,; set -- $TARGETS; unset IFS
+test $# -ge 2
+for t; do
+    $SSH "$t" test -b /dev/vdb
+done
+writer=$1; shift
+token="virter-e2e-shared-disk-$(date +%s)"
+echo "$token" | $SSH "$writer" "dd of=/dev/vdb bs=512 count=1 conv=sync oflag=direct"
+for t; do
+    got=$($SSH "$t" "dd if=/dev/vdb bs=512 count=1 iflag=direct 2>/dev/null" | tr -d '\\0')
+    test "$got" = "$token"
+done
+"""]
