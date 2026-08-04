@@ -114,6 +114,7 @@ type Disk interface {
 	GetFormat() string
 	GetBus() string
 	GetPool() string
+	GetShareable() bool
 }
 
 type NICType string
@@ -178,6 +179,9 @@ func checkDisks(vmConfig VMConfig) error {
 		}
 		if !approvedDiskFormats[d.GetFormat()] {
 			return fmt.Errorf("cannot attach disk '%s' with unknown format '%s'", d.GetName(), d.GetFormat())
+		}
+		if d.GetShareable() && d.GetFormat() != "raw" {
+			return fmt.Errorf("cannot attach shared disk '%s' with format '%s': shared disks must be raw", d.GetName(), d.GetFormat())
 		}
 	}
 

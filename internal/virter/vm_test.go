@@ -211,6 +211,54 @@ func TestVMRm(t *testing.T) {
 	}
 }
 
+func addSharedDisk(domain *FakeLibvirtDomain, name, pool, dev string) {
+	disks := domain.description.Devices.Disks
+	domain.description.Devices.Disks = append(disks, libvirtxml.DomainDisk{
+		Source: &libvirtxml.DomainDiskSource{
+			Volume: &libvirtxml.DomainDiskSourceVolume{
+				Volume: virter.SharedDiskName(name),
+				Pool:   pool,
+			},
+		},
+		Device: "disk",
+		Target: &libvirtxml.DomainDiskTarget{
+			Dev: dev,
+			Bus: "virtio",
+		},
+		Driver: &libvirtxml.DomainDiskDriver{
+			Name: "qemu",
+			Type: "raw",
+		},
+		Shareable: &libvirtxml.DomainDiskShareable{},
+	})
+}
+
+func TestVMRmKeepsSharedDisk(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmName, vmMAC)
+	domain.persistent = true
+	domain.active = true
+	addDisk(domain, vmName, poolName, "disk", "vda", "virtio")
+	addDisk(domain, ciDataVolumeName, poolName, "cdrom", "sda", "scsi")
+	addSharedDisk(domain, sharedDiskName, poolName, "vdb")
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+
+	l.addEmptyRawVol(poolName, virter.DynamicLayerName(vmName))
+	l.addEmptyRawVol(poolName, virter.DynamicLayerName(ciDataVolumeName))
+	l.addEmptyRawVol(poolName, virter.SharedDiskName(sharedDiskName))
+
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	err := v.VMRm(vmName, true, true)
+	assert.NoError(t, err)
+
+	assert.Empty(t, l.domains)
+	assert.Len(t, l.pools[poolName].vols, 1)
+	assert.Contains(t, l.pools[poolName].vols, virter.SharedDiskName(sharedDiskName))
+}
+
 const (
 	commitDomainActive    = "domainActive"
 	commitShutdown        = "shutdown"
@@ -453,6 +501,7 @@ const (
 	vmMAC              = "01:23:45:67:89:ab"
 	vmIP               = "192.168.122.42"
 	ciDataVolumeName   = vmName + "-cidata"
+	sharedDiskName     = "some-shared-disk"
 	sshPublicKey       = "some-key"
 	shutdownTimeout    = time.Second
 	containerImageName = "some-container-image"

@@ -55,6 +55,10 @@ func (v *Virter) anyImageExists(vmConfig VMConfig) (bool, error) {
 	}
 
 	for _, d := range vmConfig.Disks {
+		if d.GetShareable() {
+			// shared disks are created by "virter disk create" and are expected to exist
+			continue
+		}
 		pool, err := v.lookupPool(d.GetPool())
 		if err != nil {
 			return false, fmt.Errorf("failed to lookup libvirt pool: %w", err)
@@ -183,6 +187,23 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		return fmt.Errorf("one of the images already exists")
 	}
 
+	for _, d := range vmConfig.Disks {
+		if !d.GetShareable() {
+			continue
+		}
+		pool, err := v.lookupPool(d.GetPool())
+		if err != nil {
+			return fmt.Errorf("failed to lookup libvirt pool '%s': %w", d.GetPool(), err)
+		}
+		layer, err := v.FindRawLayer(SharedDiskName(d.GetName()), pool)
+		if err != nil {
+			return err
+		}
+		if layer == nil {
+			return fmt.Errorf("shared disk '%s' does not exist, create it with 'virter disk create'", d.GetName())
+		}
+	}
+
 	id, err := v.GetVMID(vmConfig.ID, vmConfig.StaticDHCP)
 	if err != nil {
 		return err
@@ -237,6 +258,9 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	for _, d := range vmConfig.Disks {
+		if d.GetShareable() {
+			continue
+		}
 		log.WithField("name", d.GetName()).Debug("Create volume")
 		pool, err := v.lookupPool(d.GetPool())
 		if err != nil {
@@ -377,6 +401,12 @@ func (v *Virter) VMRm(vmName string, removeDHCPEntries bool, removeBoot bool) er
 	}
 
 	for _, disk := range disks {
+		if disk.shareable {
+			// shared disks may be attached to other VMs and have
+			// their own lifecycle, managed by "virter disk"
+			continue
+		}
+
 		if !removeBoot && disk.volumeName == DynamicLayerName(vmName) {
 			// do not delete boot volume
 			continue

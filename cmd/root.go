@@ -59,6 +59,7 @@ and resetting, for a stable test environment.`,
 	rootCmd.PersistentFlags().StringVar(&logFormat, "logformat", "default", "Log format, current options: short")
 
 	rootCmd.AddCommand(versionCommand())
+	rootCmd.AddCommand(diskCommand())
 	rootCmd.AddCommand(imageCommand())
 	rootCmd.AddCommand(vmCommand())
 	rootCmd.AddCommand(networkCommand())

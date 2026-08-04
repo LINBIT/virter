@@ -50,6 +50,13 @@ Additional options that may be helpful when using `virter vm run`:
 * Adding additional disk(s):
 `--disk "name=disk1,size=20GiB,format=qcow2,bus=virtio"`
 
+* Attaching a shared disk to multiple VMs, for example to simulate a SAN
+  attached volume: create it with `virter disk create shared1 --size 1GiB`,
+  then start each VM with `--shared-disk "name=shared1,bus=scsi"`. The guests
+  need to use a cluster aware filesystem or lock manager (for example lvmlockd
+  with sanlock) to safely access the disk. Remove it after removing the VMs
+  with `virter disk rm shared1`.
+
 * Adding a bridged interface
 `--nic "type=bridge,source=br0,mac=1a:2b:3c:4d:5e:01"`
 

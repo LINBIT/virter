@@ -233,12 +233,17 @@ func (l *FakeLibvirtConnection) StorageVolDownload(Vol libvirt.StorageVol, inStr
 }
 
 func (l *FakeLibvirtConnection) StorageVolGetInfo(Vol libvirt.StorageVol) (rType int8, rCapacity, rAllocation uint64, err error) {
-	_, ok := l.pools[Vol.Pool].vols[Vol.Name]
+	vol, ok := l.pools[Vol.Pool].vols[Vol.Name]
 	if !ok {
 		return 0, 0, 0, libvirt.Error{Code: uint32(libvirt.ErrNoStorageVol)}
 	}
 
-	return 0, 42, 23, nil
+	capacity := uint64(42)
+	if vol.description.Capacity != nil {
+		capacity = vol.description.Capacity.Value
+	}
+
+	return 0, capacity, 23, nil
 }
 
 func (l *FakeLibvirtConnection) ConnectListNetworks(Maxnames int32) (rNames []string, err error) {

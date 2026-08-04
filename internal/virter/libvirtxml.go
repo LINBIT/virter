@@ -38,6 +38,7 @@ type VMDisk struct {
 	volumeName string
 	bus        string
 	format     string
+	shareable  bool
 }
 
 func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk, error) {
@@ -58,6 +59,12 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk,
 				Type:  d.format,
 			},
 		}[d.device]
+
+		if d.shareable {
+			// The host page cache must be bypassed, otherwise writes
+			// are not coherent between the VMs sharing the disk.
+			driver.Cache = "none"
+		}
 
 		count, ok := devCounts[d.bus]
 		if !ok {
@@ -89,6 +96,10 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk,
 			},
 		}
 
+		if d.shareable {
+			disk.Shareable = &lx.DomainDiskShareable{}
+		}
+
 		result = append(result, disk)
 	}
 
@@ -105,12 +116,17 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 		if pool == "" {
 			pool = v.provisionStoragePool.Name
 		}
+		volumeName := DynamicLayerName(diskVolumeName(vm.Name, d.GetName()))
+		if d.GetShareable() {
+			volumeName = SharedDiskName(d.GetName())
+		}
 		vmDisks = append(vmDisks, VMDisk{
 			device:     VMDiskDeviceDisk,
 			poolName:   pool,
-			volumeName: DynamicLayerName(diskVolumeName(vm.Name, d.GetName())),
+			volumeName: volumeName,
 			bus:        d.GetBus(),
 			format:     d.GetFormat(),
+			shareable:  d.GetShareable(),
 		})
 	}
 
@@ -418,6 +434,7 @@ func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]VMDisk, error) {
 			volumeName: disk.Source.Volume.Volume,
 			bus:        disk.Target.Bus,
 			format:     disk.Driver.Type,
+			shareable:  disk.Shareable != nil,
 		})
 	}
 

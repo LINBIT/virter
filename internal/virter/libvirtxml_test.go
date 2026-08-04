@@ -63,6 +63,34 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 				},
 			},
 		}, {
+			descr: "shareable disk",
+			input: []VMDisk{
+				VMDisk{device: VMDiskDeviceDisk, poolName: "pool", volumeName: "vol1", bus: "virtio", format: "raw", shareable: true},
+			},
+			cache: "unsafe",
+			expect: []lx.DomainDisk{
+				lx.DomainDisk{
+					Device: "disk",
+					Driver: &lx.DomainDiskDriver{
+						Name:    "qemu",
+						Cache:   "none",
+						Discard: "unmap",
+						Type:    "raw",
+					},
+					Source: &lx.DomainDiskSource{
+						Volume: &lx.DomainDiskSourceVolume{
+							Pool:   "pool",
+							Volume: "vol1",
+						},
+					},
+					Target: &lx.DomainDiskTarget{
+						Dev: "vda",
+						Bus: "virtio",
+					},
+					Shareable: &lx.DomainDiskShareable{},
+				},
+			},
+		}, {
 			descr: "invalid bus",
 			input: []VMDisk{
 				VMDisk{device: VMDiskDeviceDisk, poolName: "pool", volumeName: "vol1", bus: "quaxi", format: "qcow2"},
@@ -74,11 +102,11 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 	for _, c := range cases {
 		actual, err := vmDisksToLibvirtDisks(c.input, c.cache)
 		if !c.expectError && err != nil {
-			t.Errorf("on input '%s':", c.input)
+			t.Errorf("on input '%+v':", c.input)
 			t.Fatalf("unexpected error: %+v", err)
 		}
 		if c.expectError && err == nil {
-			t.Errorf("on input '%s':", c.input)
+			t.Errorf("on input '%+v':", c.input)
 			t.Fatalf("expected error, got nil")
 		}
 		if !reflect.DeepEqual(actual, c.expect) {

@@ -115,3 +115,69 @@ func TestFromFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestSharedDiskFromFlag(t *testing.T) {
+	cases := []struct {
+		name        string
+		input       string
+		expect      cmd.SharedDiskArg
+		expectError bool
+	}{
+		{
+			name:        "empty arg is error",
+			input:       "",
+			expectError: true,
+		}, {
+			name:  "full spec parses",
+			input: "name=test,bus=scsi,pool=mypool",
+			expect: cmd.SharedDiskArg{
+				Name: "test",
+				Bus:  "scsi",
+				Pool: "mypool",
+			},
+		}, {
+			name:  "only required args parses",
+			input: "name=test",
+			expect: cmd.SharedDiskArg{
+				Name: "test",
+				Bus:  "virtio",
+			},
+		}, {
+			name:        "size is not accepted",
+			input:       "name=test,size=10GiB",
+			expectError: true,
+		}, {
+			name:        "format is not accepted",
+			input:       "name=test,format=qcow2",
+			expectError: true,
+		},
+	}
+
+	t.Parallel()
+	for i := range cases {
+		c := cases[i]
+		t.Run(c.name, func(t *testing.T) {
+			actual := cmd.SharedDiskArg{}
+			err := actual.Set(c.input)
+			if err != nil {
+				if !c.expectError {
+					t.Errorf("on input '%s':", c.input)
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+
+			if c.expectError {
+				t.Errorf("on input '%s':", c.input)
+				t.Fatal("expected error, got nil")
+			}
+
+			if !reflect.DeepEqual(actual, c.expect) {
+				t.Errorf("on input '%s'", c.input)
+				t.Errorf("unexpected arg contents")
+				t.Errorf("expected: %+v", c.expect)
+				t.Errorf("actual: %+v", actual)
+			}
+		})
+	}
+}
