@@ -22,7 +22,7 @@ elif command -v yum ; then
     }
 
     if is_centos7 ; then
-        sed -e 's/^mirrorlist=/#mirrorlist=/' -e 's%^#baseurl=http://mirror.centos.org%baseurl=http://vault.centos.org%' -i /etc/yum.repos.d/*.repo
+        sed -e 's/^mirrorlist=/#mirrorlist=/' -e 's%^#baseurl=http://mirror.centos.org%baseurl=https://linuxsoft.cern.ch/centos-vault%' -i /etc/yum.repos.d/*.repo
     fi
 
     yum install -y rsync hostname
