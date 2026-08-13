@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/digitalocean/go-libvirt"
 )
 
 // SharedDiskPrefix is the prefix for all shared disk volumes in libvirt.
@@ -129,6 +131,10 @@ func (v *Virter) domainsUsingVolume(poolName string, volumeName string) ([]strin
 	for _, domain := range domains {
 		disks, err := v.getDisksOfDomain(domain)
 		if err != nil {
+			// A domain removed after listing no longer uses any volume.
+			if hasErrorCode(err, libvirt.ErrNoDomain) {
+				continue
+			}
 			return nil, err
 		}
 

@@ -3,6 +3,7 @@ package virter_test
 import (
 	"testing"
 
+	"github.com/digitalocean/go-libvirt"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/LINBIT/virter/internal/virter"
@@ -35,6 +36,33 @@ func TestSharedDiskLifecycle(t *testing.T) {
 
 	err = v.SharedDiskRm(sharedDiskName, "")
 	assert.NoError(t, err, "removing a missing disk should succeed")
+}
+
+// staleDomainConnection lists an extra domain that no longer exists,
+// simulating a domain removed after ConnectListAllDomains returned.
+type staleDomainConnection struct {
+	*FakeLibvirtConnection
+	staleName string
+}
+
+func (c *staleDomainConnection) ConnectListAllDomains(needResults int32, flags libvirt.ConnectListAllDomainsFlags) ([]libvirt.Domain, uint32, error) {
+	domains, count, err := c.FakeLibvirtConnection.ConnectListAllDomains(needResults, flags)
+	domains = append(domains, libvirt.Domain{Name: c.staleName})
+	return domains, count + 1, err
+}
+
+func TestSharedDiskRmIgnoresRemovedDomain(t *testing.T) {
+	l := &staleDomainConnection{
+		FakeLibvirtConnection: newFakeLibvirtConnection(),
+		staleName:             "removed-domain",
+	}
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	err := v.SharedDiskCreate(sharedDiskName, "", 10*1024)
+	assert.NoError(t, err)
+
+	err = v.SharedDiskRm(sharedDiskName, "")
+	assert.NoError(t, err, "domains removed while iterating should be ignored")
 }
 
 func TestSharedDiskRmAttached(t *testing.T) {
