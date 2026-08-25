@@ -40,6 +40,7 @@ func imageBuildCommand() *cobra.Command {
 	var resetMachineID bool
 
 	var push bool
+	var pushTo string
 	var noCache bool
 	var buildId string
 	cpuArch := virter.CpuArchNative
@@ -85,6 +86,14 @@ func imageBuildCommand() *cobra.Command {
 
 			ctx := cmd.Context()
 
+			// The push destination is given by --push-to, or by the target
+			// image name itself when only --push is set. With --push-to the
+			// local image name stays as given.
+			pushRef := pushTo
+			if push && pushRef == "" {
+				pushRef = args[1]
+			}
+
 			v, err := InitVirter()
 			if err != nil {
 				log.Fatal(err)
@@ -93,10 +102,14 @@ func imageBuildCommand() *cobra.Command {
 
 			var existingTargetImage regv1.Image
 			var existingTargetRef name.Reference
-			if push {
-				existingTargetRef, err = name.ParseReference(args[1], name.WithDefaultRegistry(""))
+			if pushRef != "" {
+				existingTargetRef, err = name.ParseReference(pushRef, name.WithDefaultRegistry(""))
 				if err != nil {
 					log.WithError(err).Fatal("failed to parse destination ref")
+				}
+
+				if existingTargetRef.Context().RegistryStr() == "" {
+					log.Fatalf("destination ref %s does not name a registry", pushRef)
 				}
 
 				err = remote.CheckPushPermission(existingTargetRef, authn.DefaultKeychain, http.DefaultTransport)
@@ -142,7 +155,7 @@ func imageBuildCommand() *cobra.Command {
 				log.Fatal(err)
 			}
 
-			if push && buildId == "" {
+			if pushRef != "" && buildId == "" {
 				log.Info("Pushing without providing a build ID. Images will always be rebuilt unless the same build ID is given.")
 			}
 
@@ -155,7 +168,7 @@ func imageBuildCommand() *cobra.Command {
 
 					p := mpb.NewWithContext(ctx, DefaultContainerOpt())
 
-					_, err := GetLocalImage(ctx, newImageName, args[1], v, pullpolicy.Always, DefaultProgressFormat(p))
+					_, err := GetLocalImage(ctx, newImageName, pushRef, v, pullpolicy.Always, DefaultProgressFormat(p))
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -225,7 +238,7 @@ func imageBuildCommand() *cobra.Command {
 				logProvisioningErrorAndExit(err)
 			}
 
-			if push {
+			if pushRef != "" {
 				localImg, err := v.FindImage(newImageName, v.ProvisionStoragePool(), virter.WithProgress(DefaultProgressFormat(p)))
 				if err != nil {
 					log.Fatalf("failed to find built image: %v", err)
@@ -278,6 +291,7 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().VarP(&vmPullPolicy, "vm-pull-policy", "", fmt.Sprintf("Whether or not to pull the source image. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	buildCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used during provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 	buildCmd.Flags().BoolVarP(&push, "push", "", false, "Push the image after building")
+	buildCmd.Flags().StringVarP(&pushTo, "push-to", "", "", "Registry reference to push the image to after building. The local image keeps the name given by new_image. Implies --push")
 	buildCmd.Flags().BoolVarP(&noCache, "no-cache", "", false, "Disable caching for the image build")
 	buildCmd.Flags().StringVarP(&buildId, "build-id", "", "", "Build ID used to determine if an image needs to be rebuild.")
 	buildCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)

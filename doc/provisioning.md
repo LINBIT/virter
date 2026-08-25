@@ -153,8 +153,15 @@ You can directly push your provision image to a registry using the `--push` opti
 $ virter image build ubuntu-focal registry.example.com/my-image:latest --push
 ```
 
+With `--push` the local image is named after the registry reference (`my-image-latest` in the example above). To keep
+a plain local image name, specify the registry reference with `--push-to` instead (`--push` is then implied):
+
+```
+$ virter image build ubuntu-focal my-image --push-to registry.example.com/my-image:latest
+```
+
 You can skip rebuilding the same image every time you run `virter image build` by specifying a `--build-id` when using
-`--push`:
+`--push` or `--push-to`:
 
 ```
 $ virter image build ubuntu-focal registry.example.com/my-image:latest --push --build-id my-latest-build
