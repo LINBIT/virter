@@ -27,10 +27,11 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 				lx.DomainDisk{
 					Device: "disk",
 					Driver: &lx.DomainDiskDriver{
-						Name:    "qemu",
-						Cache:   "unsafe",
-						Discard: "unmap",
-						Type:    "qcow2",
+						Name:        "qemu",
+						Cache:       "unsafe",
+						Discard:     "unmap",
+						ErrorPolicy: "report",
+						Type:        "qcow2",
 					},
 					Source: &lx.DomainDiskSource{
 						Volume: &lx.DomainDiskSourceVolume{
@@ -72,10 +73,11 @@ func TestVmDisksToLibvirtDisks(t *testing.T) {
 				lx.DomainDisk{
 					Device: "disk",
 					Driver: &lx.DomainDiskDriver{
-						Name:    "qemu",
-						Cache:   "none",
-						Discard: "unmap",
-						Type:    "raw",
+						Name:        "qemu",
+						Cache:       "none",
+						Discard:     "unmap",
+						ErrorPolicy: "report",
+						Type:        "raw",
 					},
 					Source: &lx.DomainDiskSource{
 						Volume: &lx.DomainDiskSourceVolume{

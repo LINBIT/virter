@@ -52,6 +52,10 @@ func vmDisksToLibvirtDisks(vmDisks []VMDisk, diskCache string) ([]lx.DomainDisk,
 				Cache:   diskCache,
 				Discard: "unmap",
 				Type:    d.format,
+				// QEMU's default pauses the whole VM when the host runs out of
+				// space. Reporting the error to the guest fails loudly instead
+				// of stalling silently.
+				ErrorPolicy: "report",
 			},
 			VMDiskDeviceCDROM: {
 				Name:  "qemu",
