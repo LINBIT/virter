@@ -55,7 +55,10 @@ read from stdin`,
 				stat, err := f.Stat()
 				if err == nil && stat.Size() > 0 {
 					bar := DefaultProgressFormat(p).NewBar(image, "load", stat.Size())
-					in = bar.ProxyReader(in)
+					in, err = bar.ProxyReader(in)
+					if err != nil {
+						log.WithError(err).Fatal("could not attach progress bar to input file")
+					}
 				}
 			}
 

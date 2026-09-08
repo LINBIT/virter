@@ -144,7 +144,11 @@ func pullNonContainerRegistry(ctx context.Context, v *virter.Virter, destination
 	}
 
 	bar := p.NewBar(destination, "pull", response.ContentLength)
-	proxyResponse := bar.ProxyReader(response.Body)
+	proxyResponse, err := bar.ProxyReader(response.Body)
+	if err != nil {
+		_ = response.Body.Close()
+		return nil, fmt.Errorf("failed to attach progress bar to download: %w", err)
+	}
 	defer proxyResponse.Close()
 	// Finalize the bar once the body is consumed. If response.ContentLength
 	// was known (>0), mpb auto-enables triggerComplete and SetTotal is a

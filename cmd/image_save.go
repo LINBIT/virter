@@ -88,7 +88,10 @@ squashed into a single file.`,
 				log.WithError(err).Fatal("could not get reader from volume")
 			}
 
-			reader = bar.ProxyReader(reader)
+			reader, err = bar.ProxyReader(reader)
+			if err != nil {
+				log.WithError(err).Fatal("could not attach progress bar to volume reader")
+			}
 			defer reader.Close()
 
 			_, err = io.Copy(out, reader)

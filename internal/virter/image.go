@@ -403,7 +403,10 @@ func (v *Virter) ImageImport(name string, pool libvirt.StoragePool, image regv1.
 		}
 
 		if bar != nil {
-			reader = bar.ProxyReader(reader)
+			reader, err = bar.ProxyReader(reader)
+			if err != nil {
+				return nil, fmt.Errorf("failed to attach progress bar to layer %s: %w", diffId.String(), err)
+			}
 		}
 
 		reader, err = gzip.NewReader(reader)

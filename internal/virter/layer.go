@@ -418,7 +418,10 @@ func (rl *RawLayer) CloneAs(name string, opts ...LayerOperationOption) (*RawLaye
 	}
 	if o.Progress != nil {
 		bar := o.Progress.NewBar(name, "buffer layer", int64(original.Physical.Value))
-		r = bar.ProxyReader(r)
+		r, err = bar.ProxyReader(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach progress bar to clone buffer: %w", err)
+		}
 	}
 
 	// NB: evidence collected on my (mwanzenboeck) machine suggests a potential deadlock when using StorageVolDownload
@@ -450,7 +453,10 @@ func (rl *RawLayer) CloneAs(name string, opts ...LayerOperationOption) (*RawLaye
 
 	if o.Progress != nil {
 		bar := o.Progress.NewBar(name, "upload layer", int64(original.Physical.Value))
-		uploadSource = bar.ProxyReader(uploadSource)
+		uploadSource, err = bar.ProxyReader(uploadSource)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach progress bar to clone upload: %w", err)
+		}
 	}
 
 	err = clonedLayer.Upload(uploadSource)
@@ -643,7 +649,10 @@ func (vl *VolumeLayer) ToRegistryLayer(opts ...LayerOperationOption) (regv1.Laye
 		// Assumes bytes (stored volumes always normalize to bytes)
 		bar := o.Progress.NewBar(diff.String(), "compress", int64(desc.Physical.Value))
 		if bar != nil {
-			reader = bar.ProxyReader(reader)
+			reader, err = bar.ProxyReader(reader)
+			if err != nil {
+				return nil, fmt.Errorf("failed to attach progress bar to compressor: %w", err)
+			}
 		}
 	}
 
@@ -694,7 +703,10 @@ func (vl *registryVolumeLayer) Compressed() (io.ReadCloser, error) {
 
 		bar := vl.opts.Progress.NewBar(diff.String(), "push", int64(vl.compressed.Len()))
 		if bar != nil {
-			reader = bar.ProxyReader(reader)
+			reader, err = bar.ProxyReader(reader)
+			if err != nil {
+				return nil, fmt.Errorf("failed to attach progress bar to push: %w", err)
+			}
 		}
 	}
 
