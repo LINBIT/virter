@@ -776,6 +776,8 @@ func (v *Virter) emptyVolume(rawname string, pool libvirt.StoragePool, opts ...N
 	volumeDescriptor := &lx.StorageVolume{
 		Name:     rawname,
 		Capacity: &lx.StorageVolumeSize{Value: 0, Unit: "bytes"},
+		// Force sparse allocation even for "raw" type volumes
+		Allocation: &lx.StorageVolumeSize{Value: 0, Unit: "bytes"},
 		Target: &lx.StorageVolumeTarget{
 			Format: &lx.StorageVolumeTargetFormat{Type: "qcow2"},
 		},

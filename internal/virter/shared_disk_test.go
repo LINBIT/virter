@@ -16,6 +16,13 @@ func TestSharedDiskLifecycle(t *testing.T) {
 	err := v.SharedDiskCreate(sharedDiskName, "", 10*1024)
 	assert.NoError(t, err)
 
+	created := l.pools[poolName].vols[virter.SharedDiskName(sharedDiskName)].description
+	assert.Equal(t, "raw", created.Target.Format.Type)
+	assert.Equal(t, uint64(10*1024*1024), created.Capacity.Value)
+	if assert.NotNil(t, created.Allocation, "shared disks should be sparse") {
+		assert.Equal(t, uint64(0), created.Allocation.Value)
+	}
+
 	err = v.SharedDiskCreate(sharedDiskName, "", 10*1024)
 	assert.Error(t, err, "creating an existing disk should fail")
 
