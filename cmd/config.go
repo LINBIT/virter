@@ -114,6 +114,18 @@ provider = "{{ get "container.provider" }}"
 # default pull policy to apply if non was specified. Can be 'Always', 'IfNotExist' or 'Never'.
 # Default value: "{{ get "container.pull" }}"
 pull = "{{ get "container.pull" }}"
+
+[cloudinit]
+# apt_mirror is the base URL of a package mirror for Debian and Ubuntu VMs.
+# When set, cloud-init configures apt in every new VM to use
+# "<apt_mirror>/ubuntu", "<apt_mirror>/debian" and "<apt_mirror>/debian-security",
+# matching the layout of the upstream archives. Other distributions are not
+# affected.
+# This relies on jinja templating in cloud-init, available since version 18.4.
+# Older versions discard the whole cloud-init configuration, leaving the VM
+# without SSH access. Leave empty to disable.
+# Default value: "{{ get "cloudinit.apt_mirror" }}"
+apt_mirror = "{{ get "cloudinit.apt_mirror" }}"
 `
 
 // initConfig reads in config file and ENV variables if set.
@@ -131,6 +143,7 @@ func initConfig() {
 	viper.SetDefault("auth.user_public_key", []string{})
 	viper.SetDefault("container.provider", "docker")
 	viper.SetDefault("container.pull", "IfNotExist")
+	viper.SetDefault("cloudinit.apt_mirror", "")
 
 	viper.SetConfigType("toml")
 	if configFile != "" {

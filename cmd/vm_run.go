@@ -232,6 +232,7 @@ func vmRunCommand() *cobra.Command {
 						ConsolePath:        consolePath,
 						Disks:              disks,
 						DiskCache:          viper.GetString("libvirt.disk_cache"),
+						AptMirror:          viper.GetString("cloudinit.apt_mirror"),
 						Mounts:             mounts,
 						ExtraNics:          nics,
 						GDBPort:            thisGDBPort,

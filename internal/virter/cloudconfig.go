@@ -3,6 +3,7 @@ package virter
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/kdomanski/iso9660"
 	"github.com/kr/text"
@@ -33,7 +34,12 @@ ethernets:
 {{- end }}
 `
 
-const templateUserData = `#cloud-config
+// The apt mirror URIs contain jinja expressions that cloud-init expands inside the guest.
+// They are wrapped in Go template strings so that Go does not try to parse them.
+const templateUserData = `{{- if .AptMirror -}}
+## template: jinja
+{{ end -}}
+#cloud-config
 disable_root: False
 # Ideally, we would set this to "unchanged". However, this causes cloud-init on centos-6
 # to produce an invalid SSHd config, completely preventing external access to the VM.
@@ -59,6 +65,15 @@ mounts:
 {{- range .Mount }}
   - [ "{{ . }}", "{{ . }}", "virtiofs"]
 {{- end }}
+{{- end }}
+{{- if .AptMirror }}
+apt:
+  primary:
+    - arches: [default]
+      uri: {{ .AptMirror }}/{{ "{{ v1.distro }}" }}
+  security:
+    - arches: [default]
+      uri: {{ .AptMirror }}/{{ "{{ v1.distro }}" }}{% if v1.distro == 'debian' %}-security{% endif %}
 {{- end }}
 `
 
@@ -139,25 +154,43 @@ func (v *Virter) NetworkConfig(nics []NIC) (string, error) {
 	return renderTemplate("network-config", templateNetworkConfig, configuredNics)
 }
 
-func (v *Virter) userData(vmName string, sshPublicKeys []string, hostkey sshkeys.HostKey, mounts []string) (string, error) {
-	privateKey := text.Indent(hostkey.PrivateKey(), "    ")
-	publicKey := text.Indent(hostkey.PublicKey(), "    ")
+type userDataConfig struct {
+	VMName        string
+	DomainSuffix  string
+	SSHPublicKeys []string
+	HostKey       sshkeys.HostKey
+	Mounts        []string
+	AptMirror     string
+}
 
+func renderUserData(cfg userDataConfig) (string, error) {
+	templateData := map[string]interface{}{
+		"VMName":             cfg.VMName,
+		"DomainSuffix":       cfg.DomainSuffix,
+		"SSHPublicKeys":      cfg.SSHPublicKeys,
+		"IndentedPrivateKey": text.Indent(cfg.HostKey.PrivateKey(), "    "),
+		"IndentedPublicKey":  text.Indent(cfg.HostKey.PublicKey(), "    "),
+		"Mount":              cfg.Mounts,
+		"AptMirror":          strings.TrimSuffix(cfg.AptMirror, "/"),
+	}
+
+	return renderTemplate("user-data", templateUserData, templateData)
+}
+
+func (v *Virter) userData(vmConfig VMConfig, sshPublicKeys []string, hostkey sshkeys.HostKey, mounts []string) (string, error) {
 	domainSuffix, err := v.getDomainSuffix()
 	if err != nil {
 		return "", err
 	}
 
-	templateData := map[string]interface{}{
-		"VMName":             vmName,
-		"DomainSuffix":       domainSuffix,
-		"SSHPublicKeys":      sshPublicKeys,
-		"IndentedPrivateKey": privateKey,
-		"IndentedPublicKey":  publicKey,
-		"Mount":              mounts,
-	}
-
-	return renderTemplate("user-data", templateUserData, templateData)
+	return renderUserData(userDataConfig{
+		VMName:        vmConfig.Name,
+		DomainSuffix:  domainSuffix,
+		SSHPublicKeys: sshPublicKeys,
+		HostKey:       hostkey,
+		Mounts:        mounts,
+		AptMirror:     vmConfig.AptMirror,
+	})
 }
 
 func (v *Virter) createCIData(vmConfig VMConfig, hostkey sshkeys.HostKey) (*RawLayer, error) {
@@ -179,7 +212,7 @@ func (v *Virter) createCIData(vmConfig VMConfig, hostkey sshkeys.HostKey) (*RawL
 		mounts[i] = m.GetVMPath()
 	}
 
-	userData, err := v.userData(vmName, sshPublicKeys, hostkey, mounts)
+	userData, err := v.userData(vmConfig, sshPublicKeys, hostkey, mounts)
 	if err != nil {
 		return nil, err
 	}

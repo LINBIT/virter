@@ -201,6 +201,7 @@ func imageBuildCommand() *cobra.Command {
 				ExtraSSHPublicKeys: extraAuthorizedKeys,
 				ConsolePath:        consolePath,
 				DiskCache:          viper.GetString("libvirt.disk_cache"),
+				AptMirror:          viper.GetString("cloudinit.apt_mirror"),
 				Mounts:             mounts,
 
 				VNCEnabled:         vncEnabled,
