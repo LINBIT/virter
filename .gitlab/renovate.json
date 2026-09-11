@@ -8,8 +8,14 @@
     "dockerfile": {
         "enabled": false
     },
-    "gitlabci": {
-        "enabled": false
-    },
-    "baseBranchPatterns": ["master", "gh-pages"]
+    "baseBranchPatterns": ["master", "gh-pages"],
+    "customManagers": [
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^\\.gitlab-ci\\.yml$/"],
+            "matchStrings": ["VMSHED_VERSION: (?<currentValue>v[\\d.]+)"],
+            "depNameTemplate": "LINBIT/vmshed",
+            "datasourceTemplate": "github-releases"
+        }
+    ]
 }
