@@ -1,6 +1,10 @@
 package virter_test
 
 import (
+	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"testing"
 
@@ -224,14 +228,29 @@ func TestVolumeLayer_ToRegistryLayer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, ExampleLayerContent, string(actual))
 
+	compressedReader, err := compatLayer.Compressed()
+	assert.NoError(t, err)
+
+	compressed, err := io.ReadAll(compressedReader)
+	assert.NoError(t, err)
+
+	// The exact gzip output varies between Go versions, so only check that the
+	// reported size and digest describe the actual compressed stream.
 	size, err := compatLayer.Size()
 	assert.NoError(t, err)
-	// Compression actually makes this bigger since some metadata is added.
-	assert.Equal(t, int64(49), size)
+	assert.Equal(t, int64(len(compressed)), size)
 
+	compressedSum := sha256.Sum256(compressed)
 	digest, err := compatLayer.Digest()
 	assert.NoError(t, err)
-	assert.Equal(t, regv1.Hash{Algorithm: "sha256", Hex: "e4556089c0b3b5e611714f04b9cea89c026333ef0cd40d5f6b0658a7cf8ee242"}, digest)
+	assert.Equal(t, regv1.Hash{Algorithm: "sha256", Hex: hex.EncodeToString(compressedSum[:])}, digest)
+
+	gzipReader, err := gzip.NewReader(bytes.NewReader(compressed))
+	assert.NoError(t, err)
+
+	decompressed, err := io.ReadAll(gzipReader)
+	assert.NoError(t, err)
+	assert.Equal(t, ExampleLayerContent, string(decompressed))
 
 	diff, err := compatLayer.DiffID()
 	assert.NoError(t, err)
