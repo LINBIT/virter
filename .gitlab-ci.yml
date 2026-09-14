@@ -10,7 +10,7 @@ stages:
   - deploy
 
 variables:
-  VMSHED_VERSION: v0.29.0
+  VMSHED_VERSION: v0.31.0
   BUILD_HELPERS_VERSION: cad23b57db14b7676808fa645c4561bc66c3e204
 
 prepare-bins:
@@ -40,7 +40,7 @@ prepare-docker:
     - docker buildx build --push --tag ${LINBIT_DOCKER_REGISTRY}/virter/ssh:$CI_COMMIT_REF_SLUG ./tests
 
 build:
-  image: docker.io/library/golang:1.26
+  image: docker.io/library/golang:1.27
   stage: build
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
@@ -55,7 +55,7 @@ test:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: docker.io/library/golang:1.26
+  image: docker.io/library/golang:1.27
   cache:
     paths:
       - .mygo/pkg/mod
@@ -79,7 +79,7 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: docker.io/golangci/golangci-lint:v2.11.3
+  image: docker.io/golangci/golangci-lint:v2.13.2
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
