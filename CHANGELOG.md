@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-15
+
 ### Added
 
 - `cloudinit.apt_mirror` config option to point apt in Debian and Ubuntu VMs at
@@ -95,7 +97,8 @@ migration guide.
   on whitespace.
 - Progress bar no longer hangs when the server does not send a Content-Length.
 
-[Unreleased]: https://github.com/LINBIT/virter/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/LINBIT/virter/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/LINBIT/virter/compare/v1.3.2...v1.4.0
 [1.3.2]: https://github.com/LINBIT/virter/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/LINBIT/virter/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/LINBIT/virter/compare/v1.2.1...v1.3.0
