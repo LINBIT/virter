@@ -193,7 +193,7 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 			ACPI: &lx.DomainFeature{},
 			APIC: &lx.DomainFeatureAPIC{},
 		},
-		CPU: vm.CpuArch.CPU(),
+		CPU: vm.CpuArch.CPU(vm.CpuMode, vm.CpuModel, vm.nestedVirtFeature),
 		Clock: &lx.DomainClock{
 			Offset: "utc",
 			Timer: []lx.DomainTimer{

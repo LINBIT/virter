@@ -52,6 +52,36 @@ func (u unknownArch) Error() string {
 	return fmt.Sprintf("unknown arch '%s', supported are: %+v", string(u), []CpuArch{CpuArchAMD64, CpuArchARM64, CpuArchPPC64LE})
 }
 
+type CpuMode string
+
+const (
+	CpuModeHostModel       = CpuMode("host-model")
+	CpuModeHostPassthrough = CpuMode("host-passthrough")
+)
+
+func (m *CpuMode) String() string {
+	return string(*m)
+}
+
+func (m *CpuMode) Set(s string) error {
+	switch CpuMode(strings.ToLower(s)) {
+	case CpuModeHostModel:
+		*m = CpuModeHostModel
+	case CpuModeHostPassthrough:
+		*m = CpuModeHostPassthrough
+	case "":
+		*m = ""
+	default:
+		return fmt.Errorf("unknown CPU mode '%s', supported are: %+v", s, []CpuMode{CpuModeHostModel, CpuModeHostPassthrough})
+	}
+
+	return nil
+}
+
+func (m *CpuMode) Type() string {
+	return "cpu-mode"
+}
+
 func (c *CpuArch) DomainType() string {
 	arch := c.get()
 
@@ -102,7 +132,61 @@ func (c *CpuArch) Firmware() string {
 	}
 }
 
-func (c *CpuArch) CPU() *lx.DomainCPU {
+func (c *CpuArch) CPU(mode CpuMode, model string, nestedVirtFeature string) *lx.DomainCPU {
+	cpu := c.defaultCPU()
+
+	if model != "" {
+		cpu = &lx.DomainCPU{
+			Mode:  "custom",
+			Match: "exact",
+			Model: &lx.DomainCPUModel{
+				Value:    model,
+				Fallback: "forbid",
+			},
+		}
+	} else if mode != "" {
+		cpu = &lx.DomainCPU{
+			Mode: string(mode),
+		}
+	}
+
+	if cpu != nil && nestedVirtFeature != "" {
+		cpu.Features = append(cpu.Features, lx.DomainCPUFeature{
+			Policy: "require",
+			Name:   nestedVirtFeature,
+		})
+	}
+
+	return cpu
+}
+
+// NestedVirtFeature maps the host CPU vendor to the CPU feature enabling nested virtualization.
+func NestedVirtFeature(domCapsXML string) (string, error) {
+	caps := lx.DomainCaps{}
+	if err := caps.Unmarshal(domCapsXML); err != nil {
+		return "", fmt.Errorf("failed to parse domain capabilities: %w", err)
+	}
+
+	vendor := ""
+	if caps.CPU != nil {
+		for _, m := range caps.CPU.Modes {
+			if m.Name == "host-model" {
+				vendor = m.Vendor
+			}
+		}
+	}
+
+	switch vendor {
+	case "AMD":
+		return "svm", nil
+	case "Intel":
+		return "vmx", nil
+	default:
+		return "", fmt.Errorf("nested virtualization is not supported for host CPU vendor '%s'", vendor)
+	}
+}
+
+func (c *CpuArch) defaultCPU() *lx.DomainCPU {
 	arch := c.get()
 
 	if arch == CpuArchNative {

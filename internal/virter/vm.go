@@ -167,9 +167,17 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		machine = append(machine, vmConfig.CpuArch.OSDomain().Type.Machine)
 	}
 
-	_, err = v.libvirt.ConnectGetDomainCapabilities(nil, []string{vmConfig.CpuArch.QemuArch()}, machine, nil, 0)
+	domCapsXML, err := v.libvirt.ConnectGetDomainCapabilities(nil, []string{vmConfig.CpuArch.QemuArch()}, machine, nil, 0)
 	if err != nil {
 		return fmt.Errorf("host does not support emulating %s. install qemu-system-%s", vmConfig.CpuArch, vmConfig.CpuArch.QemuArch())
+	}
+
+	if vmConfig.NestedVirtualization {
+		feature, err := NestedVirtFeature(domCapsXML)
+		if err != nil {
+			return err
+		}
+		vmConfig.nestedVirtFeature = feature
 	}
 
 	vmName := vmConfig.Name

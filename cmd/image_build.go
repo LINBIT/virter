@@ -44,6 +44,9 @@ func imageBuildCommand() *cobra.Command {
 	var noCache bool
 	var buildId string
 	cpuArch := virter.CpuArchNative
+	var cpuMode virter.CpuMode
+	var cpuModel string
+	var nestedVirtualization bool
 
 	var mountStrings []string
 	var mounts []virter.Mount
@@ -64,6 +67,17 @@ func imageBuildCommand() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
 			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
+
+			// flags override the config values
+			if !cmd.Flags().Changed("cpu-mode") && !cmd.Flags().Changed("cpu-model") {
+				if err := cpuMode.Set(viper.GetString("libvirt.cpu_mode")); err != nil {
+					return fmt.Errorf("invalid config value for libvirt.cpu_mode: %w", err)
+				}
+				cpuModel = viper.GetString("libvirt.cpu_model")
+			}
+			if !cmd.Flags().Changed("nested-virtualization") {
+				nestedVirtualization = viper.GetBool("libvirt.nested_virtualization")
+			}
 
 			for _, m := range mountStrings {
 				var a MountArg
@@ -190,19 +204,22 @@ func imageBuildCommand() *cobra.Command {
 			}
 
 			vmConfig := virter.VMConfig{
-				Image:              baseImage,
-				Name:               vmName,
-				CpuArch:            cpuArch,
-				MemoryKiB:          memKiB,
-				BootCapacityKiB:    bootCapacityKiB,
-				VCPUs:              vcpus,
-				ID:                 vmID,
-				StaticDHCP:         viper.GetBool("libvirt.static_dhcp"),
-				ExtraSSHPublicKeys: extraAuthorizedKeys,
-				ConsolePath:        consolePath,
-				DiskCache:          viper.GetString("libvirt.disk_cache"),
-				AptMirror:          viper.GetString("cloudinit.apt_mirror"),
-				Mounts:             mounts,
+				Image:                baseImage,
+				Name:                 vmName,
+				CpuArch:              cpuArch,
+				CpuMode:              cpuMode,
+				CpuModel:             cpuModel,
+				NestedVirtualization: nestedVirtualization,
+				MemoryKiB:            memKiB,
+				BootCapacityKiB:      bootCapacityKiB,
+				VCPUs:                vcpus,
+				ID:                   vmID,
+				StaticDHCP:           viper.GetBool("libvirt.static_dhcp"),
+				ExtraSSHPublicKeys:   extraAuthorizedKeys,
+				ConsolePath:          consolePath,
+				DiskCache:            viper.GetString("libvirt.disk_cache"),
+				AptMirror:            viper.GetString("cloudinit.apt_mirror"),
+				Mounts:               mounts,
 
 				VNCEnabled:         vncEnabled,
 				VNCPort:            vncPort,
@@ -282,6 +299,9 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().StringVarP(&vmName, "name", "", "", "Name to use for provisioning VM")
 	buildCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	buildCmd.Flags().VarP(&cpuArch, "arch", "", "CPU architecture to use. Will use kvm if host and VM use the same architecture")
+	buildCmd.Flags().VarP(&cpuMode, "cpu-mode", "", fmt.Sprintf("CPU mode to use. Only valid for the native architecture. Valid values: [%s, %s]", virter.CpuModeHostModel, virter.CpuModeHostPassthrough))
+	buildCmd.Flags().StringVar(&cpuModel, "cpu-model", "", "Named CPU model to use, e.g. 'EPYC-Milan' (implies CPU mode 'custom'). Cannot be combined with --cpu-mode")
+	buildCmd.Flags().BoolVar(&nestedVirtualization, "nested-virtualization", false, "whether to expose the virtualization CPU feature (svm/vmx) to the VM")
 	u := unit.MustNewUnit(sizeUnits)
 	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
 	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")

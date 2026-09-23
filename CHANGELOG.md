@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--cpu-mode`, `--cpu-model` and `--nested-virtualization` options for
+  `vm run` and `image build`, with matching `libvirt.*` config defaults.
+
 ## [1.4.0] - 2026-09-15
 
 ### Added

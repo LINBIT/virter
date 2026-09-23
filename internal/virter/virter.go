@@ -138,8 +138,13 @@ type Mount interface {
 
 // VMConfig contains the configuration for starting a VM
 type VMConfig struct {
-	Image              *LocalImage
-	CpuArch            CpuArch
+	Image                *LocalImage
+	CpuArch              CpuArch
+	CpuMode              CpuMode
+	CpuModel             string
+	NestedVirtualization bool
+	// nestedVirtFeature is resolved from the host CPU vendor by VMRun.
+	nestedVirtFeature  string
 	Name               string
 	MemoryKiB          uint64
 	BootCapacityKiB    uint64
@@ -203,6 +208,12 @@ func CheckVMConfig(vmConfig VMConfig) (VMConfig, error) {
 		return vmConfig, fmt.Errorf("cannot start VM: %w", err)
 	} else if vmConfig.VNCEnabled && (vmConfig.VNCPort < 5900 || vmConfig.VNCPort > 65535) {
 		return vmConfig, fmt.Errorf("VNC port must be in the range [5900 65535]: port is %v", vmConfig.VNCPort)
+	} else if vmConfig.CpuMode != "" && vmConfig.CpuModel != "" {
+		return vmConfig, fmt.Errorf("cannot set both CPU mode and CPU model")
+	} else if vmConfig.CpuMode != "" && vmConfig.CpuArch.get() != CpuArchNative {
+		return vmConfig, fmt.Errorf("CPU mode can only be set for the native architecture ('%s')", CpuArchNative)
+	} else if vmConfig.NestedVirtualization && vmConfig.CpuArch.get() != CpuArchNative {
+		return vmConfig, fmt.Errorf("nested virtualization requires KVM, i.e. the native architecture ('%s')", CpuArchNative)
 	}
 
 	return vmConfig, nil

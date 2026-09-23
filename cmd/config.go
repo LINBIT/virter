@@ -66,6 +66,19 @@ dnsmasq_options = {{ get "libvirt.dnsmasq_options" }}
 # Default value: "{{ get "libvirt.disk_cache" }}"
 disk_cache = "{{ get "libvirt.disk_cache" }}"
 
+# cpu_mode is the CPU mode for VMs on the native architecture.
+# Can be "host-model" (the default when empty) or "host-passthrough".
+# Default value: "{{ get "libvirt.cpu_mode" }}"
+cpu_mode = "{{ get "libvirt.cpu_mode" }}"
+
+# cpu_model pins a named CPU model. Cannot be combined with cpu_mode.
+# Default value: "{{ get "libvirt.cpu_model" }}"
+cpu_model = "{{ get "libvirt.cpu_model" }}"
+
+# nested_virtualization exposes the virtualization CPU feature (svm/vmx) to VMs.
+# Default value: "{{ get "libvirt.nested_virtualization" }}"
+nested_virtualization = "{{ get "libvirt.nested_virtualization" }}"
+
 [time]
 # ssh_ping_count is the number of times virter will try to connect to a VM's
 # ssh port after starting it.
@@ -137,6 +150,9 @@ func initConfig() {
 	viper.SetDefault("libvirt.static_dhcp", false)
 	viper.SetDefault("libvirt.dnsmasq_options", []string{})
 	viper.SetDefault("libvirt.disk_cache", "")
+	viper.SetDefault("libvirt.cpu_mode", "")
+	viper.SetDefault("libvirt.cpu_model", "")
+	viper.SetDefault("libvirt.nested_virtualization", false)
 	viper.SetDefault("time.ssh_ping_count", 300)
 	viper.SetDefault("time.ssh_ping_period", time.Second)
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)

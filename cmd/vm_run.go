@@ -76,6 +76,9 @@ func vmRunCommand() *cobra.Command {
 
 	var vcpus uint
 	cpuArch := virter.CpuArchNative
+	var cpuMode virter.CpuMode
+	var cpuModel string
+	var nestedVirtualization bool
 	var secureBoot bool
 
 	var consoleDir string
@@ -111,6 +114,17 @@ func vmRunCommand() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			memKiB = uint64(mem.Value / unit.DefaultUnits["K"])
 			bootCapacityKiB = uint64(bootCapacity.Value / unit.DefaultUnits["K"])
+
+			// flags override the config values
+			if !cmd.Flags().Changed("cpu-mode") && !cmd.Flags().Changed("cpu-model") {
+				if err := cpuMode.Set(viper.GetString("libvirt.cpu_mode")); err != nil {
+					return fmt.Errorf("invalid config value for libvirt.cpu_mode: %w", err)
+				}
+				cpuModel = viper.GetString("libvirt.cpu_model")
+			}
+			if !cmd.Flags().Changed("nested-virtualization") {
+				nestedVirtualization = viper.GetBool("libvirt.nested_virtualization")
+			}
 
 			for _, s := range diskStrings {
 				var d DiskArg
@@ -220,27 +234,30 @@ func vmRunCommand() *cobra.Command {
 					}
 
 					c := virter.VMConfig{
-						Image:              image,
-						Name:               thisVMName,
-						CpuArch:            cpuArch,
-						MemoryKiB:          memKiB,
-						BootCapacityKiB:    bootCapacityKiB,
-						VCPUs:              vcpus,
-						ID:                 id,
-						StaticDHCP:         viper.GetBool("libvirt.static_dhcp"),
-						ExtraSSHPublicKeys: extraAuthorizedKeys,
-						ConsolePath:        consolePath,
-						Disks:              disks,
-						DiskCache:          viper.GetString("libvirt.disk_cache"),
-						AptMirror:          viper.GetString("cloudinit.apt_mirror"),
-						Mounts:             mounts,
-						ExtraNics:          nics,
-						GDBPort:            thisGDBPort,
-						SecureBoot:         secureBoot,
-						VNCEnabled:         vncEnabled,
-						VNCPort:            vncPort,
-						VNCIPv4BindAddress: vncIPv4BindAddress,
-						SSHUserName:        user,
+						Image:                image,
+						Name:                 thisVMName,
+						CpuArch:              cpuArch,
+						CpuMode:              cpuMode,
+						CpuModel:             cpuModel,
+						NestedVirtualization: nestedVirtualization,
+						MemoryKiB:            memKiB,
+						BootCapacityKiB:      bootCapacityKiB,
+						VCPUs:                vcpus,
+						ID:                   id,
+						StaticDHCP:           viper.GetBool("libvirt.static_dhcp"),
+						ExtraSSHPublicKeys:   extraAuthorizedKeys,
+						ConsolePath:          consolePath,
+						Disks:                disks,
+						DiskCache:            viper.GetString("libvirt.disk_cache"),
+						AptMirror:            viper.GetString("cloudinit.apt_mirror"),
+						Mounts:               mounts,
+						ExtraNics:            nics,
+						GDBPort:              thisGDBPort,
+						SecureBoot:           secureBoot,
+						VNCEnabled:           vncEnabled,
+						VNCPort:              vncPort,
+						VNCIPv4BindAddress:   vncIPv4BindAddress,
+						SSHUserName:          user,
 					}
 
 					err = v.VMRun(c)
@@ -297,6 +314,9 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().VarP(bootCapacity, "boot-capacity", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	runCmd.Flags().VarP(&cpuArch, "arch", "", "CPU architecture to use. Will use kvm if host and VM use the same architecture")
+	runCmd.Flags().VarP(&cpuMode, "cpu-mode", "", fmt.Sprintf("CPU mode to use. Only valid for the native architecture. Valid values: [%s, %s]", virter.CpuModeHostModel, virter.CpuModeHostPassthrough))
+	runCmd.Flags().StringVar(&cpuModel, "cpu-model", "", "Named CPU model to use, e.g. 'EPYC-Milan' (implies CPU mode 'custom'). Cannot be combined with --cpu-mode")
+	runCmd.Flags().BoolVar(&nestedVirtualization, "nested-virtualization", false, "whether to expose the virtualization CPU feature (svm/vmx) to the VM")
 	runCmd.Flags().BoolVar(&secureBoot, "secure-boot", false, "whether to enable secure boot")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	runCmd.Flags().UintVar(&gdbPort, "gdb-port", 0, "Enable gdb remote connection on this port (if --count is used, the ID will be added to this port number)")
