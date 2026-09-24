@@ -137,11 +137,6 @@ func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 		return nil, fmt.Errorf("no network found for VM '%s'", vmName)
 	}
 
-	network, err := v.NetworkGet(desc.Devices.Interfaces[0].Source.Network.Network)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get network '%s' for VM '%s': %w", desc.Devices.Interfaces[0].Source.Network.Network, vmName, err)
-	}
-
 	if desc.Devices.Interfaces[0].MAC == nil {
 		return nil, fmt.Errorf("no MAC address found for VM '%s'", vmName)
 	}
@@ -151,7 +146,7 @@ func (v *Virter) VMInfo(vmName string) (*VMInfo, error) {
 		return nil, fmt.Errorf("failed to parse VM MAC address '%s' for VM '%s': %w", desc.Devices.Interfaces[0].MAC.Address, vmName, err)
 	}
 
-	return &VMInfo{Name: vmName, AccessNetwork: network.Name, ID: IDFromMAC(vmMac, QemuBaseMAC()), Running: active != 0}, nil
+	return &VMInfo{Name: vmName, AccessNetwork: desc.Devices.Interfaces[0].Source.Network.Network, ID: IDFromMAC(vmMac, QemuBaseMAC()), Running: active != 0}, nil
 }
 
 // VMRun starts a VM.

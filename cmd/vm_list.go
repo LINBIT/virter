@@ -46,7 +46,8 @@ func vmListCommand() *cobra.Command {
 			for _, vm := range vms {
 				vmInfo, err := v.VMInfo(vm)
 				if err != nil {
-					log.Fatal(err)
+					log.Warnf("Skipping VM '%s': %v", vm, err)
+					continue
 				}
 
 				vmInfos = append(vmInfos, vmInfo)

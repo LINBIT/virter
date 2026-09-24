@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `image build` without `--id` picks a free VM ID instead of always using the
   highest one, which failed when a VM already had it.
+- `vm list` and VM name completion no longer fail for every VM because of one
+  misconfigured VM. A VM whose access network has been removed is listed
+  normally, and a VM with unreadable details is skipped with a warning.
 
 ## [1.4.0] - 2026-09-15
 

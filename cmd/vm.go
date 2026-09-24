@@ -74,7 +74,7 @@ func suggestVmNames(cmd *cobra.Command, args []string, toComplete string) ([]str
 		}
 		info, err := v.VMInfo(vm)
 		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
+			continue
 		}
 		if info.ID == 0 {
 			// not a VM created by virter
