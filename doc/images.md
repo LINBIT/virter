@@ -114,6 +114,24 @@ virter:work:load-local-image compute digest done [=====================] 867.69M
 Loaded local-image
 ```
 
+## Tag and rename images
+
+To make an image available under an alternate name, you can tag the image:
+
+```
+$ virter image tag local-image local-image-v2
+```
+
+When tagging an image, both names point to the same layers, so no data is copied. Removing one name keeps the layers the
+other name still uses. To rename an image, use the `image rename` command.
+
+```
+$ virter image rename local-image local-image-v3
+```
+
+Similarly to the `image load` and `image pull` commands, tagging and renaming an image replace an existing image with
+the target name. The layers of the replaced image are removed if no other image or VM uses them.
+
 ## Virter Image Registry
 
 In order to know where to look when pulling VM images, virter uses a mechanism

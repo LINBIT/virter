@@ -179,6 +179,8 @@ func imageCommand() *cobra.Command {
 	imageCmd.AddCommand(imageSaveCommand())
 	imageCmd.AddCommand(imagePushCommand())
 	imageCmd.AddCommand(imagePruneCommand())
+	imageCmd.AddCommand(imageTagCommand())
+	imageCmd.AddCommand(imageRenameCommand())
 
 	return imageCmd
 }

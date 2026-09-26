@@ -499,6 +499,22 @@ func (v *Virter) ImageRm(name string, pool libvirt.StoragePool) error {
 	return nil
 }
 
+// ImageTag creates the image target, pointing to the same layers as the image source.
+//
+// No data is copied. An existing target is replaced, see MakeImage.
+func (v *Virter) ImageTag(source, target string, pool libvirt.StoragePool) (*LocalImage, error) {
+	img, err := v.FindImage(source, pool)
+	if err != nil {
+		return nil, err
+	}
+
+	if img == nil {
+		return nil, fmt.Errorf("image '%s' not found", source)
+	}
+
+	return v.MakeImage(target, img.TopLayer())
+}
+
 // ImageList returns the list of images in the local storage pool.
 func (v *Virter) ImageList() ([]*LocalImage, error) {
 	vols, _, err := v.libvirt.StoragePoolListAllVolumes(v.provisionStoragePool, -1, 0)

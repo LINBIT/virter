@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--cpu-mode`, `--cpu-model` and `--nested-virtualization` options for
   `vm run` and `image build`, with matching `libvirt.*` config defaults.
+- `image tag` and `image rename` commands to give a local image another name
+  without copying data or booting a VM. Like `image load` and `image pull`,
+  they replace an existing image with the target name.
 
 ### Changed
 

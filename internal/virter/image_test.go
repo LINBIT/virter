@@ -85,6 +85,77 @@ func TestVirter_ImageRm(t *testing.T) {
 	assert.Empty(t, l.pools[poolName].vols)
 }
 
+func TestVirter_ImageTag(t *testing.T) {
+	l, layer := prepareVolumeLayer(t)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
+
+	_, err = v.MakeImage("image1", layer)
+	assert.NoError(t, err)
+
+	img, err := v.ImageTag("image1", "image2", pool)
+	assert.NoError(t, err)
+	assert.Equal(t, "image2", img.Name())
+	assert.Equal(t, layer.Name(), img.TopLayer().Name())
+
+	_, err = v.ImageTag("image1", "alma-9:2026-09-26", pool)
+	assert.NoError(t, err)
+
+	colon, err := v.FindImage("alma-9:2026-09-26", pool)
+	assert.NoError(t, err)
+	assert.NotNil(t, colon)
+	assert.Equal(t, layer.Name(), colon.TopLayer().Name())
+
+	_, err = v.ImageTag("missing", "image3", pool)
+	assert.Error(t, err)
+
+	img, err = v.ImageTag("image1", "image1", pool)
+	assert.NoError(t, err)
+	assert.Equal(t, "image1", img.Name())
+
+	err = v.ImageRm("image1", pool)
+	assert.NoError(t, err)
+
+	remaining, err := v.FindImage("image2", pool)
+	assert.NoError(t, err)
+	assert.NotNil(t, remaining)
+	assert.Contains(t, l.pools[poolName].vols, layer.Name())
+
+	err = v.ImageRm("image2", pool)
+	assert.NoError(t, err)
+	err = v.ImageRm("alma-9:2026-09-26", pool)
+	assert.NoError(t, err)
+	assert.Empty(t, l.pools[poolName].vols)
+}
+
+func TestVirter_ImageTagReplace(t *testing.T) {
+	l, layer := prepareVolumeLayer(t)
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+	pool, err := l.StoragePoolLookupByName(poolName)
+	assert.NoError(t, err)
+
+	_, err = v.MakeImage("image1", layer)
+	assert.NoError(t, err)
+
+	other, err := v.ImageImportFromReader("other", io.NopCloser(strings.NewReader(ExampleLayerContent+ExampleLayerContent)), pool)
+	assert.NoError(t, err)
+	otherLayer := other.TopLayer().Name()
+
+	_, err = v.ImageTag("other", "other2", pool)
+	assert.NoError(t, err)
+
+	img, err := v.ImageTag("image1", "other", pool)
+	assert.NoError(t, err)
+	assert.Equal(t, layer.Name(), img.TopLayer().Name())
+	// other2 still uses the replaced layer
+	assert.Contains(t, l.pools[poolName].vols, otherLayer)
+
+	_, err = v.ImageTag("image1", "other2", pool)
+	assert.NoError(t, err)
+	assert.NotContains(t, l.pools[poolName].vols, otherLayer)
+}
+
 func TestVirter_ImageImportFromReader(t *testing.T) {
 	l, layer := prepareVolumeLayer(t)
 	v := virter.New(l, poolName, networkName, newMockKeystore())
