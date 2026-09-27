@@ -2,6 +2,7 @@ package virter_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -90,14 +91,7 @@ func TestWaitVmReady(t *testing.T) {
 		CheckTimeout: time.Second, // ignored
 	}
 
-	l := newFakeLibvirtConnection()
-
-	domain := newFakeLibvirtDomain(vmName, vmMAC)
-	domain.active = true
-	l.domains[vmName] = domain
-	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
-
-	v := virter.New(l, poolName, networkName, newMockKeystore())
+	v := newVirterWithRunningVM()
 
 	hook := logtest.NewGlobal()
 	t.Cleanup(func() { log.StandardLogger().ReplaceHooks(make(log.LevelHooks)) })
@@ -113,6 +107,124 @@ func TestWaitVmReady(t *testing.T) {
 	}
 
 	shell.AssertExpectations(t)
+}
+
+func newVirterWithRunningVM() *virter.Virter {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmName, vmMAC)
+	domain.active = true
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+
+	return virter.New(l, poolName, networkName, newMockKeystore())
+}
+
+func newUnreachableShell() *mocks.MockShellClient {
+	shell := new(mocks.MockShellClient)
+	shell.On("DialContext", mock.Anything).Return(errors.New("connection refused"))
+	return shell
+}
+
+func TestWaitVmReadyTimeout(t *testing.T) {
+	shell := newUnreachableShell()
+	readyConfig := virter.VmReadyConfig{
+		Retries:      1000,
+		CheckTimeout: 10 * time.Millisecond,
+		Timeout:      50 * time.Millisecond,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err := newVirterWithRunningVM().WaitVmReady(ctx, MockShellClientBuilder{shell}, vmName, readyConfig)
+
+	assert.EqualError(t, err, fmt.Sprintf("VM '%s' not ready after 0s (time.ready_timeout): connection refused", vmName))
+	assert.GreaterOrEqual(t, time.Since(start), 50*time.Millisecond)
+	assert.Less(t, time.Since(start), 2*time.Second, "Timeout did not override Retries")
+}
+
+func TestWaitVmReadyStalledDial(t *testing.T) {
+	shell := new(mocks.MockShellClient)
+	shell.On("DialContext", mock.Anything).Return(context.DeadlineExceeded).Run(func(args mock.Arguments) {
+		<-args.Get(0).(context.Context).Done()
+	})
+	readyConfig := virter.VmReadyConfig{
+		Retries:      1,
+		CheckTimeout: 10 * time.Millisecond,
+		Timeout:      50 * time.Millisecond,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err := newVirterWithRunningVM().WaitVmReady(ctx, MockShellClientBuilder{shell}, vmName, readyConfig)
+
+	assert.EqualError(t, err, fmt.Sprintf("VM '%s' not ready after 0s (time.ready_timeout): context deadline exceeded", vmName))
+	assert.Less(t, time.Since(start), 2*time.Second)
+}
+
+func TestWaitVmReadyKeepsErrorBeforeDeadline(t *testing.T) {
+	shell := new(mocks.MockShellClient)
+	shell.On("DialContext", mock.Anything).Return(errors.New("connect: no route to host")).Once()
+	shell.On("DialContext", mock.Anything).Return(errors.New("i/o timeout")).Run(func(args mock.Arguments) {
+		<-args.Get(0).(context.Context).Done()
+	})
+	readyConfig := virter.VmReadyConfig{
+		Retries:      1,
+		CheckTimeout: 10 * time.Millisecond,
+		Timeout:      50 * time.Millisecond,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := newVirterWithRunningVM().WaitVmReady(ctx, MockShellClientBuilder{shell}, vmName, readyConfig)
+
+	assert.EqualError(t, err, fmt.Sprintf("VM '%s' not ready after 0s (time.ready_timeout): connect: no route to host", vmName))
+}
+
+func TestWaitVmReadyWithoutTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		retries, attempts int
+	}{
+		{retries: 5, attempts: 5},
+		{retries: 0, attempts: 0},
+	} {
+		t.Run(fmt.Sprintf("%d retries", tc.retries), func(t *testing.T) {
+			shell := newUnreachableShell()
+			readyConfig := virter.VmReadyConfig{
+				Retries:      tc.retries,
+				CheckTimeout: 10 * time.Millisecond,
+			}
+
+			err := newVirterWithRunningVM().WaitVmReady(context.Background(), MockShellClientBuilder{shell}, vmName, readyConfig)
+
+			if tc.attempts == 0 {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, "(time.ready_timeout): connection refused")
+			}
+			shell.AssertNumberOfCalls(t, "DialContext", tc.attempts)
+		})
+	}
+}
+
+func TestWaitVmReadyCancel(t *testing.T) {
+	shell := newUnreachableShell()
+	readyConfig := virter.VmReadyConfig{
+		Retries:      1,
+		CheckTimeout: 10 * time.Millisecond,
+		Timeout:      10 * time.Second,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(30*time.Millisecond, cancel)
+
+	err := newVirterWithRunningVM().WaitVmReady(ctx, MockShellClientBuilder{shell}, vmName, readyConfig)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.EqualError(t, err, "VM not ready: context canceled")
 }
 
 const (

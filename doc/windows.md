@@ -231,7 +231,7 @@ Here are some useful hints for working with virter and Windows:
   * Run with at least 4GB RAM (also on image build). Else it is just too slow.
 What works is adding --vcpus 2 --memory 4G to vm run / image build commands.
 
-  * Set `ssh_ping_count` in virter.toml file to 500.
+  * Set `ready_timeout` in the `[time]` section of the virter.toml file to "10m" (the default is "5m"). Setting `ssh_ping_count` to 500, the older form of this tip, still works.
 
   * When creating a VM template make sure to shut it down before pushing it, else the built-in provisioning would never be run (and vm ssh would not work).
 

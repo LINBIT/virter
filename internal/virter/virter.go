@@ -176,6 +176,8 @@ type VMMeta struct {
 type VmReadyConfig struct {
 	Retries      int
 	CheckTimeout time.Duration
+	// Timeout of zero means Retries attempts CheckTimeout apart, with no time limit
+	Timeout time.Duration
 }
 
 func checkDisks(vmConfig VMConfig) error {

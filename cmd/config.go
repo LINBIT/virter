@@ -80,8 +80,19 @@ cpu_model = "{{ get "libvirt.cpu_model" }}"
 nested_virtualization = "{{ get "libvirt.nested_virtualization" }}"
 
 [time]
+# ready_timeout is how long virter will wait for a VM to be reachable via ssh
+# and to finish cloud-init after starting it, for example "5m".
+# If the VM is not ready by then, an error will be produced.
+# Empty, "0" or "0s" means "5m", unless ssh_ping_count or ssh_ping_period
+# differ from their defaults. Then virter keeps the older limit of
+# ssh_ping_count attempts, ssh_ping_period apart.
+# A bare number is read as nanoseconds, so "5m" needs its unit.
+# Default value: "{{ get "time.ready_timeout" }}"
+ready_timeout = "{{ get "time.ready_timeout" }}"
+
 # ssh_ping_count is the number of times virter will try to connect to a VM's
-# ssh port after starting it.
+# ssh port after starting it. It only sets the limit as described for
+# ready_timeout.
 # Default value: {{ get "time.ssh_ping_count" }}
 ssh_ping_count = {{ get "time.ssh_ping_count" }}
 
@@ -153,8 +164,9 @@ func initConfig() {
 	viper.SetDefault("libvirt.cpu_mode", "")
 	viper.SetDefault("libvirt.cpu_model", "")
 	viper.SetDefault("libvirt.nested_virtualization", false)
-	viper.SetDefault("time.ssh_ping_count", 300)
-	viper.SetDefault("time.ssh_ping_period", time.Second)
+	viper.SetDefault("time.ssh_ping_count", defaultSSHPingCount)
+	viper.SetDefault("time.ssh_ping_period", defaultSSHPingPeriod)
+	viper.SetDefault("time.ready_timeout", "")
 	viper.SetDefault("time.shutdown_timeout", 20*time.Second)
 	viper.SetDefault("auth.user_public_key", []string{})
 	viper.SetDefault("container.provider", "docker")
@@ -288,12 +300,31 @@ func initSSHFromConfig() {
 	}
 }
 
+const (
+	defaultSSHPingCount  = 300
+	defaultSSHPingPeriod = time.Second
+	defaultReadyTimeout  = 5 * time.Minute
+)
+
 func getReadyConfig() virter.VmReadyConfig {
 	// The config keys are kept for compatibility.
 	// Note that viper.RegisterAlias sounds like it could be used, but I couldn't make it work.
+	return readyConfig(
+		viper.GetInt("time.ssh_ping_count"),
+		viper.GetDuration("time.ssh_ping_period"),
+		viper.GetDuration("time.ready_timeout"),
+	)
+}
+
+// Compares values, not viper.IsSet, since IsSet counts defaults and the default config file spells them out
+func readyConfig(pingCount int, pingPeriod, readyTimeout time.Duration) virter.VmReadyConfig {
+	if readyTimeout == 0 && pingCount == defaultSSHPingCount && pingPeriod == defaultSSHPingPeriod {
+		readyTimeout = defaultReadyTimeout
+	}
 	return virter.VmReadyConfig{
-		Retries:      viper.GetInt("time.ssh_ping_count"),
-		CheckTimeout: viper.GetDuration("time.ssh_ping_period"),
+		Retries:      pingCount,
+		CheckTimeout: pingPeriod,
+		Timeout:      readyTimeout,
 	}
 }
 

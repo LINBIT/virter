@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `image tag` and `image rename` commands to give a local image another name
   without copying data or booting a VM. Like `image load` and `image pull`,
   they replace an existing image with the target name.
+- `time.ready_timeout` config option: how long `vm run --wait-ssh`,
+  `vm wait-ready` and `image build` wait for a VM to get ready, 5 minutes by
+  default.
 
 ### Changed
 

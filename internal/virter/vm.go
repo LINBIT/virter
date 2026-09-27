@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -335,9 +336,18 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 		HostKeyAlgorithms: supportedAlgos,
 	}
 
+	waitCtx, attempts := ctx, readyConfig.Retries
+	if readyConfig.Timeout > 0 {
+		var cancel context.CancelFunc
+		waitCtx, cancel = context.WithTimeout(ctx, readyConfig.Timeout)
+		defer cancel()
+		attempts = math.MaxInt
+	}
+
+	var lastErr error
 	readyFunc := func() error {
 		sshClient := shellClientBuilder.NewShellClient(hostPort, sshConfig)
-		if err := sshClient.DialContext(ctx); err != nil {
+		if err := sshClient.DialContext(waitCtx); err != nil {
 			logger.Debugf("SSH dial attempt failed: %v", err)
 			return err
 		}
@@ -362,11 +372,25 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 	// Using ActualTime breaks the expectation of the unit tests
 	// that this code does not sleep, but we work around that by
 	// always making the first ping successful in tests
-	err = actualtime.ActualTime{}.Ping(ctx, readyConfig.Retries, readyConfig.CheckTimeout, readyFunc)
+	deadline, hasDeadline := waitCtx.Deadline()
+	err = actualtime.ActualTime{}.Ping(waitCtx, attempts, readyConfig.CheckTimeout, func() error {
+		err := readyFunc()
+		// A dial cut off by the deadline reports "i/o timeout", which hides the real failure
+		if err != nil && (!hasDeadline || time.Now().Before(deadline)) {
+			lastErr = err
+		}
+		return err
+	})
 	stopProgress()
 	progress.Wait()
 	if err != nil {
-		return fmt.Errorf("VM not ready: %w", err)
+		if ctx.Err() != nil {
+			return fmt.Errorf("VM not ready: %w", ctx.Err())
+		}
+		if lastErr != nil {
+			err = lastErr
+		}
+		return fmt.Errorf("VM '%s' not ready after %s (time.ready_timeout): %w", vmName, time.Since(start).Round(time.Second), err)
 	}
 
 	elapsed := time.Since(start)
