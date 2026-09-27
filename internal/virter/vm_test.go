@@ -9,6 +9,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/LINBIT/containerapi"
 	"github.com/stretchr/testify/assert"
@@ -98,8 +99,18 @@ func TestWaitVmReady(t *testing.T) {
 
 	v := virter.New(l, poolName, networkName, newMockKeystore())
 
-	err := v.WaitVmReady(context.Background(), MockShellClientBuilder{shell}, vmName, readyConfig)
+	hook := logtest.NewGlobal()
+	t.Cleanup(func() { log.StandardLogger().ReplaceHooks(make(log.LevelHooks)) })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := v.WaitVmReady(ctx, MockShellClientBuilder{shell}, vmName, readyConfig)
 	assert.NoError(t, err)
+	assert.NoError(t, ctx.Err(), "WaitVmReady returned only when the test context ran out")
+
+	for _, e := range hook.AllEntries() {
+		assert.NotEqual(t, log.InfoLevel, e.Level, "a fast boot logs at info: %s", e.Message)
+	}
 
 	shell.AssertExpectations(t)
 }

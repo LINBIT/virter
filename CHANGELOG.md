@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Size values without a unit suffix no longer mean bytes. `--memory` defaults
   to MiB, while `--boot-capacity`, `--disk size=` and `disk create --size`
   default to GiB.
+- `vm run --wait-ssh`, `vm wait-ready` and `image build` log every 30 seconds
+  while waiting for a VM to get ready, and also log the total wait time when
+  30 seconds or more have elapsed.
 
 ### Fixed
 

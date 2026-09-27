@@ -350,17 +350,47 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 		return nil
 	}
 
-	logger.Debug("Wait for VM to get ready")
+	log.Debugf("Waiting for VM '%s' to get ready", vmName)
+	start := time.Now()
+
+	progressCtx, stopProgress := context.WithCancel(ctx)
+	var progress sync.WaitGroup
+	progress.Go(func() {
+		logReadyProgress(progressCtx, vmName, start, readyProgressInterval)
+	})
 
 	// Using ActualTime breaks the expectation of the unit tests
 	// that this code does not sleep, but we work around that by
 	// always making the first ping successful in tests
-	if err := (actualtime.ActualTime{}.Ping(ctx, readyConfig.Retries, readyConfig.CheckTimeout, readyFunc)); err != nil {
+	err = actualtime.ActualTime{}.Ping(ctx, readyConfig.Retries, readyConfig.CheckTimeout, readyFunc)
+	stopProgress()
+	progress.Wait()
+	if err != nil {
 		return fmt.Errorf("VM not ready: %w", err)
 	}
 
-	logger.Debug("Successfully connected to ready VM")
+	elapsed := time.Since(start)
+	logReady := log.Debugf
+	if elapsed >= readyProgressInterval {
+		logReady = log.Infof
+	}
+	logReady("VM '%s' ready after %s", vmName, elapsed.Round(time.Second))
 	return nil
+}
+
+const readyProgressInterval = 30 * time.Second
+
+func logReadyProgress(ctx context.Context, vmName string, start time.Time, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case t := <-ticker.C:
+			log.Infof("Still waiting for VM '%s' to get ready (%s elapsed)", vmName, t.Sub(start).Round(time.Second))
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // VMRm removes a VM.
