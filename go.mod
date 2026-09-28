@@ -19,7 +19,7 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/rck/unit v0.0.3
+	github.com/rck/unit v0.0.4
 	github.com/rodaine/table v1.3.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2

@@ -36,9 +36,8 @@ multiple VMs.`,
 		ValidArgsFunction: suggestNone,
 	}
 
-	u := unit.MustNewUnit(sizeUnits)
-	size = u.MustNewValue(0, unit.None)
-	createCmd.Flags().VarP(size, "size", "s", "Size of the shared disk")
+	size = capacityUnit.MustNewValue(0, unit.None)
+	createCmd.Flags().VarP(size, "size", "s", "Size of the shared disk (bare numbers are GiB)")
 	_ = createCmd.MarkFlagRequired("size")
 	createCmd.Flags().StringVar(&pool, "pool", "", "Name of the storage pool to create the disk in (defaults to the configured storage pool)")
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -16,16 +17,22 @@ import (
 	"github.com/LINBIT/virter/pkg/pullpolicy"
 )
 
-var sizeUnits = func() map[string]int64 {
-	units := unit.DefaultUnits
-	units["KiB"] = units["K"]
-	units["MiB"] = units["M"]
-	units["GiB"] = units["G"]
-	units["TiB"] = units["T"]
-	units["PiB"] = units["P"]
-	units["EiB"] = units["E"]
-	return units
-}()
+func sizeUnit(defaultUnit int64) *unit.Unit {
+	units := maps.Clone(unit.DefaultUnits)
+	units["KiB"] = unit.K
+	units["MiB"] = unit.M
+	units["GiB"] = unit.G
+	units["TiB"] = unit.T
+	units["PiB"] = unit.P
+	units["EiB"] = unit.E
+	units[""] = defaultUnit
+	return unit.MustNewUnit(units)
+}
+
+var (
+	memoryUnit   = sizeUnit(unit.M)
+	capacityUnit = sizeUnit(unit.G)
+)
 
 func createConsoleDir(path string) (string, error) {
 	if path == "" {
@@ -307,11 +314,10 @@ func vmRunCommand() *cobra.Command {
 	runCmd.MarkFlagRequired("id")
 	runCmd.Flags().UintVar(&count, "count", 1, "Number of VMs to start")
 	runCmd.Flags().BoolVarP(&waitSSH, "wait-ssh", "w", false, "whether to wait for SSH port (default false)")
-	u := unit.MustNewUnit(sizeUnits)
-	mem = u.MustNewValue(1*sizeUnits["G"], unit.None)
-	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM")
-	bootCapacity = u.MustNewValue(10*sizeUnits["G"], unit.None)
-	runCmd.Flags().VarP(bootCapacity, "boot-capacity", "", "Capacity of the boot volume (values smaller than base image capacity will be ignored)")
+	mem = memoryUnit.MustNewValue(1*unit.G, unit.None)
+	runCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM (bare numbers are MiB)")
+	bootCapacity = capacityUnit.MustNewValue(10*unit.G, unit.None)
+	runCmd.Flags().VarP(bootCapacity, "boot-capacity", "", "Capacity of the boot volume, values smaller than base image capacity are ignored (bare numbers are GiB)")
 	runCmd.Flags().UintVar(&vcpus, "vcpus", 1, "Number of virtual CPUs to allocate for the VM")
 	runCmd.Flags().VarP(&cpuArch, "arch", "", "CPU architecture to use. Will use kvm if host and VM use the same architecture")
 	runCmd.Flags().VarP(&cpuMode, "cpu-mode", "", fmt.Sprintf("CPU mode to use. Only valid for the native architecture. Valid values: [%s, %s]", virter.CpuModeHostModel, virter.CpuModeHostPassthrough))
@@ -327,7 +333,7 @@ func vmRunCommand() *cobra.Command {
 	// and then manually marshal them to Disks.
 	// If this ever gets implemented in pflag , we will be able to solve this
 	// in a much smoother way.
-	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio,pool=mypool". Can be specified multiple times`)
+	runCmd.Flags().StringArrayVarP(&diskStrings, "disk", "d", []string{}, `Add a disk to the VM. Format: "name=disk1,size=100MiB,format=qcow2,bus=virtio,pool=mypool" (bare size numbers are GiB). Can be specified multiple times`)
 	runCmd.Flags().StringArrayVar(&sharedDiskStrings, "shared-disk", []string{}, `Attach an existing shared disk (see "virter disk create") to the VM. Format: "name=disk1,bus=virtio,pool=mypool". Can be specified multiple times`)
 	runCmd.Flags().StringArrayVarP(&nicStrings, "nic", "i", []string{}, `Add a NIC to the VM. Format: "type=network,source=some-net-name". Type can also be "bridge", in which case the source is the bridge device name. Additional config options are "model" (default: virtio) and "mac" (default chosen by libvirt). Can be specified multiple times`)
 	runCmd.Flags().StringArrayVarP(&mountStrings, "mount", "v", []string{}, `Mount a host path in the VM, like a bind mount. Format: "host=/path/on/host,vm=/path/in/vm"`)

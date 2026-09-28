@@ -37,12 +37,11 @@ type Size struct {
 }
 
 func (s *Size) UnmarshalText(text []byte) error {
-	u := unit.MustNewUnit(sizeUnits)
-	val, err := u.ValueFromString(string(text))
+	val, err := capacityUnit.ValueFromString(string(text))
 	if err != nil {
 		return fmt.Errorf("invalid size: %w", err)
 	}
-	signedSizeKiB := val.Value / sizeUnits["K"]
+	signedSizeKiB := val.Value / unit.K
 	if signedSizeKiB < 0 {
 		return fmt.Errorf("invalid size: must be positive number")
 	}

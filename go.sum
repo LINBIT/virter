@@ -152,8 +152,8 @@ github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsK
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/rck/unit v0.0.3 h1:q3/Ui9gcrFKpEneZXw2gNmNEbzv5jLrZnH6qhX1ypZ0=
-github.com/rck/unit v0.0.3/go.mod h1:jTOnzP4s1OjIP1vdxb4n76b23QPKS4EurYg7sYMr2DM=
+github.com/rck/unit v0.0.4 h1:jOzGStIq3K2Sl3MhWRy4oyQBcAyWML5NM2IaMXi8TwI=
+github.com/rck/unit v0.0.4/go.mod h1:jTOnzP4s1OjIP1vdxb4n76b23QPKS4EurYg7sYMr2DM=
 github.com/rodaine/table v1.3.1 h1:jBVgg1bEu5EzEdYSrwUUlQpayDtkvtTmgFS0FPAxOq8=
 github.com/rodaine/table v1.3.1/go.mod h1:VYCJRCHa2DpD25uFALcB6hi5ECF3eEJQVhCXRjHgXc4=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=

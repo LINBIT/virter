@@ -84,6 +84,15 @@ func TestFromFlag(t *testing.T) {
 				Format: "qcow2",
 				Bus:    "virtio",
 			},
+		}, {
+			name:  "bare number size defaults to GiB",
+			input: "name=test,size=10",
+			expect: cmd.DiskArg{
+				Name:   "test",
+				Size:   cmd.Size{KiB: uint64(10 * unit.G / unit.K)},
+				Format: "qcow2",
+				Bus:    "virtio",
+			},
 		},
 	}
 
