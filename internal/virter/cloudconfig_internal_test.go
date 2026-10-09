@@ -12,6 +12,24 @@ type fakeHostKey struct{}
 func (fakeHostKey) PrivateKey() string { return "PRIVATE\nKEY" }
 func (fakeHostKey) PublicKey() string  { return "ssh-rsa HOSTKEY" }
 
+func TestMetaData(t *testing.T) {
+	keys := []string{
+		"ssh-ed25519 USERKEY work: laptop #2",
+		"ssh-rsa VIRTERKEY\n",
+	}
+	var v *Virter
+	actual, err := v.metaData("vm1", keys)
+	assert.NoError(t, err)
+
+	expected := `instance-id: vm1
+local-hostname: vm1
+public-keys:
+  - "ssh-ed25519 USERKEY work: laptop #2"
+  - "ssh-rsa VIRTERKEY"
+`
+	assert.Equal(t, expected, actual)
+}
+
 func TestRenderUserData(t *testing.T) {
 	base := userDataConfig{
 		VMName:        "vm1",

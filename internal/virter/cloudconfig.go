@@ -3,6 +3,7 @@ package virter
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/kdomanski/iso9660"
@@ -14,6 +15,10 @@ import (
 
 const templateMetaData = `instance-id: {{ .VMName }}
 local-hostname: {{ .VMName }}
+public-keys:
+{{- range .SSHPublicKeys }}
+  - {{ . }}
+{{- end }}
 `
 
 // Template used to configure DHCP clients for VMs with multiple NICs.
@@ -77,9 +82,15 @@ apt:
 {{- end }}
 `
 
-func (v *Virter) metaData(vmName string) (string, error) {
+func (v *Virter) metaData(vmName string, sshPublicKeys []string) (string, error) {
+	quotedKeys := make([]string, len(sshPublicKeys))
+	for i, key := range sshPublicKeys {
+		quotedKeys[i] = strconv.Quote(strings.TrimSpace(key))
+	}
+
 	templateData := map[string]interface{}{
-		"VMName": vmName,
+		"VMName":        vmName,
+		"SSHPublicKeys": quotedKeys,
 	}
 
 	return renderTemplate("meta-data", templateMetaData, templateData)
@@ -197,7 +208,7 @@ func (v *Virter) createCIData(vmConfig VMConfig, hostkey sshkeys.HostKey) (*RawL
 	vmName := vmConfig.Name
 	sshPublicKeys := append(vmConfig.ExtraSSHPublicKeys, string(v.sshkeys.PublicKey()))
 
-	metaData, err := v.metaData(vmName)
+	metaData, err := v.metaData(vmName, sshPublicKeys)
 	if err != nil {
 		return nil, err
 	}

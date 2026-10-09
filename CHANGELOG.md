@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `time.ready_timeout` config option: how long `vm run --wait-ssh`,
   `vm wait-ready` and `image build` wait for a VM to get ready, 5 minutes by
   default.
+- SSH keys for Windows guests running Cloudbase-Init, provided through the
+  `public-keys` field of the cloud-init `meta-data` file.
 
 ### Changed
 
