@@ -56,3 +56,14 @@ Now you can easily connect:
 $ ssh foo.test
 [root@foo ~]# 
 ```
+
+## Host key check
+
+Virter generates an SSH host key for each VM, passes it to the VM through
+cloud-init, and accepts only that key. Guests that keep their own host keys,
+such as Windows with [Cloudbase-Init](https://github.com/cloudbase/cloudbase-init),
+need the `--ssh-trust-on-first-use` option on `vm run` or `image build`.
+Virter then records the host key that the VM presents when it first gets
+ready, during `vm run --wait-ssh`, `vm wait-ready` or `image build`, and
+accepts only that key afterwards. Other commands, such as `vm exec` and
+`vm ssh`, fail until then.

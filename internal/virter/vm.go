@@ -239,8 +239,12 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 	}
 
 	meta := &VMMeta{
-		HostKey:     hostkey.PublicKey(),
-		SSHUserName: vmConfig.SSHUserName,
+		HostKey:            hostkey.PublicKey(),
+		SSHUserName:        vmConfig.SSHUserName,
+		SSHTrustOnFirstUse: vmConfig.SSHTrustOnFirstUse,
+	}
+	if vmConfig.SSHTrustOnFirstUse {
+		meta.HostKey = ""
 	}
 
 	vmXML, err := v.vmXML(vmConfig, mac, meta)
@@ -319,12 +323,26 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 
 	hostPort := net.JoinHostPort(ips[0], "ssh")
 
-	knownHosts, err := v.getKnownHostsFor(vmName)
+	meta, err := v.getMetaForVM(vmName)
 	if err != nil {
 		return fmt.Errorf("failed to fetch host keys: %w", err)
 	}
 
-	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
+	var hostKey ssh.PublicKey
+	hostkeyCheck := func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		hostKey = key
+		return nil
+	}
+	_, supportedAlgos := sshkeys.NewKnownHosts().AsHostKeyConfig()
+	recordHostKey := meta.SSHTrustOnFirstUse && meta.HostKey == ""
+	if !recordHostKey {
+		knownHosts, err := v.getKnownHostsFor(vmName)
+		if err != nil {
+			return fmt.Errorf("failed to fetch host keys: %w", err)
+		}
+
+		hostkeyCheck, supportedAlgos = knownHosts.AsHostKeyConfig()
+	}
 
 	remoteUser := v.getSSHUserName(vmName)
 
@@ -355,6 +373,16 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 		if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
 			logger.Debugf("cloud-init not done: %v", err)
 			return err
+		}
+
+		if recordHostKey {
+			recorded := *meta
+			recorded.HostKey = string(ssh.MarshalAuthorizedKey(hostKey))
+			if err := v.setMetaForVM(vmName, &recorded); err != nil {
+				return err
+			}
+			recordHostKey = false
+			logger.Debugf("Recorded host key of VM '%s'", vmName)
 		}
 
 		return nil
@@ -721,6 +749,10 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 		meta, err := v.getMetaForVM(vmName)
 		if err != nil {
 			return nil, err
+		}
+
+		if meta.HostKey == "" {
+			return nil, fmt.Errorf("host key of VM '%s' not recorded yet, wait for it with 'virter vm wait-ready %s'", vmName, vmName)
 		}
 
 		hosts := []string{ips[i], vmName}

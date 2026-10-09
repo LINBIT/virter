@@ -90,9 +90,14 @@ func (k *knownHosts) AsHostKeyConfig() (ssh.HostKeyCallback, []string) {
 
 			return fmt.Errorf("ssh: host key mismatch")
 		}, []string{
+			// RSA first, so a VM that has the host key Virter generated presents that key
 			ssh.KeyAlgoRSA,
 			ssh.SigAlgoRSASHA2256,
 			ssh.SigAlgoRSASHA2512,
+			ssh.KeyAlgoED25519,
+			ssh.KeyAlgoECDSA256,
+			ssh.KeyAlgoECDSA384,
+			ssh.KeyAlgoECDSA521,
 		}
 }
 

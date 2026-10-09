@@ -40,6 +40,7 @@ type LibvirtConnection interface {
 	NetworkUpdate(Net libvirt.Network, Command, Section uint32, ParentIndex int32, XML string, Flags libvirt.NetworkUpdateFlags) (err error)
 	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
 	DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error)
+	DomainSetMetadata(Dom libvirt.Domain, Type int32, Metadata libvirt.OptString, Key libvirt.OptString, Uri libvirt.OptString, Flags libvirt.DomainModificationImpact) (err error)
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainCreate(Dom libvirt.Domain) (err error)
 	DomainIsActive(Dom libvirt.Domain) (rActive int32, err error)
@@ -164,12 +165,14 @@ type VMConfig struct {
 	VNCIPv4BindAddress string
 	SSHUserName        string
 	AptMirror          string
+	SSHTrustOnFirstUse bool
 }
 
 // VMMeta is additional metadata stored with each VM
 type VMMeta struct {
-	HostKey     string `xml:"hostkey"`
-	SSHUserName string `xml:"ssh-user-name"`
+	HostKey            string `xml:"hostkey"`
+	SSHUserName        string `xml:"ssh-user-name"`
+	SSHTrustOnFirstUse bool   `xml:"ssh-trust-on-first-use,omitempty"`
 }
 
 // VmReadyConfig contains the configuration for waiting for a VM to be ready.

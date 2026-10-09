@@ -339,6 +339,16 @@ func (l *FakeLibvirtConnection) DomainGetXMLDesc(Dom libvirt.Domain, Flags libvi
 	return xml, nil
 }
 
+func (l *FakeLibvirtConnection) DomainSetMetadata(Dom libvirt.Domain, Type int32, Metadata libvirt.OptString, Key libvirt.OptString, Uri libvirt.OptString, Flags libvirt.DomainModificationImpact) (err error) {
+	domain, ok := l.domains[Dom.Name]
+	if !ok {
+		return libvirt.Error{Code: uint32(libvirt.ErrNoDomain)}
+	}
+
+	domain.description.Metadata = &libvirtxml.DomainMetadata{XML: Metadata[0]}
+	return nil
+}
+
 func (l *FakeLibvirtConnection) DomainDefineXML(XML string) (rDom libvirt.Domain, err error) {
 	description := &libvirtxml.Domain{}
 	if err := description.Unmarshal(XML); err != nil {

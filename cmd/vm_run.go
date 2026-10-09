@@ -109,6 +109,7 @@ func vmRunCommand() *cobra.Command {
 	var vncEnabled bool
 	var vncPort int
 	var vncIPv4BindAddress string
+	var sshTrustOnFirstUse bool
 
 	vmPullPolicy := pullpolicy.IfNotExist
 	var containerPullPolicy pullpolicy.PullPolicy
@@ -265,6 +266,7 @@ func vmRunCommand() *cobra.Command {
 						VNCPort:              vncPort,
 						VNCIPv4BindAddress:   vncIPv4BindAddress,
 						SSHUserName:          user,
+						SSHTrustOnFirstUse:   sshTrustOnFirstUse,
 					}
 
 					err = v.VMRun(c)
@@ -323,6 +325,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().VarP(&cpuMode, "cpu-mode", "", fmt.Sprintf("CPU mode to use. Only valid for the native architecture. Valid values: [%s, %s]", virter.CpuModeHostModel, virter.CpuModeHostPassthrough))
 	runCmd.Flags().StringVar(&cpuModel, "cpu-model", "", "Named CPU model to use, e.g. 'EPYC-Milan' (implies CPU mode 'custom'). Cannot be combined with --cpu-mode")
 	runCmd.Flags().BoolVar(&nestedVirtualization, "nested-virtualization", false, "whether to expose the virtualization CPU feature (svm/vmx) to the VM")
+	runCmd.Flags().BoolVar(&sshTrustOnFirstUse, "ssh-trust-on-first-use", false, "whether to record the SSH host key that the VM presents once it is ready and accept only that key afterwards, for guests that keep their own host keys")
 	runCmd.Flags().BoolVar(&secureBoot, "secure-boot", false, "whether to enable secure boot")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	runCmd.Flags().UintVar(&gdbPort, "gdb-port", 0, "Enable gdb remote connection on this port (if --count is used, the ID will be added to this port number)")

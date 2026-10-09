@@ -2,6 +2,7 @@ package virter_test
 
 import (
 	"context"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"os"
@@ -78,6 +79,92 @@ func TestVMRun(t *testing.T) {
 	domain := l.domains[vmName]
 	assert.True(t, domain.persistent)
 	assert.True(t, domain.active)
+}
+
+func TestVMRunSSHTrustOnFirstUse(t *testing.T) {
+	cases := []struct {
+		name               string
+		sshTrustOnFirstUse bool
+		storesKey          bool
+	}{
+		{"default", false, true},
+		{"trust on first use", true, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			l := newFakeLibvirtConnection()
+			l.addFakeImage(poolName, imageName)
+			v := virter.New(l, poolName, networkName, newMockKeystore())
+			pool, err := l.StoragePoolLookupByName(poolName)
+			assert.NoError(t, err)
+			img, err := v.FindImage(imageName, pool)
+			assert.NoError(t, err)
+
+			err = v.VMRun(virter.VMConfig{
+				Image:              img,
+				Name:               vmName,
+				ID:                 vmID,
+				VCPUs:              1,
+				MemoryKiB:          1024,
+				SSHTrustOnFirstUse: c.sshTrustOnFirstUse,
+			})
+			assert.NoError(t, err)
+
+			var meta virter.VMMeta
+			err = xml.Unmarshal([]byte(l.domains[vmName].description.Metadata.XML), &meta)
+			assert.NoError(t, err)
+			assert.Equal(t, c.storesKey, meta.HostKey != "")
+			assert.Equal(t, c.sshTrustOnFirstUse, meta.SSHTrustOnFirstUse)
+		})
+	}
+}
+
+func newVirterWithUnknownHostKey() *virter.Virter {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmName, vmMAC)
+	domain.active = true
+	domain.description.Metadata.XML = `<meta xmlns="https://github.com/LINBIT/virter"><hostkey></hostkey><ssh-user-name>Administrator</ssh-user-name><ssh-trust-on-first-use>true</ssh-trust-on-first-use></meta>`
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+
+	return virter.New(l, poolName, networkName, newMockKeystore())
+}
+
+func TestHostKeyNotRecordedYet(t *testing.T) {
+	copier := new(mocks.MockNetworkCopier)
+	container := mockContainerProvider()
+	cases := map[string]func(ctx context.Context, v *virter.Virter) error{
+		"vm host-key": func(ctx context.Context, v *virter.Virter) error {
+			_, err := v.VMGetKnownHosts(vmName)
+			return err
+		},
+		"vm ssh": func(ctx context.Context, v *virter.Virter) error {
+			return v.VMSSHSession(ctx, vmName)
+		},
+		"vm exec shell": func(ctx context.Context, v *virter.Virter) error {
+			return v.VMExecShell(ctx, []string{vmName}, &virter.ProvisionShellStep{Script: "true"})
+		},
+		"vm cp": func(ctx context.Context, v *virter.Virter) error {
+			return v.VMExecCopy(ctx, copier, []string{vmName + ":/tmp"}, t.TempDir())
+		},
+		"vm exec container": func(ctx context.Context, v *virter.Virter) error {
+			cfg := containerapi.NewContainerConfig("test", containerImageName, nil)
+			return v.VMExecContainer(ctx, container, []string{vmName}, cfg, nil)
+		},
+	}
+
+	for name, run := range cases {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			v := newVirterWithUnknownHostKey()
+			assert.ErrorContains(t, run(ctx, v), "virter vm wait-ready "+vmName)
+		})
+	}
+	copier.AssertNotCalled(t, "Copy", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	assert.False(t, container.createCalled)
 }
 
 func TestWaitVmReady(t *testing.T) {

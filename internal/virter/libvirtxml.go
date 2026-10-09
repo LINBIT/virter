@@ -397,6 +397,25 @@ func (v *Virter) getMetaForVM(vmName string) (*VMMeta, error) {
 	return meta.VMMeta, nil
 }
 
+func (v *Virter) setMetaForVM(vmName string, meta *VMMeta) error {
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return fmt.Errorf("could not find domain: '%s': %w", vmName, err)
+	}
+
+	metaXml, err := xml.Marshal(metaWrapper{VMMeta: meta})
+	if err != nil {
+		return fmt.Errorf("failed to create metadata xml: %w", err)
+	}
+
+	err = v.libvirt.DomainSetMetadata(domain, int32(libvirt.DomainMetadataElement), libvirt.OptString{string(metaXml)}, libvirt.OptString{"virter"}, libvirt.OptString{"https://github.com/LINBIT/virter"}, libvirt.DomainAffectLive|libvirt.DomainAffectConfig)
+	if err != nil {
+		return fmt.Errorf("could not set domain metadata '%s': %w", vmName, err)
+	}
+
+	return nil
+}
+
 func (v *Virter) getDisksOfDomain(domain libvirt.Domain) ([]VMDisk, error) {
 	xml, err := v.libvirt.DomainGetXMLDesc(domain, 0)
 	if err != nil {
