@@ -87,6 +87,7 @@ func vmRunCommand() *cobra.Command {
 	var cpuModel string
 	var nestedVirtualization bool
 	var secureBoot bool
+	var uefi bool
 
 	var consoleDir string
 
@@ -262,6 +263,7 @@ func vmRunCommand() *cobra.Command {
 						ExtraNics:            nics,
 						GDBPort:              thisGDBPort,
 						SecureBoot:           secureBoot,
+						UEFI:                 uefi,
 						VNCEnabled:           vncEnabled,
 						VNCPort:              vncPort,
 						VNCIPv4BindAddress:   vncIPv4BindAddress,
@@ -327,6 +329,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().BoolVar(&nestedVirtualization, "nested-virtualization", false, "whether to expose the virtualization CPU feature (svm/vmx) to the VM")
 	runCmd.Flags().BoolVar(&sshTrustOnFirstUse, "ssh-trust-on-first-use", false, "whether to record the SSH host key that the VM presents once it is ready and accept only that key afterwards, for guests that keep their own host keys")
 	runCmd.Flags().BoolVar(&secureBoot, "secure-boot", false, "whether to enable secure boot")
+	runCmd.Flags().BoolVar(&uefi, "uefi", false, "whether to boot with UEFI firmware instead of BIOS, with Secure Boot off unless --secure-boot is set")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")
 	runCmd.Flags().UintVar(&gdbPort, "gdb-port", 0, "Enable gdb remote connection on this port (if --count is used, the ID will be added to this port number)")
 

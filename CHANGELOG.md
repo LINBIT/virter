@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--ssh-trust-on-first-use` option for `vm run` and `image build`: Virter
   records the SSH host key that the VM presents once it is ready, and accepts
   only that key afterwards.
+- `vm run --uefi` boots the VM with UEFI firmware and Secure Boot off.
 
 ### Changed
 

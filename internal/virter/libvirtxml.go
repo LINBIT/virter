@@ -269,6 +269,11 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 		domain.OS.Loader.Secure = "yes"
 		domain.OS.Firmware = "efi"
 		domain.Features.SMM = &lx.DomainFeatureSMM{}
+	} else if vm.UEFI {
+		domain.OS.Firmware = "efi"
+		domain.OS.FirmwareInfo = &lx.DomainOSFirmwareInfo{
+			Features: []lx.DomainOSFirmwareFeature{{Name: "secure-boot", Enabled: "no"}},
+		}
 	}
 
 	return domain.Marshal()

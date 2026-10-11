@@ -160,6 +160,7 @@ type VMConfig struct {
 	Mounts             []Mount
 	GDBPort            uint
 	SecureBoot         bool
+	UEFI               bool
 	VNCEnabled         bool
 	VNCPort            int
 	VNCIPv4BindAddress string
