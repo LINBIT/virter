@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vm list` and VM name completion no longer fail for every VM because of one
   misconfigured VM. A VM whose access network has been removed is listed
   normally, and a VM with unreadable details is skipped with a warning.
+- `--vnc` adds a USB tablet to the VM, so the guest cursor follows the VNC
+  client's cursor instead of drifting away from it.
 
 ## [1.4.0] - 2026-09-15
 

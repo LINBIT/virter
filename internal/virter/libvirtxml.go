@@ -163,11 +163,20 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 		return "", fmt.Errorf("failed to create metadata xml: %w", err)
 	}
 
+	controllers := []lx.DomainController{{Type: "scsi", Model: "virtio-scsi"}}
 	var vncGraphics *lx.DomainGraphicVNC
+	var inputs []lx.DomainInput
 	if vm.VNCEnabled {
 		vncGraphics = &lx.DomainGraphicVNC{
 			Port:   vm.VNCPort,
 			Listen: vm.VNCIPv4BindAddress,
+		}
+		switch vm.CpuArch.get() {
+		case CpuArchAMD64, CpuArchARM64:
+			// An absolute pointer keeps the guest cursor under the VNC client's cursor.
+			// The arm64 virt machine gets no USB controller unless one is listed.
+			controllers = append(controllers, lx.DomainController{Type: "usb", Model: "qemu-xhci"})
+			inputs = []lx.DomainInput{{Type: "tablet", Bus: "usb"}}
 		}
 	}
 
@@ -207,13 +216,8 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 		OnCrash:    "destroy",
 		PM:         vm.CpuArch.PM(),
 		Devices: &lx.DomainDeviceList{
-			Disks: disks,
-			Controllers: []lx.DomainController{
-				{
-					Type:  "scsi",
-					Model: "virtio-scsi",
-				},
-			},
+			Disks:       disks,
+			Controllers: controllers,
 			Interfaces: append(
 				[]lx.DomainInterface{{
 					MAC: &lx.DomainInterfaceMAC{
@@ -236,6 +240,7 @@ func (v *Virter) vmXML(vm VMConfig, mac string, meta *VMMeta) (string, error) {
 			Graphics: []lx.DomainGraphic{
 				{VNC: vncGraphics},
 			},
+			Inputs: inputs,
 			// For some reason, debian stretch doesn't boot without a video card. The virtio model seems to stable
 			// enough, even for multi-arch scenarios.
 			Videos: []lx.DomainVideo{
