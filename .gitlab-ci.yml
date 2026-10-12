@@ -10,7 +10,7 @@ stages:
   - deploy
 
 variables:
-  VMSHED_VERSION: v0.31.0
+  VMSHED_VERSION: v0.32.0
   BUILD_HELPERS_VERSION: cad23b57db14b7676808fa645c4561bc66c3e204
 
 prepare-bins:
@@ -79,7 +79,7 @@ lint:
   stage: test
   rules:
     - if: $CI_MERGE_REQUEST_ID
-  image: docker.io/golangci/golangci-lint:v2.13.2
+  image: docker.io/golangci/golangci-lint:v2.14.0
   variables:
     GOPATH: $CI_PROJECT_DIR/.mygo
   script:
