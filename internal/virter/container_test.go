@@ -45,8 +45,7 @@ func (c *MockContainerProvider) Wait(ctx context.Context, containerID string) (<
 
 func (c *MockContainerProvider) Logs(ctx context.Context, containerID string) (io.ReadCloser, io.ReadCloser, error) {
 	c.logsCalled = true
-	var out bytes.Buffer
-	return io.NopCloser(&out), io.NopCloser(&out), nil
+	return io.NopCloser(&bytes.Buffer{}), io.NopCloser(&bytes.Buffer{}), nil
 }
 
 func (c *MockContainerProvider) Remove(ctx context.Context, containerID string) error {
