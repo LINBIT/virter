@@ -167,6 +167,7 @@ type VMConfig struct {
 	SSHUserName        string
 	AptMirror          string
 	SSHTrustOnFirstUse bool
+	SkipCloudInitCheck bool
 }
 
 // VMMeta is additional metadata stored with each VM
@@ -174,6 +175,7 @@ type VMMeta struct {
 	HostKey            string `xml:"hostkey"`
 	SSHUserName        string `xml:"ssh-user-name"`
 	SSHTrustOnFirstUse bool   `xml:"ssh-trust-on-first-use,omitempty"`
+	SkipCloudInitCheck bool   `xml:"skip-cloud-init-check,omitempty"`
 }
 
 // VmReadyConfig contains the configuration for waiting for a VM to be ready.

@@ -59,6 +59,7 @@ func imageBuildCommand() *cobra.Command {
 	var vncPort int
 	var vncIPv4BindAddress string
 	var sshTrustOnFirstUse bool
+	var skipCloudInitCheck bool
 
 	buildCmd := &cobra.Command{
 		Use:   "build base_image new_image",
@@ -227,6 +228,7 @@ func imageBuildCommand() *cobra.Command {
 				VNCIPv4BindAddress: vncIPv4BindAddress,
 				SSHUserName:        user,
 				SSHTrustOnFirstUse: sshTrustOnFirstUse,
+				SkipCloudInitCheck: skipCloudInitCheck,
 			}
 
 			containerName := "virter-build-" + newImageName
@@ -305,6 +307,7 @@ func imageBuildCommand() *cobra.Command {
 	buildCmd.Flags().StringVar(&cpuModel, "cpu-model", "", "Named CPU model to use, e.g. 'EPYC-Milan' (implies CPU mode 'custom'). Cannot be combined with --cpu-mode")
 	buildCmd.Flags().BoolVar(&nestedVirtualization, "nested-virtualization", false, "whether to expose the virtualization CPU feature (svm/vmx) to the VM")
 	buildCmd.Flags().BoolVar(&sshTrustOnFirstUse, "ssh-trust-on-first-use", false, "whether to record the SSH host key that the VM presents once it is ready and accept only that key afterwards, for guests that keep their own host keys")
+	buildCmd.Flags().BoolVar(&skipCloudInitCheck, "skip-cloud-init-check", false, "whether to treat the VM as ready once an SSH login works, without waiting for cloud-init, for guests that do not run cloud-init")
 	mem = memoryUnit.MustNewValue(1*unit.G, unit.None)
 	buildCmd.Flags().VarP(mem, "memory", "m", "Set amount of memory for the VM (bare numbers are MiB)")
 	bootCapacity = capacityUnit.MustNewValue(10*unit.G, unit.None)

@@ -111,6 +111,7 @@ func vmRunCommand() *cobra.Command {
 	var vncPort int
 	var vncIPv4BindAddress string
 	var sshTrustOnFirstUse bool
+	var skipCloudInitCheck bool
 
 	vmPullPolicy := pullpolicy.IfNotExist
 	var containerPullPolicy pullpolicy.PullPolicy
@@ -269,6 +270,7 @@ func vmRunCommand() *cobra.Command {
 						VNCIPv4BindAddress:   vncIPv4BindAddress,
 						SSHUserName:          user,
 						SSHTrustOnFirstUse:   sshTrustOnFirstUse,
+						SkipCloudInitCheck:   skipCloudInitCheck,
 					}
 
 					err = v.VMRun(c)
@@ -328,6 +330,7 @@ func vmRunCommand() *cobra.Command {
 	runCmd.Flags().StringVar(&cpuModel, "cpu-model", "", "Named CPU model to use, e.g. 'EPYC-Milan' (implies CPU mode 'custom'). Cannot be combined with --cpu-mode")
 	runCmd.Flags().BoolVar(&nestedVirtualization, "nested-virtualization", false, "whether to expose the virtualization CPU feature (svm/vmx) to the VM")
 	runCmd.Flags().BoolVar(&sshTrustOnFirstUse, "ssh-trust-on-first-use", false, "whether to record the SSH host key that the VM presents once it is ready and accept only that key afterwards, for guests that keep their own host keys")
+	runCmd.Flags().BoolVar(&skipCloudInitCheck, "skip-cloud-init-check", false, "whether to treat the VM as ready once an SSH login works, without waiting for cloud-init, for guests that do not run cloud-init")
 	runCmd.Flags().BoolVar(&secureBoot, "secure-boot", false, "whether to enable secure boot")
 	runCmd.Flags().BoolVar(&uefi, "uefi", false, "whether to boot with UEFI firmware instead of BIOS, with Secure Boot off unless --secure-boot is set")
 	runCmd.Flags().StringVarP(&consoleDir, "console", "c", "", "Directory to save the VMs console outputs to")

@@ -242,6 +242,7 @@ func (v *Virter) VMRun(vmConfig VMConfig) error {
 		HostKey:            hostkey.PublicKey(),
 		SSHUserName:        vmConfig.SSHUserName,
 		SSHTrustOnFirstUse: vmConfig.SSHTrustOnFirstUse,
+		SkipCloudInitCheck: vmConfig.SkipCloudInitCheck,
 	}
 	if vmConfig.SSHTrustOnFirstUse {
 		meta.HostKey = ""
@@ -370,9 +371,11 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 			return err
 		}
 		defer sshClient.Close()
-		if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
-			logger.Debugf("cloud-init not done: %v", err)
-			return err
+		if !meta.SkipCloudInitCheck {
+			if err := sshClient.ExecScript("test -f /run/cloud-init/result.json"); err != nil {
+				logger.Debugf("cloud-init not done: %v", err)
+				return err
+			}
 		}
 
 		if recordHostKey {
