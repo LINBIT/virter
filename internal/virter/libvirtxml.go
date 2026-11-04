@@ -398,6 +398,10 @@ func (v *Virter) getMetaForVM(vmName string) (*VMMeta, error) {
 		return nil, fmt.Errorf("could not decode domain xml '%s': %w", vmName, err)
 	}
 
+	if desc.Metadata == nil {
+		return nil, fmt.Errorf("no metadata found for VM '%s'", vmName)
+	}
+
 	meta := metaWrapper{}
 	err = xml.Unmarshal([]byte(desc.Metadata.XML), &meta)
 	if err != nil {

@@ -729,6 +729,39 @@ func TestVMGetKnownHostsOtherNetwork(t *testing.T) {
 	assert.NotContains(t, knownHosts, "fake-domain.com")
 }
 
+func TestVMGetKnownHostsStoppedVM(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmName, vmMAC)
+	domain.persistent = true
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	knownHosts, err := v.VMGetKnownHosts(vmName)
+	assert.NoError(t, err)
+	assert.Contains(t, knownHosts, vmIP)
+
+	err = v.VMExecShell(context.Background(), []string{vmName}, &virter.ProvisionShellStep{Script: "true"})
+	assert.EqualError(t, err, fmt.Sprintf("cannot exec against VM '%s' that is not running", vmName))
+}
+
+func TestVMGetKnownHostsNoMetadata(t *testing.T) {
+	l := newFakeLibvirtConnection()
+
+	domain := newFakeLibvirtDomain(vmName, vmMAC)
+	domain.description.Metadata = nil
+	domain.persistent = true
+	l.domains[vmName] = domain
+	fakeNetworkAddHost(l.networks[networkName], vmMAC, vmIP)
+
+	v := virter.New(l, poolName, networkName, newMockKeystore())
+
+	_, err := v.VMGetKnownHosts(vmName)
+	assert.EqualError(t, err, fmt.Sprintf("failed to fetch host keys: no metadata found for VM '%s'", vmName))
+}
+
 func TestVMExecContainerAccessNetwork(t *testing.T) {
 	const secondVMName = "second-vm"
 	const secondVMMAC = "01:23:45:67:89:ac"

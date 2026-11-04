@@ -686,7 +686,7 @@ func (v *Virter) vmShutdown(ctx context.Context, afterNotifier AfterNotifier, sh
 	return nil
 }
 
-// vmAccess describes how Virter reaches a running VM: the description of the
+// vmAccess describes how Virter reaches a VM: the description of the
 // network that the VM's access interface is on (see getAccessNIC), and the
 // IP address of that interface.
 type vmAccess struct {
@@ -695,6 +695,8 @@ type vmAccess struct {
 	ip      string
 }
 
+// getVMAccess resolves how to reach a VM in order to connect to it. It is an
+// error if the VM is not running.
 func (v *Virter) getVMAccess(vmName string) (vmAccess, error) {
 	domain, err := v.libvirt.DomainLookupByName(vmName)
 	if err != nil {
@@ -710,6 +712,13 @@ func (v *Virter) getVMAccess(vmName string) (vmAccess, error) {
 		return vmAccess{}, fmt.Errorf("cannot exec against VM '%s' that is not running", vmName)
 	}
 
+	return v.getDomainAccess(vmName, domain)
+}
+
+// getDomainAccess resolves how to reach a VM, whether or not it is running.
+// The IP is that of the VM's DHCP host entry, which exists independently of
+// the VM's state.
+func (v *Virter) getDomainAccess(vmName string, domain libvirt.Domain) (vmAccess, error) {
 	domainDescription, err := getDomainDescription(v.libvirt, domain)
 	if err != nil {
 		return vmAccess{}, fmt.Errorf("could not get description of domain '%s': %w", vmName, err)
@@ -838,8 +847,15 @@ func (v *Virter) getKnownHostsFor(accesses ...vmAccess) (sshkeys.KnownHosts, err
 	return knownHosts, nil
 }
 
+// VMGetKnownHosts returns the known hosts entries for a VM. The VM does not
+// need to be running.
 func (v *Virter) VMGetKnownHosts(vmName string) (string, error) {
-	access, err := v.getVMAccess(vmName)
+	domain, err := v.libvirt.DomainLookupByName(vmName)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch host keys: could not get domain '%s': %w", vmName, err)
+	}
+
+	access, err := v.getDomainAccess(vmName, domain)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch host keys: %w", err)
 	}

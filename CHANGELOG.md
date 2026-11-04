@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `libvirt.network`. All target VMs of a container step must be on the same
   access network.
 
+### Fixed
+
+- `vm host-key` works for VMs that are not running.
+
 ## [1.5.1] - 2026-11-24
 
 ### Fixed
