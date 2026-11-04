@@ -782,6 +782,37 @@ func getAccessNIC(vmName string, domainDescription *lx.Domain) (nic, error) {
 	return nics[0], nil
 }
 
+// getSharedAccessNetwork returns the access network of the given VMs. It is an
+// error if no VMs are given or if the VMs are on different access networks.
+func getSharedAccessNetwork(accesses []vmAccess) (*lx.Network, error) {
+	if len(accesses) == 0 {
+		return nil, fmt.Errorf("no VMs given")
+	}
+
+	first := accesses[0]
+	for _, access := range accesses[1:] {
+		if access.network.Name != first.network.Name {
+			return nil, fmt.Errorf("container provisioning requires all VMs to be on the same access network, but VM '%s' is on '%s' and VM '%s' is on '%s'",
+				first.name, first.network.Name, access.name, access.network.Name)
+		}
+	}
+
+	return first.network, nil
+}
+
+// VMCheckSharedAccessNetwork checks that the given VMs can be reached and are on
+// the same access network, as required by VMExecContainer. Use this to detect
+// the error before running any provisioning steps.
+func (v *Virter) VMCheckSharedAccessNetwork(vmNames []string) error {
+	accesses, err := v.getVMAccesses(vmNames)
+	if err != nil {
+		return err
+	}
+
+	_, err = getSharedAccessNetwork(accesses)
+	return err
+}
+
 func (v *Virter) getKnownHostsFor(accesses ...vmAccess) (sshkeys.KnownHosts, error) {
 	knownHosts := sshkeys.NewKnownHosts()
 	for _, access := range accesses {
@@ -850,26 +881,26 @@ func (v *Virter) getSSHUserNames(vmNames []string) []string {
 func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containerapi.ContainerProvider,
 	vmNames []string, containerCfg *containerapi.ContainerConfig, copyStep *ProvisionContainerCopyStep) error {
 
-	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
+	accesses, err := v.getVMAccesses(vmNames)
 	if err != nil {
-		return fmt.Errorf("could not get network: %w", err)
+		return err
 	}
 
-	accessIPNet, err := getIPNet(networkDescription)
+	accessNetwork, err := getSharedAccessNetwork(accesses)
+	if err != nil {
+		return err
+	}
+
+	accessIPNet, err := getIPNet(accessNetwork)
 	if err != nil {
 		return fmt.Errorf("could not get network: %w", err)
 	}
 
 	containerCfg.SetEnv("VIRTER_ACCESS_NETWORK", accessIPNet.String())
 
-	accesses, err := v.getVMAccesses(vmNames)
-	if err != nil {
-		return err
-	}
-
 	vmSSHUserNames := v.getSSHUserNames(vmNames)
 
-	domain := getDomainSuffix(networkDescription)
+	domain := getDomainSuffix(accessNetwork)
 
 	var ips []string
 	for _, access := range accesses {

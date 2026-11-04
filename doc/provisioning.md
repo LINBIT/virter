@@ -36,6 +36,8 @@ The container provisioning step can be parameterized using the following configu
   * `TARGETS` is a comma separated list of all VMs to run the provisioning on.
   * `SSH_PRIVATE_KEY` is the SSH private key Virter uses to connect to the machine as `root`.
   * `VIRTER_ACCESS_NETWORK` is the network interface that virter is using to  connect to the VMs. It is provided in CIDR notation, with the address being the address of the host. (Example: `192.168.122.1/24`)
+
+  All target VMs of a `container` step must be on the same access network (see [Virter Networking](./networks.md)).
   
 
 * `command` is a string array and sets the command to execute in the container (basically `<args>...` in `docker run <image> <args>...`). The items are Go templates.

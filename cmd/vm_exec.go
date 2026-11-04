@@ -80,6 +80,17 @@ func execProvision(ctx context.Context, provFileReader io.ReadCloser, provOpt vi
 	}
 	defer v.ForceDisconnect()
 
+	// Check the requirements of container steps before running any step, so
+	// that the VMs are not left partially provisioned.
+	for _, s := range pc.Steps {
+		if s.Container != nil {
+			if err := v.VMCheckSharedAccessNetwork(vmNames); err != nil {
+				return err
+			}
+			break
+		}
+	}
+
 	for _, s := range pc.Steps {
 		if s.Container != nil {
 			if err := execContainer(ctx, v, s.Container, vmNames); err != nil {

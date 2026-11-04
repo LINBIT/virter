@@ -729,6 +729,77 @@ func TestVMGetKnownHostsOtherNetwork(t *testing.T) {
 	assert.NotContains(t, knownHosts, "fake-domain.com")
 }
 
+func TestVMExecContainerAccessNetwork(t *testing.T) {
+	const secondVMName = "second-vm"
+	const secondVMMAC = "01:23:45:67:89:ac"
+
+	cases := []struct {
+		name          string
+		secondNetwork string
+		secondIP      string
+		expectedErr   string
+	}{
+		{
+			name:          "same access network",
+			secondNetwork: otherNetworkName,
+			secondIP:      "192.168.123.43",
+		},
+		{
+			name:          "different access networks",
+			secondNetwork: networkName,
+			secondIP:      "192.168.122.43",
+			expectedErr: fmt.Sprintf("container provisioning requires all VMs to be on the same access network, but VM '%s' is on '%s' and VM '%s' is on '%s'",
+				vmName, otherNetworkName, secondVMName, networkName),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			l := newFakeLibvirtConnection()
+
+			otherNetwork := newFakeLibvirtNetwork(otherNetworkName, otherNetworkDomain, otherNetworkAddress)
+			l.networks[otherNetworkName] = otherNetwork
+
+			domain := newFakeLibvirtDomainOnNetwork(vmName, vmMAC, otherNetworkName)
+			domain.active = true
+			l.domains[vmName] = domain
+			fakeNetworkAddHost(otherNetwork, vmMAC, otherNetworkVMIP)
+
+			secondDomain := newFakeLibvirtDomainOnNetwork(secondVMName, secondVMMAC, c.secondNetwork)
+			secondDomain.active = true
+			l.domains[secondVMName] = secondDomain
+			fakeNetworkAddHost(l.networks[c.secondNetwork], secondVMMAC, c.secondIP)
+
+			v := virter.New(l, poolName, networkName, newMockKeystore())
+
+			checkErr := v.VMCheckSharedAccessNetwork([]string{vmName, secondVMName})
+
+			container := mockContainerProvider()
+			containerCfg := containerapi.NewContainerConfig("test", containerImageName, nil)
+			err := v.VMExecContainer(context.Background(), container, []string{vmName, secondVMName}, containerCfg, nil)
+			if c.expectedErr != "" {
+				assert.EqualError(t, checkErr, c.expectedErr)
+				assert.EqualError(t, err, c.expectedErr)
+				assert.False(t, container.createCalled)
+				return
+			}
+			assert.NoError(t, checkErr)
+			assert.NoError(t, err)
+			container.AssertExpectations(t)
+		})
+	}
+}
+
+func TestVMExecContainerNoVMs(t *testing.T) {
+	v := virter.New(newFakeLibvirtConnection(), poolName, networkName, newMockKeystore())
+
+	container := mockContainerProvider()
+	containerCfg := containerapi.NewContainerConfig("test", containerImageName, nil)
+	err := v.VMExecContainer(context.Background(), container, nil, containerCfg, nil)
+	assert.EqualError(t, err, "no VMs given")
+	assert.False(t, container.createCalled)
+}
+
 func TestVMExecCopyMissingAccessNetwork(t *testing.T) {
 	l := newFakeLibvirtConnection()
 
