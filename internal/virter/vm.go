@@ -307,15 +307,12 @@ func diskVolumeName(vmName, diskName string) string {
 // WaitVmReady repeatedly tries to connect to a VM and checks if it's ready to be used.
 func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClientBuilder, vmName string, readyConfig VmReadyConfig) error {
 	logger := log.WithField("vm", vmName)
-	ips, err := v.getIPs([]string{vmName})
+	access, err := v.getVMAccess(vmName)
 	if err != nil {
 		return err
 	}
-	if len(ips) != 1 {
-		return fmt.Errorf("Expected a single IP")
-	}
 
-	hostPort := net.JoinHostPort(ips[0], "ssh")
+	hostPort := net.JoinHostPort(access.ip, "ssh")
 
 	meta, err := v.getMetaForVM(vmName)
 	if err != nil {
@@ -330,7 +327,7 @@ func (v *Virter) WaitVmReady(ctx context.Context, shellClientBuilder ShellClient
 	_, supportedAlgos := sshkeys.NewKnownHosts().AsHostKeyConfig()
 	recordHostKey := meta.SSHTrustOnFirstUse && meta.HostKey == ""
 	if !recordHostKey {
-		knownHosts, err := v.getKnownHostsFor(vmName)
+		knownHosts, err := v.getKnownHostsFor(access)
 		if err != nil {
 			return fmt.Errorf("failed to fetch host keys: %w", err)
 		}
@@ -761,15 +758,6 @@ func (v *Virter) getVMAccesses(vmNames []string) ([]vmAccess, error) {
 	return accesses, nil
 }
 
-func (v *Virter) getIP(vmName string) (string, error) {
-	access, err := v.getVMAccess(vmName)
-	if err != nil {
-		return "", err
-	}
-
-	return access.ip, nil
-}
-
 // getAccessNIC returns the VM's first network interface, which Virter treats as
 // the access network interface. It is an error if the VM has no interfaces, if
 // the first interface is not on a libvirt network, or if it has no MAC address.
@@ -794,34 +782,10 @@ func getAccessNIC(vmName string, domainDescription *lx.Domain) (nic, error) {
 	return nics[0], nil
 }
 
-func (v *Virter) getIPs(vmNames []string) ([]string, error) {
-	accesses, err := v.getVMAccesses(vmNames)
-	if err != nil {
-		return nil, err
-	}
-
-	var ips []string
-	for _, access := range accesses {
-		ips = append(ips, access.ip)
-	}
-	return ips, nil
-}
-
-func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error) {
-	ips, err := v.getIPs(vmNames)
-	if err != nil {
-		return nil, err
-	}
-
-	networkDescription, err := getNetworkDescription(v.libvirt, v.provisionNetwork)
-	if err != nil {
-		return nil, err
-	}
-
-	domainSuffix := getDomainSuffix(networkDescription)
-
+func (v *Virter) getKnownHostsFor(accesses ...vmAccess) (sshkeys.KnownHosts, error) {
 	knownHosts := sshkeys.NewKnownHosts()
-	for i, vmName := range vmNames {
+	for _, access := range accesses {
+		vmName := access.name
 		meta, err := v.getMetaForVM(vmName)
 		if err != nil {
 			return nil, err
@@ -831,7 +795,9 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 			return nil, fmt.Errorf("host key of VM '%s' not recorded yet, wait for it with 'virter vm wait-ready %s'", vmName, vmName)
 		}
 
-		hosts := []string{ips[i], vmName}
+		hosts := []string{access.ip, vmName}
+
+		domainSuffix := getDomainSuffix(access.network)
 		if domainSuffix != "" {
 			hosts = append(hosts, fmt.Sprintf("%s.%s", vmName, domainSuffix))
 		}
@@ -842,7 +808,12 @@ func (v *Virter) getKnownHostsFor(vmNames ...string) (sshkeys.KnownHosts, error)
 }
 
 func (v *Virter) VMGetKnownHosts(vmName string) (string, error) {
-	knownHosts, err := v.getKnownHostsFor(vmName)
+	access, err := v.getVMAccess(vmName)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch host keys: %w", err)
+	}
+
+	knownHosts, err := v.getKnownHostsFor(access)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch host keys: %w", err)
 	}
@@ -891,7 +862,7 @@ func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containe
 
 	containerCfg.SetEnv("VIRTER_ACCESS_NETWORK", accessIPNet.String())
 
-	ips, err := v.getIPs(vmNames)
+	accesses, err := v.getVMAccesses(vmNames)
 	if err != nil {
 		return err
 	}
@@ -900,14 +871,16 @@ func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containe
 
 	domain := getDomainSuffix(networkDescription)
 
-	for i := range ips {
-		containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: vmNames[i], IP: ips[i]})
+	var ips []string
+	for _, access := range accesses {
+		ips = append(ips, access.ip)
+		containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: access.name, IP: access.ip})
 		if domain != "" {
-			containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: fmt.Sprintf("%s.%s", vmNames[i], domain), IP: ips[i]})
+			containerCfg.AddExtraHost(containerapi.ExtraHost{HostName: fmt.Sprintf("%s.%s", access.name, domain), IP: access.ip})
 		}
 	}
 
-	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	knownHosts, err := v.getKnownHostsFor(accesses...)
 	if err != nil {
 		return err
 	}
@@ -928,15 +901,12 @@ func (v *Virter) VMExecContainer(ctx context.Context, containerProvider containe
 
 // VMSSHSession runs an interactive shell session in a VM
 func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
-	ips, err := v.getIPs([]string{vmName})
+	access, err := v.getVMAccess(vmName)
 	if err != nil {
 		return err
 	}
-	if len(ips) != 1 {
-		return fmt.Errorf("Expected a single IP")
-	}
 
-	knownHosts, err := v.getKnownHostsFor(vmName)
+	knownHosts, err := v.getKnownHostsFor(access)
 	if err != nil {
 		return fmt.Errorf("failed to fetch host keys: %w", err)
 	}
@@ -952,7 +922,7 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 		HostKeyAlgorithms: supportedAlgos,
 	}
 
-	hostPort := net.JoinHostPort(ips[0], "22")
+	hostPort := net.JoinHostPort(access.ip, "22")
 	sshClient := sshclient.NewSSHClient(hostPort, sshConfig)
 	if err := sshClient.DialContext(ctx); err != nil {
 		return err
@@ -964,12 +934,12 @@ func (v *Virter) VMSSHSession(ctx context.Context, vmName string) error {
 
 // VMExecShell runs a simple shell command against some VMs.
 func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *ProvisionShellStep) error {
-	ips, err := v.getIPs(vmNames)
+	accesses, err := v.getVMAccesses(vmNames)
 	if err != nil {
 		return err
 	}
 
-	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	knownHosts, err := v.getKnownHostsFor(accesses...)
 	if err != nil {
 		return err
 	}
@@ -977,9 +947,9 @@ func (v *Virter) VMExecShell(ctx context.Context, vmNames []string, shellStep *P
 	hostkeyCheck, supportedAlgos := knownHosts.AsHostKeyConfig()
 
 	var g errgroup.Group
-	for i, ip := range ips {
-		ip := ip
-		vmName := vmNames[i]
+	for _, access := range accesses {
+		ip := access.ip
+		vmName := access.name
 
 		remoteUser := v.getSSHUserName(vmName)
 		sshConfig := ssh.ClientConfig{
@@ -1048,20 +1018,20 @@ func (v *Virter) VMExecRsync(ctx context.Context, copier netcopy.NetworkCopier, 
 
 func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, sourceSpecs []string, destSpec string) error {
 	sources := make([]netcopy.HostPath, len(sourceSpecs))
-	var vmNames []string
+	var accesses []vmAccess
 	for i, srcSpec := range sourceSpecs {
 		sources[i] = netcopy.ParseHostPath(srcSpec)
 
 		if !sources[i].Local() {
 			sources[i].User = v.getSSHUserName(sources[i].Host)
 
-			vmNames = append(vmNames, sources[i].Host)
-			// Replace hostname with ip
-			ip, err := v.getIP(sources[i].Host)
+			access, err := v.getVMAccess(sources[i].Host)
 			if err != nil {
 				return err
 			}
-			sources[i].Host = ip
+			accesses = append(accesses, access)
+			// Replace hostname with ip
+			sources[i].Host = access.ip
 		}
 	}
 
@@ -1069,15 +1039,15 @@ func (v *Virter) VMExecCopy(ctx context.Context, copier netcopy.NetworkCopier, s
 	if !dest.Local() {
 		dest.User = v.getSSHUserName(dest.Host)
 
-		vmNames = append(vmNames, dest.Host)
-		ip, err := v.getIP(dest.Host)
+		access, err := v.getVMAccess(dest.Host)
 		if err != nil {
 			return err
 		}
-		dest.Host = ip
+		accesses = append(accesses, access)
+		dest.Host = access.ip
 	}
 
-	knownHosts, err := v.getKnownHostsFor(vmNames...)
+	knownHosts, err := v.getKnownHostsFor(accesses...)
 	if err != nil {
 		return err
 	}

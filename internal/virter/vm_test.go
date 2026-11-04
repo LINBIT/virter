@@ -718,6 +718,17 @@ func TestVMExecCopyOtherNetwork(t *testing.T) {
 	copier.AssertExpectations(t)
 }
 
+func TestVMGetKnownHostsOtherNetwork(t *testing.T) {
+	v := newVirterWithVMOnOtherNetwork()
+
+	knownHosts, err := v.VMGetKnownHosts(vmName)
+	assert.NoError(t, err)
+	assert.Contains(t, knownHosts, otherNetworkVMIP)
+	assert.Contains(t, knownHosts, vmName+"."+otherNetworkDomain)
+	assert.NotContains(t, knownHosts, vmIP)
+	assert.NotContains(t, knownHosts, "fake-domain.com")
+}
+
 func TestVMExecCopyMissingAccessNetwork(t *testing.T) {
 	l := newFakeLibvirtConnection()
 
