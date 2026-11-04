@@ -166,7 +166,7 @@ func imageBuildCommand() *cobra.Command {
 				OverridePullPolicy: containerPullPolicy,
 			}
 
-			provisionConfig, err := virter.NewProvisionConfig(provFile.File, provOpt)
+			provisionConfig, err := virter.NewProvisionConfig(provFile.Reader(), provOpt)
 			if err != nil {
 				log.Fatal(err)
 			}

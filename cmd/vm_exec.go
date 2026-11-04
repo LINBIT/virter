@@ -55,7 +55,7 @@ func vmExecCommand() *cobra.Command {
 				DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 				OverridePullPolicy: containerPullPolicy,
 			}
-			if err := execProvision(cmd.Context(), provFile.File, provOpt, args); err != nil {
+			if err := execProvision(cmd.Context(), provFile.Reader(), provOpt, args); err != nil {
 				logProvisioningErrorAndExit(err)
 			}
 		},
@@ -64,6 +64,7 @@ func vmExecCommand() *cobra.Command {
 
 	execCmd.Flags().VarP(&provFile, "provision", "p", "name of toml file containing provisioning steps")
 	execCmd.Flags().StringArrayVarP(&provisionOverrides, "set", "s", []string{}, "set/override provisioning steps")
+	execCmd.MarkFlagsOneRequired("provision", "set")
 	execCmd.Flags().VarP(&containerPullPolicy, "container-pull-policy", "", fmt.Sprintf("Whether or not to pull container images used during provisioning. Overrides the `pull` value of every provision step. Valid values: [%s, %s, %s]", pullpolicy.Always, pullpolicy.IfNotExist, pullpolicy.Never))
 
 	return execCmd

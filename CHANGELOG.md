@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `vm host-key` works for VMs that are not running.
+- `vm exec --set`, `vm run --set` and `image build` without `--provision` no
+  longer fail with "invalid argument". `vm exec` requires `--provision` or
+  `--set`.
 
 ## [1.5.1] - 2026-11-24
 

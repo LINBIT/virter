@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"io"
 	"os"
 
 	"github.com/spf13/pflag"
@@ -29,6 +30,16 @@ func (f *FileVar) Set(s string) error {
 
 	f.File = fd
 	return nil
+}
+
+// Reader returns the opened file, or nil if no file was given. Use this rather
+// than File where an io.Reader is expected, because a nil *os.File in an
+// interface is not equal to nil.
+func (f *FileVar) Reader() io.ReadCloser {
+	if f.File == nil {
+		return nil
+	}
+	return f.File
 }
 
 var _ pflag.Value = &FileVar{}

@@ -297,7 +297,7 @@ func vmRunCommand() *cobra.Command {
 					DefaultPullPolicy:  getDefaultContainerPullPolicy(),
 					OverridePullPolicy: containerPullPolicy,
 				}
-				if err := execProvision(ctx, provFile.File, provOpt, vmNames); err != nil {
+				if err := execProvision(ctx, provFile.Reader(), provOpt, vmNames); err != nil {
 					log.Fatal(err)
 				}
 			}
