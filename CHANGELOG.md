@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vm exec --set`, `vm run --set` and `image build` without `--provision` no
   longer fail with "invalid argument". `vm exec` requires `--provision` or
   `--set`.
+- `vm exec` reports a failed provisioning step as "Provisioning failed"
+  instead of "Failed to build image".
 
 ## [1.5.1] - 2026-11-24
 

@@ -21,12 +21,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// logProvisioningErrorAndExit logs an error from a virter.VMExec* function and exits with the appropriate exit code.
+// logProvisioningErrorAndExit logs an error from a virter.VMExec* function with the given message and exits with the
+// appropriate exit code.
 // If the error is from a failed SSH or container provisioning step, the exit code is the exit code
 // of the respective command.
 // Otherwise, the exit code is 1.
-func logProvisioningErrorAndExit(err error) {
-	log.Errorf("Failed to build image: %v", err)
+func logProvisioningErrorAndExit(msg string, err error) {
+	log.Errorf("%s: %v", msg, err)
 	var sshErr *ssh.ExitError
 	if errors.As(err, &sshErr) {
 		os.Exit(sshErr.ExitStatus())
@@ -56,7 +57,7 @@ func vmExecCommand() *cobra.Command {
 				OverridePullPolicy: containerPullPolicy,
 			}
 			if err := execProvision(cmd.Context(), provFile.Reader(), provOpt, args); err != nil {
-				logProvisioningErrorAndExit(err)
+				logProvisioningErrorAndExit("Provisioning failed", err)
 			}
 		},
 		ValidArgsFunction: suggestVmNames,

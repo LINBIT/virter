@@ -257,7 +257,7 @@ func imageBuildCommand() *cobra.Command {
 
 			err = v.ImageBuild(ctx, tools, vmConfig, getReadyConfig(), buildConfig, virter.WithProgress(DefaultProgressFormat(p)))
 			if err != nil {
-				logProvisioningErrorAndExit(err)
+				logProvisioningErrorAndExit("Failed to build image", err)
 			}
 
 			if pushRef != "" {
