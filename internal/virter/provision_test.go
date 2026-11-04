@@ -127,6 +127,19 @@ destination = "/tmp"
 	}
 }
 
+func TestNewProvisionConfigWithoutFile(t *testing.T) {
+	pc, err := newProvisionConfigReader(nil, ProvisionOption{
+		Overrides: []string{"steps[0].shell.script=env"},
+	})
+	if err != nil {
+		t.Fatalf("Expected config without file to be valid, got error: %+v", err)
+	}
+
+	if len(pc.Steps) != 1 || pc.Steps[0].Shell == nil || pc.Steps[0].Shell.Script != "env" {
+		t.Errorf("Unexpected steps: %# v", pretty.Formatter(pc.Steps))
+	}
+}
+
 func envEqual(env, expected []string) bool {
 	if len(env) != len(expected) {
 		return false

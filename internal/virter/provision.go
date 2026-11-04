@@ -124,6 +124,10 @@ func newProvisionConfigReader(provReader io.ReadCloser, provOpt ProvisionOption)
 		if undecoded := md.Undecoded(); len(undecoded) > 0 {
 			return pc, fmt.Errorf("unknown keys in provisioning file: %v", undecoded)
 		}
+	} else {
+		// Without a provisioning file, the steps come only from the
+		// overrides, which do not state a version.
+		pc.Version = CurrentProvisionFileVersion
 	}
 
 	m, err := genValueMap(provOpt)
