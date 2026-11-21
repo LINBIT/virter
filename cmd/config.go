@@ -146,8 +146,7 @@ pull = "{{ get "container.pull" }}"
 # matching the layout of the upstream archives. Other distributions are not
 # affected.
 # This relies on jinja templating in cloud-init, available since version 18.4.
-# Older versions discard the whole cloud-init configuration, leaving the VM
-# without SSH access. Leave empty to disable.
+# Older versions ignore the mirror setting. Leave empty to disable.
 # Default value: "{{ get "cloudinit.apt_mirror" }}"
 apt_mirror = "{{ get "cloudinit.apt_mirror" }}"
 `

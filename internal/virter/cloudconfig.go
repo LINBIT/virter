@@ -3,6 +3,8 @@ package virter
 import (
 	"bytes"
 	"fmt"
+	"mime/multipart"
+	"net/textproto"
 	"strconv"
 	"strings"
 
@@ -39,12 +41,7 @@ ethernets:
 {{- end }}
 `
 
-// The apt mirror URIs contain jinja expressions that cloud-init expands inside the guest.
-// They are wrapped in Go template strings so that Go does not try to parse them.
-const templateUserData = `{{- if .AptMirror -}}
-## template: jinja
-{{ end -}}
-#cloud-config
+const templateUserData = `#cloud-config
 disable_root: False
 # Ideally, we would set this to "unchanged". However, this causes cloud-init on centos-6
 # to produce an invalid SSHd config, completely preventing external access to the VM.
@@ -71,7 +68,12 @@ mounts:
   - [ "{{ . }}", "{{ . }}", "virtiofs"]
 {{- end }}
 {{- end }}
-{{- if .AptMirror }}
+`
+
+// The apt mirror URIs contain jinja expressions that cloud-init expands inside the guest.
+// They are wrapped in Go template strings so that Go does not try to parse them.
+const templateAptMirror = `## template: jinja
+#cloud-config
 apt:
   primary:
     - arches: [default]
@@ -79,8 +81,11 @@ apt:
   security:
     - arches: [default]
       uri: {{ .AptMirror }}/{{ "{{ v1.distro }}" }}{% if v1.distro == 'debian' %}-security{% endif %}
-{{- end }}
 `
+
+// userDataBoundary separates the parts of a multi-part user-data. It must not
+// occur in any of the parts.
+const userDataBoundary = "==VIRTER-USER-DATA=="
 
 func (v *Virter) metaData(vmName string, sshPublicKeys []string) (string, error) {
 	quotedKeys := make([]string, len(sshPublicKeys))
@@ -182,10 +187,73 @@ func renderUserData(cfg userDataConfig) (string, error) {
 		"IndentedPrivateKey": text.Indent(cfg.HostKey.PrivateKey(), "    "),
 		"IndentedPublicKey":  text.Indent(cfg.HostKey.PublicKey(), "    "),
 		"Mount":              cfg.Mounts,
-		"AptMirror":          strings.TrimSuffix(cfg.AptMirror, "/"),
 	}
 
-	return renderTemplate("user-data", templateUserData, templateData)
+	cloudConfig, err := renderTemplate("user-data", templateUserData, templateData)
+	if err != nil {
+		return "", err
+	}
+
+	if cfg.AptMirror == "" {
+		return cloudConfig, nil
+	}
+
+	aptConfig, err := renderTemplate("apt-mirror", templateAptMirror, map[string]interface{}{
+		"AptMirror": strings.TrimSuffix(cfg.AptMirror, "/"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// The apt mirror configuration needs jinja, which cloud-init only
+	// supports since 18.4. Older versions drop jinja user-data entirely,
+	// including the SSH keys, leaving the VM unreachable. Ship the apt
+	// configuration as a separate part, so that older versions only skip
+	// that part. Distributions with such old cloud-init versions (e.g. RHEL
+	// 8.0) do not use apt anyway.
+	return multipartUserData([]userDataPart{
+		{ContentType: "text/cloud-config", Content: cloudConfig},
+		{ContentType: "text/jinja2", Content: aptConfig},
+	})
+}
+
+type userDataPart struct {
+	ContentType string
+	Content     string
+}
+
+// multipartUserData combines several user-data parts into a MIME multi-part
+// archive, see https://cloudinit.readthedocs.io/en/latest/explanation/format/mime.html
+func multipartUserData(parts []userDataPart) (string, error) {
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	if err := w.SetBoundary(userDataBoundary); err != nil {
+		return "", err
+	}
+
+	for _, p := range parts {
+		if strings.Contains(p.Content, userDataBoundary) {
+			return "", fmt.Errorf("user-data part contains MIME boundary %q", userDataBoundary)
+		}
+
+		header := textproto.MIMEHeader{}
+		header.Set("Content-Type", fmt.Sprintf("%s; charset=\"us-ascii\"", p.ContentType))
+		header.Set("MIME-Version", "1.0")
+		header.Set("Content-Transfer-Encoding", "7bit")
+		pw, err := w.CreatePart(header)
+		if err != nil {
+			return "", err
+		}
+		if _, err := pw.Write([]byte(p.Content)); err != nil {
+			return "", err
+		}
+	}
+
+	if err := w.Close(); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Content-Type: multipart/mixed; boundary=\"%s\"\nMIME-Version: 1.0\n\n%s", w.Boundary(), body.String()), nil
 }
 
 func (v *Virter) userData(vmConfig VMConfig, sshPublicKeys []string, hostkey sshkeys.HostKey, mounts []string) (string, error) {
